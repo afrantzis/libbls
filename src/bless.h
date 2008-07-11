@@ -1,4 +1,15 @@
+/**
+ * @file bless.h
+ *
+ * Public libbless buffer API.
+ *
+ * @author Alexandros Frantzis
+ * @author Michael Iatrou
+ */
+
 typedef struct bless_buffer bless_buffer_t;
+
+typedef int (*bless_progress_cb)(void *);
 
 /*
  * File operations
@@ -8,7 +19,8 @@ bless_buffer_t *bless_buffer_new();
 
 bless_buffer_t *bless_buffer_open(const char *path, int mode);
 
-int bless_buffer_save(const char *path);
+int bless_buffer_save(bless_buffer_t *buf, const char *path,
+		bless_progress_cb cb);
 
 int bless_buffer_close(bless_buffer_t *buf);
 
@@ -17,12 +29,12 @@ int bless_buffer_close(bless_buffer_t *buf);
  */
 
 int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
-                        void *data, size_t len);
+		void *data, size_t len);
 
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, size_t len);
 
 off_t bless_buffer_find(bless_buffer_t *buf, off_t start_offset, 
-                              void *data, size_t len);
+		void *data, size_t len, bless_progress_cb cb);
 
 /*
  * Undo - Redo related
@@ -45,6 +57,6 @@ int bless_buffer_can_undo(bless_buffer_t *buf);
 
 int bless_buffer_can_redo(bless_buffer_t *buf);
 
-char *bless_buffer_get_file(bless_buffer_t *buf);
+char *bless_buffer_get_path(bless_buffer_t *buf);
 
 size_t bless_buffer_get_size(bless_buffer_t *buf);
