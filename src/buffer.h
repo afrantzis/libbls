@@ -1,5 +1,5 @@
 /**
- * @file bless.h
+ * @file buffer.h
  *
  * Public libbless buffer API.
  *
