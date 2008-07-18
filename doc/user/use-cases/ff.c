@@ -114,6 +114,10 @@ int main(int argc, char **argv)
 
 	/* Lets assume that fout is zero sized (!) */
 	bufout = bless_buffer_new();
+	if (!bufout) {
+		fprintf(stderr, "bless_buffer_new");
+		return 1;
+	}
 
 	if (!bless_buffer_copy(bufin, skip, bufout, seek, len))
 		fprintf(stderr, "bless_buffer_copy");
@@ -145,7 +149,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!bless_buffer_close(bufout)) {
-		fprintf(stferr, "bless_buffer_close");
+		fprintf(stderr, "bless_buffer_close");
 		return 1;
 	}
 
