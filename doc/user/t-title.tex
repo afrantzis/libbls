@@ -1,0 +1,46 @@
+\unprotect
+
+\definesystemvariable {dt} % DocumentTitle
+
+\def\setuptitle
+{\dodoubleempty\dosetuptitle}
+
+\def\dosetuptitle[#1][#2]%
+  {\ifsecondargument
+     \dodosetuptitle[#1][#2]%
+   \else
+     \dodosetuptitle[\v!content][#1]%
+   \fi}
+
+\def\dodosetuptitle[#1][#2]%
+  {\def\dododosetuptitle##1%
+    {\getparameters[\??dt##1][#2]}%
+      \processcommalist[#1]\dododosetuptitle}
+
+\def\placetitle
+  {\startalignment[\v!middle]
+   \blank[\v!force,2*\v!big]
+   \doattributes{\??dt\c!title}\c!style\c!color\@@dtcontenttitle
+   \blank[3*\v!medium]
+   \doattributes{\??dt\c!author}\c!style\c!color\@@dtcontentauthor
+   \blank[2*\v!medium]
+   \doattributes{\??dt\c!date}\c!style\c!color\@@dtcontentdate
+   \blank[3*\v!medium]
+   \stopalignment}
+
+\setuptitle
+  [\c!title]
+  [\c!style=\tfd,
+   \c!color=]
+
+\setuptitle
+  [\c!author,\c!date]
+  [\c!style=\tfa,
+   \c!color=]
+
+\setuptitle
+  [\c!title=,
+   \c!author=,
+   \c!date=\currentdate]
+
+\protect

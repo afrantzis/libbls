@@ -31,7 +31,6 @@ void on_file_save_clicked()
 	args->buf = my_buf;
 	args->cb = on_save_progress;
 
-	/* Note: At this point write access to the buffer must be disabled in some way */
 	pthread_create(NULL, NULL, buffer_save_func, args);
 }
 
@@ -40,7 +39,7 @@ int on_save_progress(void *data)
 	/* WARNING: This function is run in the context of the save thread */
 
 	/* if save is still in progress show/update progress */
-	/* if save has finished do stuff eg reload file, enable write access*/
+	/* if save has finished do stuff eg reload file */
 	/* check if user pressed the cancel button */
 
 	/* return 1 if user cancelled the save */
@@ -50,7 +49,15 @@ void buffer_save_func(void *data)
 {
 	struct buffer_save_args *args = (struct buffer_save_args *)data;
 
+	/* 
+	 * Acquire File operations lock (see user guide for this lock scheme).
+	 * Note: The lock functions must be implemented by the user.
+	 */
+	buffer_get_file_lock(args->buf);
+
 	bless_buffer_save(args->buf, NULL, args->cb);
+
+	buffer_release_file_lock(args->buf);
 
 	free(data);
 }
