@@ -32,6 +32,9 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, size_t len);
 
+int bless_buffer_read(bless_buffer_t *src, off_t skip, void *dst,
+		off_t seek, size_t len);
+
 int bless_buffer_copy(bless_buffer_t *src, off_t skip, bless_buffer_t *dst,
 		off_t seek, size_t len);
 
