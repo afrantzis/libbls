@@ -17,11 +17,31 @@
 #include <pthreads.h>
 #include "bless.h"
 
-bless_buffer_t *my_buf;
+/*
+ * Wrapper around bless_buffer_t for locking
+ */
+struct safe_buffer 
+{
+	bless_buffer_t *buf;	
+	/* 
+	 * stuff needed to implement locking scheme
+	 * eg a mutex, condition variables and counters
+	 */
+};
+
+void safe_buffer_acquire_file_lock(struct safe_buffer *safe_buf)
+{
+	/* ... */
+}
+
+void safe_buffer_release_file_lock(struct safe_buffer *safe_buf)
+{
+	/* ... */
+}
 
 struct buffer_save_args
 {
-	bless_buffer_t *buf;
+	struct safe_buffer *safe_buf;
 	bless_progress_cb cb;
 };
 
@@ -53,11 +73,11 @@ void buffer_save_func(void *data)
 	 * Acquire File operations lock (see user guide for this lock scheme).
 	 * Note: The lock functions must be implemented by the user.
 	 */
-	buffer_get_file_lock(args->buf);
+	safe_buffer_acquire_file_lock(args->safe_buf);
 
-	bless_buffer_save(args->buf, NULL, args->cb);
+	bless_buffer_save(args->safe_buf->buf, NULL, args->cb);
 
-	buffer_release_file_lock(args->buf);
+	safe_buffer_release_file_lock(args->safe_buf);
 
 	free(data);
 }
