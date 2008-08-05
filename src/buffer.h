@@ -9,6 +9,8 @@
 #ifndef _BLESS_BUFFER_H
 #define _BLESS_BUFFER_H
 
+#include <unistd.h>
+
 /**
  * @defgroup buffer Buffer Module
  *
@@ -98,7 +100,7 @@ int bless_buffer_can_redo(bless_buffer_t *buf);
 
 int bless_buffer_get_fd(bless_buffer_t *buf);
 
-size_t bless_buffer_get_size(bless_buffer_t *buf);
+ssize_t bless_buffer_get_size(bless_buffer_t *buf);
 
 /** @} */
 

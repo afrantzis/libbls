@@ -43,7 +43,7 @@ int bless_buffer_can_redo(bless_buffer_t *buf)
  */
 int bless_buffer_get_fd(bless_buffer_t *buf)
 {
-	return NULL;
+	return -1;
 }
 
 /**
@@ -53,7 +53,7 @@ int bless_buffer_get_fd(bless_buffer_t *buf)
  *
  * @return the size in bytes
  */
-size_t bless_buffer_get_size(bless_buffer_t *buf)
+ssize_t bless_buffer_get_size(bless_buffer_t *buf)
 {
 	return -1;
 }
