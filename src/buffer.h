@@ -6,6 +6,8 @@
  * @author Alexandros Frantzis
  * @author Michael Iatrou
  */
+#ifndef _BLESS_BUFFER_H
+#define _BLESS_BUFFER_H
 
 /**
  * @defgroup buffer Buffer Module
@@ -101,3 +103,5 @@ size_t bless_buffer_get_size(bless_buffer_t *buf);
 /** @} */
 
 /** @} */
+
+#endif /* _BLESS_BUFFER_H */
