@@ -7,24 +7,50 @@
  * @author Michael Iatrou
  */
 
+/**
+ * @defgroup buffer Buffer Module
+ *
+ * @{
+ */
+
+/**
+ * Opaque data type for a bless buffer.
+ */
 typedef struct bless_buffer bless_buffer_t;
 
-typedef int (*bless_progress_cb)(void *);
+/** 
+ * Callback called to report the progress of long operations.
+ *
+ * This callback is used by operations that may take a long time to finish.
+ * These operations call the callback periodically and pass progress info using
+ * the info argument. The return value of the callback function is checked by
+ * the operations to decide whether they should continue.
+ *
+ * @param info operation specific progress info
+ *
+ * @return 1 if the operation must be cancelled, 0 otherwise
+ */
+typedef int (*bless_progress_cb)(void *info);
 
-/*
- * File operations
+/**
+ * @name File Operations
+ *
+ * @{
  */
 
 bless_buffer_t *bless_buffer_new();
 
-bless_buffer_t *bless_buffer_open(int fd, int mode);
+bless_buffer_t *bless_buffer_create(int fd);
 
 int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb);
 
-int bless_buffer_close(bless_buffer_t *buf);
+int bless_buffer_destroy(bless_buffer_t *buf);
 
-/*
- * Buffer operations
+/** @} */
+/**
+ * @name Edit Operations
+ *
+ * @{
  */
 
 int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
@@ -32,36 +58,46 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, size_t len);
 
-int bless_buffer_read(bless_buffer_t *src, off_t skip, void *dst,
-		off_t seek, size_t len);
+int bless_buffer_read(bless_buffer_t *src, off_t src_offset, void *dst,
+		off_t dst_offset, size_t len);
 
-int bless_buffer_copy(bless_buffer_t *src, off_t skip, bless_buffer_t *dst,
-		off_t seek, size_t len);
+int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
+		off_t dst_offset, size_t len);
 
 off_t bless_buffer_find(bless_buffer_t *buf, off_t start_offset, 
 		void *data, size_t len, bless_progress_cb cb);
 
-/*
- * Undo - Redo related
+/** @} */
+/**
+ * @name Undo - Redo Operations
+ *
+ * @{
  */
 
 int bless_buffer_undo(bless_buffer_t *buf);
 
 int bless_buffer_redo(bless_buffer_t *buf);
 
-void bless_buffer_begin_multi_op(bless_buffer_t *buf);
+int bless_buffer_begin_multi_op(bless_buffer_t *buf);
 
-void bless_buffer_end_multi_op(bless_buffer_t *buf);
+int bless_buffer_end_multi_op(bless_buffer_t *buf);
 
 
-/*
- * Buffer info
+/** @} */
+/**
+ * @name Buffer Information
+ *
+ * @{
  */
 
 int bless_buffer_can_undo(bless_buffer_t *buf);
 
 int bless_buffer_can_redo(bless_buffer_t *buf);
 
-char *bless_buffer_get_path(bless_buffer_t *buf);
+int bless_buffer_get_fd(bless_buffer_t *buf);
 
 size_t bless_buffer_get_size(bless_buffer_t *buf);
+
+/** @} */
+
+/** @} */
