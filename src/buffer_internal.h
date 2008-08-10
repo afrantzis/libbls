@@ -1,5 +1,4 @@
 /**
- * @cond internal
  * @file buffer_internal.h
  *
  */
@@ -12,7 +11,5 @@
 struct bless_buffer {
 
 };
-
-/** @endcond */
 
 #endif /* _BLESS_BUFFER_INTERNAL_H */
