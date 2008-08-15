@@ -1,0 +1,15 @@
+Import('env')
+
+env = env.Clone()
+env['ENV']['LD_LIBRARY_PATH'] = 'build/src'
+env['ENV']['PYTHONPATH'] = 'build/bindings'
+
+test_files = Glob('*.py')
+
+test_nodes = []
+
+for tf in test_files:
+	test_nodes.append(env.Command(None, tf, "python $SOURCE"));
+
+
+Return('test_nodes')
