@@ -56,7 +56,7 @@ void *segcol_get_impl(segcol_t *segcol)
 /**
  * Gets the implementation of a segcol_t
  */
-void *segcol_get_iter_impl(segcol_iter_t *iter)
+void *segcol_iter_get_impl(segcol_iter_t *iter)
 {
 	return iter->impl;
 }

@@ -1,0 +1,18 @@
+import os
+import distutils
+
+Import('env PYTHON_INCLUDE_PATH')
+
+env = env.Clone(SWIGFLAGS = ['-c', '-python'])
+
+source = Glob('*.i')
+libs = []
+
+for f in source:
+	(fn, ext) = os.path.splitext(os.path.basename(f.get_path()))
+	l = env.SharedLibrary(fn, [f], LIBS = ['bless'], LIBPATH = '#build/src', 
+		CPPPATH=[PYTHON_INCLUDE_PATH, '../src'], SHLIBPREFIX='_')
+	libs.append(l)
+
+
+Return('libs')
