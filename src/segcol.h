@@ -5,6 +5,10 @@
  *
  * @author Alexandros Frantzis
  */
+#ifndef _SEGCOL_H
+#define _SEGCOL_H
+
+#include <sys/types.h>
 #include "segment.h"
 
 /**
@@ -38,6 +42,8 @@ segcol_iter_t *segcol_find(segcol_t *segcol, off_t offset);
  *
  * @{
  */
+segcol_iter_t *segcol_iter_new(segcol_t *segcol);
+
 int segcol_iter_next(segcol_iter_t *iter);
 
 int segcol_iter_is_valid(segcol_iter_t *iter);
@@ -51,3 +57,5 @@ int segcol_iter_free(segcol_iter_t *iter);
 /** @} */
 
 /** @} */
+
+#endif /* _SEGCOL_H */
