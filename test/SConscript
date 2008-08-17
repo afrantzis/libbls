@@ -1,15 +1,19 @@
 Import('env')
 
-env = env.Clone()
-env['ENV']['LD_LIBRARY_PATH'] = 'build/src'
-env['ENV']['PYTHONPATH'] = 'build/bindings'
+env.Clone()
 
-test_files = Glob('*.py')
+env.Help("""
+Type 'scons test' to run libbless tests.
+Use the argument 'tests' to run only specific tests:
+    scons test tests=segment,buffer
+""")
+
+tests = " ".join(ARGUMENTS.get('tests', '').split(','))
+
+env['ENV']['LD_LIBRARY_PATH'] = 'build/src'
+env['ENV']['PYTHONPATH'] = 'build/bindings:test'
 
 test_nodes = []
-
-for tf in test_files:
-	test_nodes.append(env.Command(None, tf, "python $SOURCE"));
-
+test_nodes.append(env.Command(None, 'run_tests.py', "python $SOURCE %s" % tests));
 
 Return('test_nodes')
