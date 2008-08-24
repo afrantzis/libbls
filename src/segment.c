@@ -14,17 +14,21 @@ struct segment {
 /**
  * Creates a new segment_t.
  *
- * @return the new segment_t or NULL on error
+ * @param[out] seg the created segment or NULL
+ *
+ * @return the operation status code
  */
-segment_t *segment_new()
+int segment_new(segment_t **seg)
 {
-	segment_t *seg;
+	segment_t *segp = NULL;
 
-	seg = (segment_t *) malloc(sizeof(segment_t));
-	seg->start = -1;
-	seg->end = -1;
+	segp = (segment_t *) malloc(sizeof(segment_t));
+	segp->start = -1;
+	segp->end = -1;
 
-	return seg;
+	*seg = segp;
+
+	return 0;
 }
 
 /**
@@ -41,24 +45,36 @@ int segment_free(segment_t *seg)
 	return 0;
 }
 
-segment_t *segment_split(segment_t *segment, off_t split_index)
+/**
+ * Splits a segment.
+ *
+ * @param seg the segment_t to split
+ * @param[out] seg1 the new segment
+ * @param split_index the index in the segment_t to split at
+ *
+ * @return the operation status code
+ */
+int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 {
-	return NULL;
+	return -1;
 }
 
 /**
  * Gets the start offset of a segment_t.
  *
  * @param seg the segment_t
+ * @param[out] start the start offset
  *
- * @return the starting offset or -1 on error
+ * @return the operation status code
  */
-off_t segment_get_start(segment_t *seg)
+int segment_get_start(segment_t *seg, off_t *start)
 {
 	if (seg == NULL)
 		return -1;
 
-	return seg->start;
+	*start = seg->start;
+
+	return 0;
 }
 
 /**
@@ -68,23 +84,27 @@ off_t segment_get_start(segment_t *seg)
  *
  * @return the end offset or -1 on error
  */
-off_t segment_get_end(segment_t *seg)
+int segment_get_end(segment_t *seg, off_t *end)
 {
 	if (seg == NULL)
 		return -1;
 
-	return seg->end;
+	*end = seg->end;
+
+	return 0;
 }
 
-ssize_t segment_get_size(segment_t *seg)
+int segment_get_size(segment_t *seg, size_t *size)
 {
 	if (seg == NULL)
 		return -1;
 
 	if (seg->start == -1 && seg->end == -1)
-		return 0;
+		*size = 0;
+	else
+		*size = seg->end - seg->start + 1;
 
-	return seg->end - seg->start + 1;
+	return 0;
 }
 
 /**

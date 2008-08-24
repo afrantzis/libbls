@@ -78,6 +78,7 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
  * Searches for data in a bless_buffer_t.
  *
  * @param buf the bless_buffer_t to search
+ * @param[out] match the offset the data was found at or -1 if no match was found
  * @param start_offset the offset in the bless_buffer_t to start searching from
  * @param data a pointer to the data to search for
  * @param len the length of the data to search for
@@ -87,7 +88,7 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
  * @return the offset in the bless_buffer_t where a match was found or
  *         an operation error code
  */
-off_t bless_buffer_find(bless_buffer_t *buf, off_t start_offset, 
+int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
 		void *data, size_t len, bless_progress_cb cb)
 {
 	return -1;

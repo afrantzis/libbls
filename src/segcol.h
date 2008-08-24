@@ -27,30 +27,30 @@ typedef struct segcol segcol_t;
  */
 typedef struct segcol_iter segcol_iter_t;
 
-segcol_t *segcol_new(char *impl);
+int segcol_new(segcol_t **segcol, char *impl);
 
 int segcol_free(segcol_t *segcol);
 
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
 
-segcol_t *segcol_delete(segcol_t *segcol, off_t offset, size_t length);
+int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
 
-segcol_iter_t *segcol_find(segcol_t *segcol, off_t offset);
+int segcol_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
 
 /**
  * @name Iterator functions
  *
  * @{
  */
-segcol_iter_t *segcol_iter_new(segcol_t *segcol);
+int segcol_iter_new(segcol_t *segcol, segcol_iter_t **iter);
 
 int segcol_iter_next(segcol_iter_t *iter);
 
-int segcol_iter_is_valid(segcol_iter_t *iter);
+int segcol_iter_is_valid(segcol_iter_t *iter, int *valid);
 
-segment_t *segcol_iter_get_segment(segcol_iter_t *iter);
+int segcol_iter_get_segment(segcol_iter_t *iter, segment_t **seg);
 
-off_t segcol_iter_get_mapping(segcol_iter_t *iter);
+int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping);
 
 int segcol_iter_free(segcol_iter_t *iter);
 

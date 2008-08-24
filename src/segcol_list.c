@@ -37,15 +37,14 @@ static int list_insert_after(struct list_node *p, struct list_node *q);
 int segcol_list_new(segcol_t *segcol);
 static int segcol_list_free(segcol_t *segcol);
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
-static segcol_t *segcol_list_delete(segcol_t *segcol, off_t offset, size_t length);
-static segcol_iter_t *segcol_list_find(segcol_t *segcol, off_t offset);
-static void *segcol_list_iter_new(segcol_t *segcol);
+static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
+static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
+static int segcol_list_iter_new(segcol_t *segcol, void **iter);
 static int segcol_list_iter_next(segcol_iter_t *iter);
-static int segcol_list_iter_is_valid(segcol_iter_t *iter);
-static segment_t *segcol_list_iter_get_segment(segcol_iter_t *iter);
-static off_t segcol_list_iter_get_mapping(segcol_iter_t *iter);
+static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid);
+static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg);
+static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping);
 static int segcol_list_iter_free(segcol_iter_t *iter);
-
 
 /**
  * Insert a node before another node in a list
@@ -53,7 +52,7 @@ static int segcol_list_iter_free(segcol_iter_t *iter);
  * @param p the node to which the new noded is inserted before
  * @param q the node to insert
  *
- * @return the operation status code
+ * @return the operation error code
  */
 static int list_insert_before(struct list_node *p, struct list_node *q)
 {
@@ -77,7 +76,7 @@ static int list_insert_before(struct list_node *p, struct list_node *q)
  * @param p the node to which the new noded is inserted after
  * @param q the node to insert
  *
- * @return the operation status code
+ * @return the operation error code
  */
 static int list_insert_after(struct list_node *p, struct list_node *q)
 {
@@ -98,7 +97,7 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
 /**
  * Creates a new segcol_t using a linked list implementation
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segcol_list_new(segcol_t *segcol)
 {
@@ -115,9 +114,9 @@ int segcol_list_new(segcol_t *segcol)
 			segcol_list_find,
 			segcol_list_iter_new,
 			segcol_list_iter_next,
+			segcol_list_iter_is_valid,
 			segcol_list_iter_get_segment,
 			segcol_list_iter_get_mapping,
-			segcol_list_iter_is_valid,
 			segcol_list_iter_free
 			);
 
@@ -147,13 +146,18 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
 
 	/* find the segment that 'offset' is mapped to */
-	segcol_iter_t *iter = segcol_list_find(segcol, offset);
+	segcol_iter_t *iter;
+	segcol_list_find(segcol, &iter, offset);
 
-	if (!segcol_list_iter_is_valid(iter))
+	int valid;
+	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
 			return -1;
 
-	segment_t *pseg = segcol_list_iter_get_segment(iter);
-	off_t mapping = segcol_list_iter_get_mapping(iter);
+	segment_t *pseg;
+	segcol_list_iter_get_segment(iter, &pseg);
+
+	off_t mapping;
+	segcol_list_iter_get_mapping(iter, &mapping);
 
 	struct segcol_list_iter_impl *iter_impl = 
 		(struct segcol_list_iter_impl *) segcol_iter_get_impl(iter);
@@ -176,7 +180,8 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	if (split_index == 0) {
 		list_insert_before(pnode, qnode);
 	} else {
-		segment_t *rseg = segment_split(pseg, split_index);
+		segment_t *rseg;
+		segment_split(pseg, &rseg, split_index);
 		
 		struct list_node *rnode = malloc(sizeof(struct list_node));
 		rnode->segment = rseg;
@@ -188,31 +193,29 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	return 0;
 }
 
-static segcol_t *segcol_list_delete(segcol_t *segcol, off_t offset, size_t length)
+static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length)
 {
 	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
+
+	return -1;
 }
 
-static void * segcol_list_iter_new(segcol_t *segcol)
+static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
-	struct segcol_list_iter_impl* iter_impl = malloc(sizeof(struct segcol_list_iter_impl));
+	segcol_iter_new(segcol, iter);
 
-	iter_impl->node = impl->head;
-	iter_impl->mapping = 0;
-
-	return iter_impl;
-}
-
-static segcol_iter_t *segcol_list_find(segcol_t *segcol, off_t offset)
-{
-	segcol_iter_t *iter = segcol_iter_new(segcol);
+	int valid = 0;
 
 	/* linear search of list nodes */
-	while (segcol_list_iter_is_valid(iter)) {
-		segment_t *seg = segcol_list_iter_get_segment(iter);
-		off_t mapping = segcol_list_iter_get_mapping(iter);
-		size_t node_size = segment_get_size(seg);
+	while (!segcol_list_iter_is_valid(*iter, &valid) && valid) {
+		segment_t *seg;
+		segcol_list_iter_get_segment(*iter, &seg);
+
+		off_t mapping;
+		segcol_list_iter_get_mapping(*iter, &mapping);
+
+		size_t node_size;
+		segment_get_size(seg, &node_size);
 
 		if ((offset >= mapping) && (offset < mapping + node_size))
 			break;
@@ -222,15 +225,30 @@ static segcol_iter_t *segcol_list_find(segcol_t *segcol, off_t offset)
 	 * at this point we either have an invalid iter (search failed)
 	 * or a valid iter that points to the correct node (search succeeded)
 	 */
-	return iter;
+	return 0;
 }
+
+static int segcol_list_iter_new(segcol_t *segcol, void **iter_impl)
+{
+	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
+	struct segcol_list_iter_impl **iter_impl1 = (struct segcol_list_iter_impl **)iter_impl;
+
+	*iter_impl1 = malloc(sizeof(struct segcol_list_iter_impl));
+
+	(*iter_impl1)->node = impl->head;
+	(*iter_impl1)->mapping = 0;
+
+	return 0;
+}
+
 
 static int segcol_list_iter_next(segcol_iter_t *iter)
 {
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
 	if (iter_impl->node != NULL) {
-		size_t node_size = segment_get_size(iter_impl->node->segment);
+		size_t node_size;
+		segment_get_size(iter_impl->node->segment, &node_size);
 		iter_impl->node = iter_impl->node->next;
 		iter_impl->mapping = iter_impl->mapping + node_size;
 	} 
@@ -238,29 +256,37 @@ static int segcol_list_iter_next(segcol_iter_t *iter)
 	return 0;
 }
 
-static segment_t *segcol_list_iter_get_segment(segcol_iter_t *iter)
+static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 {
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 	
-	return iter_impl->node->segment;
+	*seg = iter_impl->node->segment;
+
+	return 0;
 }
 
-static off_t segcol_list_iter_get_mapping(segcol_iter_t *iter)
+static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
 {
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 	
-	return iter_impl->mapping;
+	*mapping = iter_impl->mapping;
+
+	return 0;
 }
 
-static int segcol_list_iter_is_valid(segcol_iter_t *iter)
+static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid)
 {
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
-	return (iter_impl != NULL) && (iter_impl->node != NULL);
+	*valid = (iter_impl != NULL) && (iter_impl->node != NULL);
+
+	return 0;
 }
 
 static int segcol_list_iter_free(segcol_iter_t *iter)
 {
 	free(segcol_iter_get_impl(iter));
+
+	return 0;
 }
 

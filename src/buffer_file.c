@@ -13,9 +13,11 @@
 /**
  * Creates an empty bless_buffer_t.
  *
- * @return an empty bless_buffer_t
+ * @param[out] buf an empty bless_buffer_t
+ *
+ * @return the operation error code
  */
-bless_buffer_t *bless_buffer_new()
+int bless_buffer_new(bless_buffer_t **buf)
 {
 	return NULL;
 }
@@ -26,10 +28,12 @@ bless_buffer_t *bless_buffer_new()
  * The created bless_buffer_t initially contains data from
  * the specified file descriptor.
  *
+ * @param[out] buf the created empty bless_buffer_t
  * @param fd the file descriptor.
- * @return the created bless_buffer_t
+ *
+ * @return the operation error code
  */
-bless_buffer_t *bless_buffer_create(int fd)
+int bless_buffer_create(bless_buffer_t **buf, int fd)
 {
 	return NULL;
 }

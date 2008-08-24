@@ -5,15 +5,15 @@
 
 struct segcol {
 	int (*free)(segcol_t *segcol);
-	int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg);
-	segcol_t *(*delete)(segcol_t *segcol, off_t offset, size_t length);
-	segcol_iter_t *(*find)(segcol_t *segcol, off_t offset);
-	void *(*iter_new)(segcol_t *segcol);
+	int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg); 
+	int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
+	int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
+	int (*iter_new)(segcol_t *segcol, void **iter);
 	int (*iter_next)(segcol_iter_t *iter);
-	segment_t *(*iter_get_segment)(segcol_iter_t *iter);
-	off_t (*iter_get_mapping)(segcol_iter_t *iter);
-	int (*iter_is_valid)(segcol_iter_t *iter);
-	int (*iter_free)(segcol_iter_t *segcol);
+	int (*iter_is_valid)(segcol_iter_t *iter, int *valid);
+	int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg);
+	int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping);
+	int (*iter_free)(segcol_iter_t *iter);
 
 	void *impl;
 };
@@ -31,15 +31,15 @@ struct segcol_iter {
 void segcol_register_impl(segcol_t *segcol,
 		void *impl,
 		int (*free)(segcol_t *segcol),
-		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg),
-		segcol_t *(*delete)(segcol_t *segcol, off_t offset, size_t length),
-		segcol_iter_t *(*find)(segcol_t *segcol, off_t offset),
-		void *(*iter_new)(segcol_t *segcol),
+		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg), 
+		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length),
+		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset),
+		int (*iter_new)(segcol_t *segcol, void **iter),
 		int (*iter_next)(segcol_iter_t *iter),
-		segment_t *(*iter_get_segment)(segcol_iter_t *iter),
-		off_t (*iter_get_mapping)(segcol_iter_t *iter),
-		int (*iter_is_valid)(segcol_iter_t *iter),
-		int (*iter_free)(segcol_iter_t *segcol)
+		int (*iter_is_valid)(segcol_iter_t *iter, int *valid),
+		int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg),
+		int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping),
+		int (*iter_free)(segcol_iter_t *iter)
 		)
 {
 
@@ -67,21 +67,25 @@ void *segcol_iter_get_impl(segcol_iter_t *iter)
  * The new segcol_t is can be implemented in a number of ways. The impl
  * argument specifies the implementation to use. Available implementations
  * are:
- *	- list
+ *	- "list"
  *
  * @param impl the implementation to use
  *
- * @return the created segcol_t or NULL on error
+ * @param[out] segcol the created segcol_t
+ *
+ * @return the operation error code
  */
-segcol_t *segcol_new(char *impl)
+int segcol_new(segcol_t **segcol, char *impl)
 {
 	
-	segcol_t *segcol = malloc(sizeof(segcol_t));
+	*segcol = malloc(sizeof(segcol_t));
 
 	if (!strncmp(impl, "list", 4))
 		segcol_list_new(segcol);	
+	else
+		return -1;
 
-	return segcol;
+	return 0;
 }
 
 /**
@@ -116,51 +120,54 @@ int segcol_free(segcol_t *segcol)
  */
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 {
-	return (*segcol->insert)(segcol->impl, offset, seg);
+	return (*segcol->insert)(segcol, offset, seg);
 }
 
 /**
  * Deletes a logical range from the segcol_t.
  * 
  * @param segcol the segcol_t to delete from
+ * @param[out] deleted a new segcol_t containing the deleted segments or NULL on error
  * @param offset the logical offset to start deleting at
  * @param length the length of the range to delete
  * 
- * @return a new segcol_t containing the deleted segments or NULL on error
+ * @return the operation error code
  */
-segcol_t *segcol_delete(segcol_t *segcol, off_t offset, size_t length)
+int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length)
 {
-	return (*segcol->delete)(segcol->impl, offset, length);
+	return (*segcol->delete)(segcol, deleted, offset, length);
 }
 
 /**
  * Finds the segment that contains a given logical offset.
  *
  * @param segcol the segcol_t to search in
+ * @param[out] iter a segcol_iter_t pointing to the found segment
  * @param offset the offset to search for
  *
- * @return a segcol_iter_t pointing to the found segment
+ * @return the operation error code
  */
-segcol_iter_t *segcol_find(segcol_t *segcol, off_t offset)
+int segcol_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	return (*segcol->find)(segcol->impl, offset);
+	return (*segcol->find)(segcol, iter, offset);
 }
 
 /**
  * Gets a new (forward) iterator for a segcol_t.
  *
  * @param segcol the segcol_t
+ * @param[out] iter a forward segcol_iter_t
  *
- * @return a forward segcol_iter_t or NULL on error
+ * @return the operation error code
  */
-segcol_iter_t *segcol_iter_new(segcol_t *segcol)
+int segcol_iter_new(segcol_t *segcol, segcol_iter_t **iter)
 {
-	segcol_iter_t *iter = malloc(sizeof(segcol_iter_t));
+	*iter = malloc(sizeof(segcol_iter_t));
 
-	iter->segcol = segcol;
-	iter->impl = (*segcol->iter_new)(segcol);
+	(*iter)->segcol = segcol;
+	(*segcol->iter_new)(segcol, &(*iter)->impl);
 
-	return iter;
+	return 0;
 }
 
 /**
@@ -179,24 +186,26 @@ int segcol_iter_next(segcol_iter_t *iter)
  * Whether the iter points to a valid element.
  *
  * @param iter the segcol_iter_t to check
- * 
- * @return 1 if the segcol_iter_t is valid, 0 otherwise
+ * @param[out] valid 1 if the segcol_iter_t is valid, 0 otherwise
+ *
+ * @return the operation error code
  */
-int segcol_iter_is_valid(segcol_iter_t *iter)
+int segcol_iter_is_valid(segcol_iter_t *iter, int *valid)
 {
-	return (*iter->segcol->iter_is_valid)(iter);
+	return (*iter->segcol->iter_is_valid)(iter, valid);
 }
 
 /**
  * Gets the segment pointed to by a segcol_iter_t.
  *
  * @param iter the iter to use
+ * @param[out] the pointed segment or NULL if the iterator is invalid
  *
- * @return the pointed segment or NULL if the iterator is invalid
+ * @return the operation error code
  */
-segment_t *segcol_iter_get_segment(segcol_iter_t *iter)
+int segcol_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 {
-	return (*iter->segcol->iter_get_segment)(iter);
+	return (*iter->segcol->iter_get_segment)(iter, seg);
 }
 
 /**
@@ -204,12 +213,13 @@ segment_t *segcol_iter_get_segment(segcol_iter_t *iter)
  * segcol_iter_t.
  *
  * @param iter the iter to use
+ * @param[out] mapping the mapping of the pointed segment or -1 if the iterator is invalid
  *
- * @return the mapping of the pointed segment or -1 if the iterator is invalid
+ * @return the operation error code
  */
-off_t segcol_iter_get_mapping(segcol_iter_t *iter)
+int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
 {
-	return (*iter->segcol->iter_get_mapping)(iter);
+	return (*iter->segcol->iter_get_mapping)(iter, mapping);
 }
 
 /**

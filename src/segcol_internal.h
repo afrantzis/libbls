@@ -22,15 +22,15 @@
 void segcol_register_impl(segcol_t *segcol,
 		void *impl,
 		int (*free)(segcol_t *segcol),
-		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg),
-		segcol_t *(*delete)(segcol_t *segcol, off_t offset, size_t length),
-		segcol_iter_t *(*find)(segcol_t *segcol, off_t offset),
-		void *(*iter_new)(segcol_t *segcol),
+		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg), 
+		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length),
+		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset),
+		int (*iter_new)(segcol_t *segcol, void **iter),
 		int (*iter_next)(segcol_iter_t *iter),
-		segment_t *(*iter_get_segment)(segcol_iter_t *iter),
-		off_t (*iter_get_mapping)(segcol_iter_t *iter),
-		int (*iter_is_valid)(segcol_iter_t *iter),
-		int (*iter_free)(segcol_iter_t *segcol)
+		int (*iter_is_valid)(segcol_iter_t *iter, int *valid),
+		int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg),
+		int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping),
+		int (*iter_free)(segcol_iter_t *iter)
 		);
 
 void *segcol_get_impl(segcol_t *segcol);
