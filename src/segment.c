@@ -46,18 +46,69 @@ int segment_free(segment_t *seg)
 }
 
 /**
+ * Clears a segment_t.
+ *
+ * @param seg the segment_t to clear
+ *
+ * @return the operation status code
+ */
+int segment_clear(segment_t *seg)
+{
+	if (seg == NULL)	
+		return -1;
+
+	seg->start = -1;
+	seg->end = -1;
+
+	return 0;
+}
+
+/**
  * Splits a segment.
  *
  * @param seg the segment_t to split
  * @param[out] seg1 the new segment
- * @param split_index the index in the segment_t to split at
+ * @param split_index the index of the point in the segment_t to split at
  *
  * @return the operation status code
  */
 int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 {
+	if (seg == NULL || seg1 == NULL)
+		return -1;
+
+	*seg1 = NULL;
+
+	size_t size;
+	segment_get_size(seg, &size);
+
+	/* is index out of range */
+	if (split_index >= size)
+		return -1;
+
+	if (segment_new(seg1))
+		return -1;
+
+	if (segment_change(*seg1, seg->start + split_index, seg->end))
+		goto fail;
+	
+	/* Change 'seg' second so that if changing 'seg1' fails 'seg' remains intact */
+	if (split_index == 0)
+		segment_clear(seg);
+	else {
+		if (segment_change(seg, seg->start, seg->start + split_index - 1))
+			goto fail;
+	}
+
+	return 0;
+
+fail:
+	segment_free(*seg1);
+	*seg1 = NULL;
+
 	return -1;
 }
+
 
 /**
  * Gets the start offset of a segment_t.
@@ -118,6 +169,9 @@ int segment_get_size(segment_t *seg, size_t *size)
 int segment_change(segment_t *seg, off_t start, off_t end)
 {
 	if (seg == NULL)
+		return -1;
+
+	if (start > end)
 		return -1;
 
 	seg->start = start;
