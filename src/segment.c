@@ -4,6 +4,7 @@
  * Segment implementation
  */
 #include <stdlib.h>
+#include <errno.h>
 #include "segment.h"
 
 struct segment {
@@ -16,13 +17,17 @@ struct segment {
  *
  * @param[out] seg the created segment or NULL
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_new(segment_t **seg)
 {
 	segment_t *segp = NULL;
 
 	segp = (segment_t *) malloc(sizeof(segment_t));
+
+	if (segp == NULL)
+		return errno;
+
 	segp->start = -1;
 	segp->end = -1;
 
@@ -36,7 +41,7 @@ int segment_new(segment_t **seg)
  *
  * @param seg the segment_t to free
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_free(segment_t *seg)
 {
@@ -50,12 +55,12 @@ int segment_free(segment_t *seg)
  *
  * @param seg the segment_t to clear
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_clear(segment_t *seg)
 {
 	if (seg == NULL)	
-		return -1;
+		return EINVAL;
 
 	seg->start = -1;
 	seg->end = -1;
@@ -70,12 +75,14 @@ int segment_clear(segment_t *seg)
  * @param[out] seg1 the new segment
  * @param split_index the index of the point in the segment_t to split at
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 {
+	int err = 0;
+
 	if (seg == NULL || seg1 == NULL)
-		return -1;
+		return EINVAL;
 
 	*seg1 = NULL;
 
@@ -84,19 +91,22 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	/* is index out of range */
 	if (split_index >= size)
-		return -1;
+		return EINVAL;
 
-	if (segment_new(seg1))
-		return -1;
+	err = segment_new(seg1);
+	if (err)
+		return err;
 
-	if (segment_change(*seg1, seg->start + split_index, seg->end))
+	err = segment_change(*seg1, seg->start + split_index, seg->end);
+	if (err)
 		goto fail;
 	
-	/* Change 'seg' second so that if changing 'seg1' fails 'seg' remains intact */
+	/* Change 'seg' second so that if changing 'seg1' fails, 'seg' remains intact */
 	if (split_index == 0)
 		segment_clear(seg);
 	else {
-		if (segment_change(seg, seg->start, seg->start + split_index - 1))
+		err = segment_change(seg, seg->start, seg->start + split_index - 1);
+		if (err)
 			goto fail;
 	}
 
@@ -106,7 +116,7 @@ fail:
 	segment_free(*seg1);
 	*seg1 = NULL;
 
-	return -1;
+	return err;
 }
 
 
@@ -116,12 +126,12 @@ fail:
  * @param seg the segment_t
  * @param[out] start the start offset
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_get_start(segment_t *seg, off_t *start)
 {
 	if (seg == NULL)
-		return -1;
+		return EINVAL;
 
 	*start = seg->start;
 
@@ -132,23 +142,32 @@ int segment_get_start(segment_t *seg, off_t *start)
  * Gets the end offset of a segment_t.
  *
  * @param seg the segment_t
+ * @param[out] end the end offset
  *
- * @return the end offset or -1 on error
+ * @return the operation error code
  */
 int segment_get_end(segment_t *seg, off_t *end)
 {
 	if (seg == NULL)
-		return -1;
+		return EINVAL;
 
 	*end = seg->end;
 
 	return 0;
 }
 
+/**
+ * Gets the size of a segment_t.
+ *
+ * @param seg the segment_t
+ * @param[out] size the size
+ *
+ * @return the operation error code
+ */
 int segment_get_size(segment_t *seg, size_t *size)
 {
-	if (seg == NULL)
-		return -1;
+	if (seg == NULL || size == NULL)
+		return EINVAL;
 
 	if (seg->start == -1 && seg->end == -1)
 		*size = 0;
@@ -161,18 +180,19 @@ int segment_get_size(segment_t *seg, size_t *size)
 /**
  * Changes the range of a segment_t.
  *
+ * @param seg the segment_t
  * @param start the new start offset
  * @param end the new end offset
  *
- * @return the operation status code
+ * @return the operation error code
  */
 int segment_change(segment_t *seg, off_t start, off_t end)
 {
 	if (seg == NULL)
-		return -1;
+		return EINVAL;
 
 	if (start > end)
-		return -1;
+		return EINVAL;
 
 	seg->start = start;
 	seg->end = end;
