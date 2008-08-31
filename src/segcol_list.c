@@ -6,6 +6,7 @@
  * @author Alexandros Frantzis
  */
 #include <stdlib.h>
+#include <errno.h>
 
 #include "segcol.h"
 #include "segcol_internal.h"
@@ -101,6 +102,9 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
  */
 int segcol_list_new(segcol_t *segcol)
 {
+	if (segcol == NULL)
+		return EINVAL;
+
 	struct segcol_list_impl *impl = malloc(sizeof(struct segcol_list_impl));
 
 	impl->head = NULL;

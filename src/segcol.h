@@ -27,6 +27,7 @@ typedef struct segcol segcol_t;
  */
 typedef struct segcol_iter segcol_iter_t;
 
+
 int segcol_new(segcol_t **segcol, char *impl);
 
 int segcol_free(segcol_t *segcol);
@@ -55,6 +56,8 @@ int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping);
 int segcol_iter_free(segcol_iter_t *iter);
 
 /** @} */
+
+int segcol_get_size(segcol_t *segcol, size_t *size);
 
 /** @} */
 

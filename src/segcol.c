@@ -1,9 +1,13 @@
 #include <stdlib.h>
+#include <errno.h>
 
 #include "segcol.h"
 #include "segcol_internal.h"
 
 struct segcol {
+	void *impl;
+	size_t size;
+	
 	int (*free)(segcol_t *segcol);
 	int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg); 
 	int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
@@ -14,8 +18,6 @@ struct segcol {
 	int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg);
 	int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping);
 	int (*iter_free)(segcol_iter_t *iter);
-
-	void *impl;
 };
 
 
@@ -42,7 +44,17 @@ void segcol_register_impl(segcol_t *segcol,
 		int (*iter_free)(segcol_iter_t *iter)
 		)
 {
-
+	segcol->impl = impl;
+	segcol->free = free;
+	segcol->insert = insert;
+	segcol->delete = delete;
+	segcol->find = find;
+	segcol->iter_new = iter_new;
+	segcol->iter_next = iter_next;
+	segcol->iter_is_valid = iter_is_valid;
+	segcol->iter_get_segment = iter_get_segment;
+	segcol->iter_get_mapping = iter_get_mapping;
+	segcol->iter_free = iter_free;
 }
 
 /**
@@ -77,13 +89,17 @@ void *segcol_iter_get_impl(segcol_iter_t *iter)
  */
 int segcol_new(segcol_t **segcol, char *impl)
 {
-	
+	if (segcol == NULL || impl == NULL)
+		return EINVAL;
+
 	*segcol = malloc(sizeof(segcol_t));
 
+	(*segcol)->size = 0;
+
 	if (!strncmp(impl, "list", 4))
-		segcol_list_new(segcol);	
+		segcol_list_new(*segcol);	
 	else
-		return -1;
+		return EINVAL;
 
 	return 0;
 }
@@ -100,7 +116,7 @@ int segcol_new(segcol_t **segcol, char *impl)
  */
 int segcol_free(segcol_t *segcol)
 {
-	(*segcol->free)(segcol->impl);
+	(*segcol->free)(segcol);
 	free(segcol);
 	return 0;
 }
@@ -233,4 +249,14 @@ int segcol_iter_free(segcol_iter_t *iter)
 {
 	(*iter->segcol->iter_free)(iter);
 	free(iter);
+}
+
+int segcol_get_size(segcol_t *segcol, size_t *size)
+{
+	if (segcol == NULL || size == NULL)
+		return EINVAL;
+
+	*size = segcol->size;
+
+	return 0;
 }
