@@ -3,7 +3,7 @@ import distutils
 
 Import('env PYTHON_INCLUDE_PATH')
 
-env = env.Clone(SWIGFLAGS = ['-c', '-python'])
+env = env.Clone(SWIGFLAGS = ['-python'])
 
 source = Glob('*.i')
 libs = []

@@ -37,7 +37,7 @@
 }
 
 /* The same rules for segment_t ** apply to other ** types */
-%apply segment_t ** { segcol_t ** }
+%apply segment_t ** { segcol_t ** , void **}
 
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long  *OUTPUT { size_t * };

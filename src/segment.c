@@ -8,18 +8,20 @@
 #include "segment.h"
 
 struct segment {
+	void *data;
 	off_t start;
 	off_t end;
 };
 
 /**
- * Creates a new segment_t.
+ * Creates a new empty segment_t.
  *
  * @param[out] seg the created segment or NULL
+ * @param data the data object this segment is related to
  *
  * @return the operation error code
  */
-int segment_new(segment_t **seg)
+int segment_new(segment_t **seg, void *data)
 {
 	segment_t *segp = NULL;
 
@@ -28,6 +30,7 @@ int segment_new(segment_t **seg)
 	if (segp == NULL)
 		return errno;
 
+	segp->data = data;
 	segp->start = -1;
 	segp->end = -1;
 
@@ -86,18 +89,27 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	*seg1 = NULL;
 
+	/* Get all info using functions instead of direct structure 
+	 * accesss to make this implementation-independent */
 	size_t size;
+	off_t start;
+	off_t end;
+	void *data;
+
 	segment_get_size(seg, &size);
+	segment_get_start(seg, &start);
+	segment_get_end(seg, &end);
+	segment_get_data(seg, &data);
 
 	/* is index out of range */
 	if (split_index >= size)
 		return EINVAL;
 
-	err = segment_new(seg1);
+	err = segment_new(seg1, data);
 	if (err)
 		return err;
 
-	err = segment_change(*seg1, seg->start + split_index, seg->end);
+	err = segment_change(*seg1, start + split_index, end);
 	if (err)
 		goto fail;
 	
@@ -105,7 +117,7 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 	if (split_index == 0)
 		segment_clear(seg);
 	else {
-		err = segment_change(seg, seg->start, seg->start + split_index - 1);
+		err = segment_change(seg, start, start + split_index - 1);
 		if (err)
 			goto fail;
 	}
@@ -119,6 +131,23 @@ fail:
 	return err;
 }
 
+/**
+ * Gets data object a segment_t is related to.
+ *
+ * @param seg the segment_t
+ * @param[out] data the data object
+ *
+ * @return the operation error code
+ */
+int segment_get_data(segment_t *seg, void  **data)
+{
+	if (seg == NULL)
+		return EINVAL;
+
+	*data = seg->data;
+
+	return 0;
+}
 
 /**
  * Gets the start offset of a segment_t.

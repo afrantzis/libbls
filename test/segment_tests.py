@@ -4,7 +4,7 @@ from libbless import *
 class SegmentTests(unittest.TestCase):
 
 	def setUp(self):
-		(self.error, self.seg) = segment_new()
+		(self.error, self.seg) = segment_new(None)
 	
 	def tearDown(self):
 		segment_free(self.seg)
@@ -13,6 +13,7 @@ class SegmentTests(unittest.TestCase):
 		"Create a segment"
 		self.assertNotEqual(self.seg, None)
 		self.assertEqual(segment_get_size(self.seg)[1], 0)
+		self.assertEqual(segment_get_data(self.seg)[1], None)
 
 	def testClear(self):
 		"Clear a segment"
