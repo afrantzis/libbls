@@ -12,6 +12,12 @@
 %apply unsigned long long { size_t };
 %apply long long { off_t };
 
+/* Don't perform any conversions on void pointers */
+%typemap(in) void *
+{
+    $1 = $input;
+}
+
 /*
  * The typemaps below are used to handle functions that return values in arguments.
  * If a function is of the form 'int func(type **t, type1 p)' the resulting binding 
@@ -19,7 +25,7 @@
  */
 
 /*
- * Constructor typemaps that handle double pointers.
+ * Typemaps that handle double pointers.
  */
 
 /* Essentially ignore input */
@@ -38,6 +44,16 @@
 
 /* The same rules for segment_t ** apply to other ** types */
 %apply segment_t ** { segcol_t ** , void **}
+
+/* Exception for void **: Append void * to return list without conversion */
+%typemap(argout) void ** 
+{
+    %append_output((PyObject *)retval$argnum);
+}
+
+/*
+ * Typemaps that handle double pointers.
+ */
 
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long  *OUTPUT { size_t * };
