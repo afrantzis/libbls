@@ -32,6 +32,8 @@ int segcol_new(segcol_t **segcol, char *impl);
 
 int segcol_free(segcol_t *segcol);
 
+int segcol_append(segcol_t *segcol, segment_t *seg); 
+
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
 
 int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);

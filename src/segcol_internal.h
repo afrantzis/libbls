@@ -22,6 +22,7 @@
 void segcol_register_impl(segcol_t *segcol,
 		void *impl,
 		int (*free)(segcol_t *segcol),
+		int (*append)(segcol_t *segcol, segment_t *seg), 
 		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg), 
 		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length),
 		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset),

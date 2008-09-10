@@ -37,6 +37,7 @@ static int list_insert_after(struct list_node *p, struct list_node *q);
 
 int segcol_list_new(segcol_t *segcol);
 static int segcol_list_free(segcol_t *segcol);
+static int segcol_list_append(segcol_t *segcol, segment_t *seg); 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
 static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
@@ -58,7 +59,7 @@ static int segcol_list_iter_free(segcol_iter_t *iter);
 static int list_insert_before(struct list_node *p, struct list_node *q)
 {
 	if ((p == NULL)	|| (q == NULL))
-		return -1;
+		return EINVAL;
 
 	q->next = p;
 	q->prev = p->prev;
@@ -82,7 +83,7 @@ static int list_insert_before(struct list_node *p, struct list_node *q)
 static int list_insert_after(struct list_node *p, struct list_node *q)
 {
 	if ((p == NULL)	|| (q == NULL))
-		return -1;
+		return EINVAL;
 
 	q->next = p->next;
 	q->prev = p;
@@ -91,6 +92,19 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
 		p->next->prev = q;
 
 	p->next = q;
+
+	return 0;
+}
+
+static int list_new_node(struct list_node **node)
+{
+	*node = malloc(sizeof(struct list_node));
+
+	if (*node == NULL)
+		return ENOMEM;
+
+	(*node)->prev = NULL;
+	(*node)->next = NULL;
 
 	return 0;
 }
@@ -113,6 +127,7 @@ int segcol_list_new(segcol_t *segcol)
 	segcol_register_impl(segcol,
 			impl,
 			segcol_list_free,
+			segcol_list_append,
 			segcol_list_insert,
 			segcol_list_delete,
 			segcol_list_find,
@@ -145,8 +160,41 @@ static int segcol_list_free(segcol_t *segcol)
 	return 0;
 }
 
+static int segcol_list_append(segcol_t *segcol, segment_t *seg) 
+{
+	if (segcol == NULL || seg == NULL)
+		return EINVAL;
+
+	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
+	
+	struct list_node *new_node;
+	int err = list_new_node(&new_node);
+	if (err)
+		return err;
+		
+	new_node->segment = seg;
+
+	/* Find the node to append after (last node) */
+	struct list_node *n = impl->head;
+
+	if (n != NULL)
+		while (n->next != NULL)
+			n = n->next;
+
+	/* Check if this is the only node in the list */
+	if (n == NULL)
+		impl->head = new_node;
+	else
+		list_insert_after(n, new_node);
+	
+	return 0;
+}
+
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg) 
 {
+	if (segcol == NULL || seg == NULL)
+		return EINVAL;
+
 	struct segcol_list_impl *impl = (struct segcol_list_impl *) segcol_get_impl(segcol);
 
 	/* find the segment that 'offset' is mapped to */
@@ -154,7 +202,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segcol_list_find(segcol, &iter, offset);
 
 	int valid;
-	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
+	if (!segcol_list_iter_is_valid(iter, &valid) || !valid)
 			return -1;
 
 	segment_t *pseg;
@@ -223,6 +271,8 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 		if ((offset >= mapping) && (offset < mapping + node_size))
 			break;
+
+		segcol_iter_next(*iter);
 	}
 
 	/* 

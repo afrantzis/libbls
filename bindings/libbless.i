@@ -43,7 +43,7 @@
 }
 
 /* The same rules for segment_t ** apply to other ** types */
-%apply segment_t ** { segcol_t ** , void **}
+%apply segment_t ** { segcol_t ** , segcol_iter_t **, void **}
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 

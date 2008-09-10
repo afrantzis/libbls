@@ -9,6 +9,7 @@ struct segcol {
 	size_t size;
 	
 	int (*free)(segcol_t *segcol);
+	int (*append)(segcol_t *segcol, segment_t *seg); 
 	int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg); 
 	int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
 	int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
@@ -33,6 +34,7 @@ struct segcol_iter {
 void segcol_register_impl(segcol_t *segcol,
 		void *impl,
 		int (*free)(segcol_t *segcol),
+		int (*append)(segcol_t *segcol, segment_t *seg), 
 		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg), 
 		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length),
 		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset),
@@ -46,6 +48,7 @@ void segcol_register_impl(segcol_t *segcol,
 {
 	segcol->impl = impl;
 	segcol->free = free;
+	segcol->append = append;
 	segcol->insert = insert;
 	segcol->delete = delete;
 	segcol->find = find;
@@ -122,6 +125,31 @@ int segcol_free(segcol_t *segcol)
 }
 
 /**
+ * Appends a segment to the segcol_t.
+ * 
+ * After the invocation of this function the segcol_t is responsible
+ * for the memory handling of the specified segment. The segment should
+ * not be further manipulated by the user.
+ *
+ * @param segcol the segcol_t to append to
+ * @param seg the segment to append
+ * 
+ * @return the operation error code
+ */
+int segcol_append(segcol_t *segcol, segment_t *seg)
+{
+	int err = (*segcol->append)(segcol, seg);
+
+	if (!err) {
+		size_t size;
+		segment_get_size(seg, &size);
+		segcol->size += size;
+	}
+
+	return err;
+}
+
+/**
  * Inserts a segment into the segcol_t.
  * 
  * After the invocation of this function the segcol_t is responsible
@@ -136,7 +164,15 @@ int segcol_free(segcol_t *segcol)
  */
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 {
-	return (*segcol->insert)(segcol, offset, seg);
+	int err = (*segcol->insert)(segcol, offset, seg);
+
+	if (!err) {
+		size_t size;
+		segment_get_size(seg, &size);
+		segcol->size += size;
+	}
+
+	return err;
 }
 
 /**
