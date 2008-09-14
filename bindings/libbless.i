@@ -49,10 +49,30 @@
 %typemap(argout) void ** 
 {
     %append_output((PyObject *)retval$argnum);
+    Py_INCREF((PyObject *)retval$argnum);
+}
+
+/* Match segment_new() and increase reference count of stored data */
+%typemap(check) (segment_t **seg, void *data)
+{
+    if ($2 != NULL)
+        Py_INCREF((PyObject *)$2);
+}
+
+/* Decrease reference count of data stored in a segment_t when it is freed */
+%exception segment_free
+{
+    $action
+    if (arg1 != NULL) {
+        void *data = NULL;
+        segment_get_data(arg1, &data);
+        if (data != NULL)
+            Py_DECREF((PyObject *)data);
+    }
 }
 
 /*
- * Typemaps that handle double pointers.
+ * Typemaps that handle output arguments.
  */
 
 %apply long long *OUTPUT { off_t * };
