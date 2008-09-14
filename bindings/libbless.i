@@ -75,6 +75,7 @@
  * Typemaps that handle output arguments.
  */
 
+%apply int *OUTPUT { int * };
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long  *OUTPUT { size_t * };
 
