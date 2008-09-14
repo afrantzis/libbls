@@ -96,6 +96,13 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
 	return 0;
 }
 
+/**
+ * Creates a new list_node
+ *
+ * @param[out] node the new list node
+ *
+ * @return the operation error code
+ */
 static int list_new_node(struct list_node **node)
 {
 	*node = malloc(sizeof(struct list_node));
@@ -150,7 +157,7 @@ static int segcol_list_free(segcol_t *segcol)
 	/* free list nodes */
 	while (node != NULL) {
 		struct list_node *next = node->next;
-		free(node->segment);
+		segment_free(node->segment);
 		free(node);
 		node = next;
 	}
@@ -202,7 +209,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segcol_list_find(segcol, &iter, offset);
 
 	int valid;
-	if (!segcol_list_iter_is_valid(iter, &valid) || !valid)
+	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
 			return -1;
 
 	segment_t *pseg;
@@ -215,6 +222,8 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		(struct segcol_list_iter_impl *) segcol_iter_get_impl(iter);
 
 	struct list_node *pnode = iter_impl->node;
+
+	segcol_iter_free(iter);
 	
 	/* create a list node containing the new segment */
 	struct list_node *qnode = malloc(sizeof(struct list_node));
@@ -231,6 +240,9 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	 * the new segment */
 	if (split_index == 0) {
 		list_insert_before(pnode, qnode);
+		/* Update the head pointer if needed */
+		if (pnode == impl->head)
+			impl->head = qnode;
 	} else {
 		segment_t *rseg;
 		segment_split(pseg, &rseg, split_index);
