@@ -128,5 +128,68 @@ class SegcolTestsList(unittest.TestCase):
 
 		self.check_iter_segments(segs)
 
+	def testInsertMiddle(self):
+		"Insert a segment in the middle of another segment"
+
+		# Insert some segments into the segcol
+		self.testInsertEnd()
+
+		(err, seg1) = segment_new("MMM")
+		segment_change(seg1, 0, 2)
+
+		# Insert segment at the end of another segment
+		segcol_insert(self.segcol, 5, seg1)
+		self.assertEqual(segcol_get_size(self.segcol)[1], 21)
+
+		# Segcol should be ["BBB"]-["ab"cdef]-["MMM"]-[ab"cde"f]-["EEE"]
+		# -[abcde"f"]-["012345"]
+		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 1), ("MMM", 5, 0, 2), 
+				("abcdef", 8, 2, 4), ("EEE", 11, 0, 2), ("abcdef", 14, 5, 5),
+				("012345", 15, 0, 5)]
+
+		self.check_iter_segments(segs)
+
+	def testTryInsertNegative(self):
+		"Try to insert a segment at a negative index"
+
+		(err, seg1) = segment_new("ERROR")
+		segment_change(seg1, 0, 4)
+		
+		err = segcol_insert(self.segcol, -1, seg1)
+		self.assertNotEqual(err, 0)
+
+		# Insert some segments into the segcol
+		self.testInsertBeginning()
+
+		err = segcol_insert(self.segcol, -1, seg1)
+		self.assertNotEqual(err, 0)
+
+		# Segcol should remain ["BBB"]-["abcdef"]-["012345"]
+		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 5), ("012345", 9, 0, 5)]
+
+		self.check_iter_segments(segs)
+
+	def testTryInsertBeyondEOF(self):
+		"Try to insert a segment beyond the end of a buffer"
+
+		(err, seg1) = segment_new("ERROR")
+		segment_change(seg1, 0, 4)
+		
+		err = segcol_insert(self.segcol, 0, seg1)
+		self.assertNotEqual(err, 0)
+
+		# Insert some segments into the segcol
+		self.testInsertBeginning()
+		size = segcol_get_size(self.segcol)[1]
+
+		err = segcol_insert(self.segcol, size, seg1)
+		self.assertNotEqual(err, 0)
+
+		# Segcol should remain ["BBB"]-["abcdef"]-["012345"]
+		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 5), ("012345", 9, 0, 5)]
+
+		self.check_iter_segments(segs)
+
+
 if __name__ == '__main__':
 	unittest.main()
