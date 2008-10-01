@@ -26,6 +26,6 @@ int segment_get_end(segment_t *seg, off_t *end);
 
 int segment_get_size(segment_t *seg, size_t *size);
 
-int segment_change(segment_t *seg, off_t start, off_t end);
+int segment_change(segment_t *seg, off_t start, size_t size);
 
 #endif /* _SEGMENT_H */

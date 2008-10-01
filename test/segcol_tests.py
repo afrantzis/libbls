@@ -41,10 +41,10 @@ class SegcolTestsList(unittest.TestCase):
 		"Append segments to the segcol"
 
 		(err, seg1) = segment_new("abcdef")
-		segment_change(seg1, 0, 5)
+		segment_change(seg1, 0, 6)
 
 		(err, seg2) = segment_new("012345")
-		segment_change(seg2, 0, 5)
+		segment_change(seg2, 0, 6)
 
 		# Append segments and test segcol size
 		segcol_append(self.segcol, seg1)
@@ -86,7 +86,7 @@ class SegcolTestsList(unittest.TestCase):
 		for i in xrange(nseg):
 			(err, seg_tmp) = segment_new("%d%d" % (i, i))
 			seg.append(("%d%d" % (i, i), 2 * i, 0, 1))
-			segment_change(seg_tmp, 0, 1)
+			segment_change(seg_tmp, 0, 2)
 			segcol_append(self.segcol, seg_tmp)
 
 		self.check_iter_segments(seg)
@@ -98,7 +98,7 @@ class SegcolTestsList(unittest.TestCase):
 		self.testAppend()
 
 		(err, seg1) = segment_new("BBB")
-		segment_change(seg1, 0, 2)
+		segment_change(seg1, 0, 3)
 
 		# Insert segment at the beginning of anothe segment
 		self.assertEqual(segcol_insert(self.segcol, 0, seg1), 0)
@@ -116,7 +116,7 @@ class SegcolTestsList(unittest.TestCase):
 		self.testInsertBeginning()
 
 		(err, seg1) = segment_new("EEE")
-		segment_change(seg1, 0, 2)
+		segment_change(seg1, 0, 3)
 
 		# Insert segment at the end of another segment
 		segcol_insert(self.segcol, 8, seg1)
@@ -135,7 +135,7 @@ class SegcolTestsList(unittest.TestCase):
 		self.testInsertEnd()
 
 		(err, seg1) = segment_new("MMM")
-		segment_change(seg1, 0, 2)
+		segment_change(seg1, 0, 3)
 
 		# Insert segment at the end of another segment
 		segcol_insert(self.segcol, 5, seg1)
@@ -153,7 +153,7 @@ class SegcolTestsList(unittest.TestCase):
 		"Try to insert a segment at a negative index"
 
 		(err, seg1) = segment_new("ERROR")
-		segment_change(seg1, 0, 4)
+		segment_change(seg1, 0, 5)
 		
 		err = segcol_insert(self.segcol, -1, seg1)
 		self.assertNotEqual(err, 0)
@@ -173,7 +173,7 @@ class SegcolTestsList(unittest.TestCase):
 		"Try to insert a segment beyond the end of a buffer"
 
 		(err, seg1) = segment_new("ERROR")
-		segment_change(seg1, 0, 4)
+		segment_change(seg1, 0, 5)
 		
 		err = segcol_insert(self.segcol, 0, seg1)
 		self.assertNotEqual(err, 0)
