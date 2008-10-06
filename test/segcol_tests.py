@@ -10,19 +10,19 @@ class SegcolTestsList(unittest.TestCase):
 	def tearDown(self):
 		segcol_free(self.segcol)
 
-	def check_iter_segments(self, segs):
+	def check_iter_segments(self, segcol, segs):
 		"""Check, using an iterator, if the segments in the segcol match the ones 
 		supplied by the user. The 'segs' arguments is a list of tuples. Each tuple 
 		contains the expected values of each segment:
-		    (data, mapping, start, end)"""
+		    (data, mapping, start, size)"""
 
-		iter = segcol_iter_new(self.segcol)[1]
+		iter = segcol_iter_new(segcol)[1]
 		i = 0
 
 		while segcol_iter_is_valid(iter)[1] == 1:
 			seg_tmp = segcol_iter_get_segment(iter)[1]
 			t = (segment_get_data(seg_tmp)[1], segcol_iter_get_mapping(iter)[1],
-					segment_get_start(seg_tmp)[1], segment_get_end(seg_tmp)[1])
+					segment_get_start(seg_tmp)[1], segment_get_size(seg_tmp)[1])
 			self.assertEqual(t, segs[i])
 	
 			segcol_iter_next(iter)
@@ -85,11 +85,11 @@ class SegcolTestsList(unittest.TestCase):
 
 		for i in xrange(nseg):
 			(err, seg_tmp) = segment_new("%d%d" % (i, i))
-			seg.append(("%d%d" % (i, i), 2 * i, 0, 1))
+			seg.append(("%d%d" % (i, i), 2 * i, 0, 2))
 			segment_change(seg_tmp, 0, 2)
 			segcol_append(self.segcol, seg_tmp)
 
-		self.check_iter_segments(seg)
+		self.check_iter_segments(self.segcol, seg)
 		
 	def testInsertBeginning(self):
 		"Insert a segment at the beginning of another segment"
@@ -105,9 +105,9 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertEqual(segcol_get_size(self.segcol)[1], 15)
 
 		# Segcol should be ["BBB"]-["abcdef"]-["012345"]
-		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 5), ("012345", 9, 0, 5)]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
 
-		self.check_iter_segments(segs)
+		self.check_iter_segments(self.segcol, segs)
 		
 	def testInsertEnd(self):
 		"Insert a segment at the end of another segment"
@@ -123,10 +123,10 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertEqual(segcol_get_size(self.segcol)[1], 18)
 
 		# Segcol should be ["BBB"]-["abcde"f]-["EEE"]-[abcde"f"]-["012345"]
-		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 4), ("EEE", 8, 0, 2),
-				("abcdef", 11, 5, 5), ("012345", 12, 0, 5)]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 5), ("EEE", 8, 0, 3),
+				("abcdef", 11, 5, 1), ("012345", 12, 0, 6)]
 
-		self.check_iter_segments(segs)
+		self.check_iter_segments(self.segcol, segs)
 
 	def testInsertMiddle(self):
 		"Insert a segment in the middle of another segment"
@@ -143,11 +143,11 @@ class SegcolTestsList(unittest.TestCase):
 
 		# Segcol should be ["BBB"]-["ab"cdef]-["MMM"]-[ab"cde"f]-["EEE"]
 		# -[abcde"f"]-["012345"]
-		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 1), ("MMM", 5, 0, 2), 
-				("abcdef", 8, 2, 4), ("EEE", 11, 0, 2), ("abcdef", 14, 5, 5),
-				("012345", 15, 0, 5)]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 2), ("MMM", 5, 0, 3), 
+				("abcdef", 8, 2, 3), ("EEE", 11, 0, 3), ("abcdef", 14, 5, 1),
+				("012345", 15, 0, 6)]
 
-		self.check_iter_segments(segs)
+		self.check_iter_segments(self.segcol, segs)
 
 	def testTryInsertNegative(self):
 		"Try to insert a segment at a negative index"
@@ -165,9 +165,9 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertNotEqual(err, 0)
 
 		# Segcol should remain ["BBB"]-["abcdef"]-["012345"]
-		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 5), ("012345", 9, 0, 5)]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
 
-		self.check_iter_segments(segs)
+		self.check_iter_segments(self.segcol, segs)
 
 	def testTryInsertBeyondEOF(self):
 		"Try to insert a segment beyond the end of a buffer"
@@ -186,9 +186,9 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertNotEqual(err, 0)
 
 		# Segcol should remain ["BBB"]-["abcdef"]-["012345"]
-		segs = [("BBB", 0, 0, 2), ("abcdef", 3, 0, 5), ("012345", 9, 0, 5)]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
 
-		self.check_iter_segments(segs)
+		self.check_iter_segments(self.segcol, segs)
 
 
 if __name__ == '__main__':
