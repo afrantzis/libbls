@@ -187,7 +187,13 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  */
 int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length)
 {
-	return (*segcol->delete)(segcol, deleted, offset, length);
+	int err = (*segcol->delete)(segcol, deleted, offset, length);
+
+	if (!err) {
+		segcol->size -= length;
+	}
+	
+	return err;
 }
 
 /**

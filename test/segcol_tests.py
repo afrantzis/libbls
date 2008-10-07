@@ -190,6 +190,90 @@ class SegcolTestsList(unittest.TestCase):
 
 		self.check_iter_segments(self.segcol, segs)
 
+	def testDeleteBeginning(self):
+		"Delete a range from the beginning of a segment"
+
+		# Append some segments to the segcol
+		self.testAppend()
+
+		(err, del_segcol) = segcol_delete(self.segcol, 0, 4) 
+		self.assertEqual(err, 0)
+
+		# Segcol should now be [abcd"ef"]-["012345"]
+		segs = [("abcdef", 0, 4, 2), ("012345", 2, 0, 6)]
+		self.check_iter_segments(self.segcol, segs)
+
+		# Deleted segcol should be ["abcd"ef]
+		segs = [("abcdef", 0, 0, 4)]
+		self.check_iter_segments(del_segcol, segs)
+
+		(err, del_segcol) = segcol_delete(self.segcol, 2, 6) 
+		self.assertEqual(err, 0)
+
+		# Segcol should now be [abcd"ef"]
+		segs = [("abcdef", 0, 4, 2)]
+		self.check_iter_segments(self.segcol, segs)
+
+		# Deleted segcol should be ["012345"]
+		segs = [("012345", 0, 0, 6)]
+		self.check_iter_segments(del_segcol, segs)
+
+		(err, del_segcol) = segcol_delete(self.segcol, 0, 2) 
+		self.assertEqual(err, 0)
+
+		# Segcol should now be empty
+		segs = []
+		self.check_iter_segments(self.segcol, segs)
+
+		# Deleted segcol should be [abcd"ef"]
+		segs = [("abcdef", 0, 4, 2)]
+		self.check_iter_segments(del_segcol, segs)
+		
+	def testDeleteMiddle(self):
+		"Delete a range from the middle of a segment"
+
+		# Append a segment to the segcol
+		(err, seg1) = segment_new("0123456789")
+		segment_change(seg1, 0, 10)
+
+		segcol_append(self.segcol, seg1)
+		self.assertEqual(segcol_get_size(self.segcol)[1], 10)
+
+		for i in xrange(4, 0, -1):
+			segcol_get_size(self.segcol)
+			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
+			self.assertEqual(err, 0)
+			
+			segs = [("0123456789", 0, 0, i), ("0123456789", i, 10 - i, i)]
+			self.check_iter_segments(self.segcol, segs)
+
+			if i == 4:
+				segs = [("0123456789", 0, i, 2)]
+			else:
+				segs = [("0123456789", 0, i, 1), ("0123456789", 1, 9 - i, 1)]
+
+			self.check_iter_segments(del_segcol, segs)
+
+	def testDeleteMiddleMulti(self):
+		"Delete a range from the middle of multiple segments"
+
+		# Append some segments to the segcol
+		self.testAppend()
+
+		for i in xrange(5, 0, -1):
+			segcol_get_size(self.segcol)
+			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
+			self.assertEqual(err, 0)
+			
+			# Segcol should now be ["abcde"f]-[0"12345"]
+			segs = [("abcdef", 0, 0, i), ("012345", i, 6 - i, i)]
+			self.check_iter_segments(self.segcol, segs)
+
+			# Deleted segcol should be ["abcde"f]-[0"12345"]
+			segs = [("abcdef", 0, i, 1), ("012345", 1, 6 - i - 1, 1)]
+			self.check_iter_segments(del_segcol, segs)
+
+
 
 if __name__ == '__main__':
 	unittest.main()
