@@ -33,7 +33,8 @@ struct segcol_list_impl {
 /* Forward declarations */
 
 /* List functions */
-static int list_insert_before(struct list_node *p, struct list_node *q);
+static int list_insert_before(struct segcol_list_impl *impl,
+		struct list_node *p, struct list_node *q);
 static int list_insert_after(struct list_node *p, struct list_node *q);
 static int list_new_node(struct list_node **node);
 static int list_delete_chain(struct segcol_list_impl *impl, 
@@ -65,7 +66,8 @@ static int segcol_list_iter_free(segcol_iter_t *iter);
  *
  * @return the operation error code
  */
-static int list_insert_before(struct list_node *p, struct list_node *q)
+static int list_insert_before(struct segcol_list_impl *impl,
+		struct list_node *p, struct list_node *q)
 {
 	if ((p == NULL)	|| (q == NULL))
 		return EINVAL;
@@ -75,6 +77,8 @@ static int list_insert_before(struct list_node *p, struct list_node *q)
 
 	if (p->prev != NULL)
 		p->prev->next = q;
+	else
+		impl->head = q;
 
 	p->prev = q;
 
@@ -320,7 +324,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	/* check if a split is actually needed or we just have to prepend 
 	 * the new segment */
 	if (split_index == 0) {
-		list_insert_before(pnode, qnode);
+		list_insert_before(impl, pnode, qnode);
 		/* Update the head pointer if needed */
 		if (pnode == impl->head)
 			impl->head = qnode;
