@@ -1,0 +1,137 @@
+Data Object Memory Managment in libbless
+========================================
+Alexandros Frantzis, 20 Oct 2008
+
+
+1. Introduction
+---------------
+
+Buffers in the libbless library may contain data from various data objects
+like files, memory regions or devices. In many cases only a part of a data
+object is actually used in a buffer (eg only some bytes from a file). Every
+such *continuous* part of a data object is abstractly called a segment.  
+
+If a segment is to be a *continuous* part of a data object, some kind of order
+must be present in the data within the data object. This order is
+naturally the offset of the particular piece of data in the each object (eg
+the offset of a byte in the file). Therefore, a segment can be complete described
+using three properties:
+
+    1. The data object the segment is part of
+	2. The start of the continuous range within the data object.
+	3. The length of the continuous range.
+
+Ofcourse, this not the only way to describe a segment. For example, instead
+of using a (start, length) notation for the range, one could use a (start, end)
+notation. In libbless we will use the first notation.
+
+Segments are logically ordered to construct a buffer. For example a buffer may
+contain some bytes from memory (segment 1), some bytes from a file (segment 2)
+and some more bytes from memory (segment 3). This ordering is done by the
+mysterious Segment Collection ADT which is the subject of another treatise.
+
+The purpose of this treatise is to explore the implications of managing data
+objects using segments and to try to offer some insights and solutions to the
+issues that will arise.
+
+2. Before we begin
+------------------
+
+Before we begin it is crucial to mention a couple of design decisions
+regarding segments and data objects.
+
+The first is that data objects is considered to be read-only. Once a data
+object is created its contents cannot be altered.
+
+The second is that when a data object becomes associated with a segment, that
+segment owns the object. That means that the segment (with its functions) is
+free to manipulate the memory taken by the object in any way it feels like.
+This include freeing the data object when it is not needed anymore.
+
+3. Multiple ties
+----------------
+
+It is sometimes efficient and some other times necessary to be able to point
+multiple segments to the same data object. This allows, for example, the
+copying of data in a buffer without copying the actual data in memory.
+
+All this sounds great until we try to free a data object. Now we must take
+into account that other segments are possibly tied with that object. If we
+were to lightheartedly free the object we would soon be facing an unpleasant
+situation.
+
+Fortunately, the solution is straightforward. We associate a reference count
+with each data object and free an object only when its reference count reaches
+zero. That was easy! Or was it? (ominous music starts to play).
+
+4. Garbage Collection
+---------------------
+
+The simple reference counting mechanism described above can be the source of a very
+serious waste of memory.
+
+Consider having a buffer consisting of a single large (eg 1GB) data object.
+This is represented by a single segment pointing to the object and covering its
+whole range. Now, let's say that we want to keep only the last byte of the
+object. To accomplish that we split the segment so that the first new segment
+covers all the range except the last byte and the second segment only the last
+byte. Then we delete the first segment.
+
+The reference counting mechanism sees that a segment (the second one) is still
+associated with the data object and correctly leaves it in memory. Now we are
+keeping around a useless 1GB memory region so that we can read one byte. Oops.
+
+What can we do about the mess we got ourselves into? For starters we could just
+ignore it (it's not a bug, it's a feature!). However, this is not a very considerate
+approach so let's try something better. 
+
+In essence, what we want is to discard all unused memory from a data object. In a naive
+attempt to regain the unused memory W we must first create new data objects that contain the 
+used memory M of the object. This entails allocating M bytes of memory, copying M
+bytes of data and freeing M + W bytes of data. Therefore, we must be able to temporarily 
+accomodate 2*M + W bytes of data.
+
+A more efficient approach is to use the already allocated memory and move all used 
+data towards the front. Then we can just resize the data object (eg realloc). In this
+we don't need any extra memory.
+
+4.1 Implementing garbage collection
+-----------------------------------
+
+Our simple garbage collection mechanism requires that we are able to
+efficiently perform two operations.  The first operation is being able find the
+part of the data object that is unused. The second is updating the range
+information in the segments that are affected (moved) by our garbage collection
+mechanism.
+
+The second operation can be implemented by storing along each data object links
+to the segments that are tied to it. Alternatively, we could store this
+information in a different data structure in order to decouple the data objects
+from our GC mechanism.  For example, for every data object we could have an
+information entry in a hash table which is keyed by the address of the data
+object.
+
+Incidentally, the same information that we keep to implement the second
+operation can be used to handle the first operation.
+
+[More on how to implement the first operation]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
