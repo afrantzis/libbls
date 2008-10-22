@@ -29,6 +29,8 @@ struct segcol_list_iter_impl {
 struct segcol_list_impl {
 	struct list_node *head;
 	struct list_node *tail;
+	struct list_node *cached_node;
+	off_t cached_mapping;
 };
 
 /* Forward declarations */
@@ -42,6 +44,9 @@ static int list_delete_chain(struct list_node *start, struct list_node *end);
 /* internal convenience functions */
 static int find_node(segcol_t *segcol, 
 		struct list_node **node, off_t *mapping, off_t offset);
+static int segcol_list_clear_cache(struct segcol_list_impl *impl);
+static int segcol_list_set_cache(struct segcol_list_impl *impl,
+		struct list_node *node, off_t mapping);
 
 /* segcol implementation functions */
 int segcol_list_new(segcol_t *segcol);
@@ -188,6 +193,44 @@ static int find_node(segcol_t *segcol,
 	return 0;
 }
 
+/**
+ * Clears the search cache of a segcol_list_impl.
+ *
+ * @param impl the segcol_list_impl
+ *
+ * @return the operation error code
+ */
+static int segcol_list_clear_cache(struct segcol_list_impl *impl)
+{
+	if (impl == NULL)
+		return EINVAL;
+
+	impl->cached_node = NULL;
+	impl->cached_mapping = 0;
+
+	return 0;
+}
+
+/**
+ * Sets the search cache of a segcol_list_impl.
+ *
+ * @param impl the segcol_list_impl
+ * @param node the cached list node
+ * @param mapping the logical mapping of the cached node in the segcol_list
+ *
+ * @return the operation error code
+ */
+static int segcol_list_set_cache(struct segcol_list_impl *impl,
+		struct list_node *node, off_t mapping)
+{
+	if (impl == NULL || node == NULL)
+		return EINVAL;
+
+	impl->cached_node = node;
+	impl->cached_mapping = mapping;
+
+	return 0;
+}
 
 /**
  * Creates a new segcol_t using a linked list implementation
@@ -224,6 +267,8 @@ int segcol_list_new(segcol_t *segcol)
 
 	impl->tail->next = impl->tail;
 	impl->tail->prev = impl->head;
+
+	segcol_list_clear_cache(impl);
 
 	/* Register functions */
 	segcol_register_impl(segcol,
@@ -311,6 +356,8 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
 			return EINVAL;
 
+	segcol_list_clear_cache(impl);
+
 	segment_t *pseg;
 	segcol_list_iter_get_segment(iter, &pseg);
 
@@ -380,6 +427,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
+
 	struct list_node *first_node = NULL;
 	struct list_node *last_node = NULL;
 	off_t first_mapping;
@@ -402,6 +450,8 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	if (first_node == NULL || last_node == NULL 
 		|| first_node->segment == NULL || last_node->segment == NULL)
 		return EINVAL;
+
+	segcol_list_clear_cache(impl);
 
 	/* 
 	 * node_a will hold the part of the first segment that we must
@@ -522,28 +572,77 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	int err = segcol_iter_new(segcol, iter);
-	if (err)
-		return err;
+	if (segcol == NULL)
+		return EINVAL;
 
-	int valid = 0;
+	int err;
+
+	struct segcol_list_impl *impl = 
+		(struct segcol_list_impl *) segcol_get_impl(segcol);
+
+	struct list_node *cur_node = impl->cached_node;
+	off_t cur_mapping = impl->cached_mapping;
+
+	if (cur_node == NULL) {
+		cur_node = impl->head->next;
+		cur_mapping = 0;
+	}
+
+	int fix_mapping = 0;
 
 	/* linear search of list nodes */
-	while (!segcol_list_iter_is_valid(*iter, &valid) && valid) {
-		segment_t *seg;
-		segcol_list_iter_get_segment(*iter, &seg);
+	while (cur_node != cur_node->next && cur_node != cur_node->prev) {
+		segment_t *seg = cur_node->segment;
+		size_t seg_size;
+		err = segment_get_size(seg, &seg_size);
+		if (err)
+			return err;
 
-		off_t mapping;
-		segcol_list_iter_get_mapping(*iter, &mapping);
+		/* 
+		 * When we move backwards in the list the new mapping is the
+		 * cur_mapping - prev_seg->size. In order to avoid getting the
+		 * size twice we just set a flag to indicate that we should fix
+		 * the mapping.
+		 */
+		if (fix_mapping)
+			cur_mapping -= seg_size;
 
-		size_t node_size;
-		segment_get_size(seg, &node_size);
-
-		if ((offset >= mapping) && (offset < mapping + node_size))
+		/* We have found the node! */
+		if (offset >= cur_mapping && offset < cur_mapping + seg_size) {
+			segcol_list_set_cache(impl, cur_node, cur_mapping);
 			break;
-
-		segcol_iter_next(*iter);
+		}
+		
+		/* 
+		 * Move forwards or backwards in the list depending on where
+		 * is the offset relative to the current node.
+		 */
+		if (offset < cur_mapping) {
+			cur_node = cur_node->prev;
+			/* 
+			 * Fix the mapping in the next iteration. Otherwise we would
+			 * to get the size here, which is a waste since we are doing
+			 * that at the start of the loop.
+			 */
+			fix_mapping = 1;
+		}
+		else if (offset >= cur_mapping + seg_size) {
+			cur_node = cur_node->next;
+			fix_mapping = 0;
+			cur_mapping += seg_size;
+		}
 	}
+
+	/* Create iterator to return search results */
+	err = segcol_iter_new(segcol, iter);
+	if (err)
+		return err;
+	
+	struct segcol_list_iter_impl *iter_impl = 
+		(struct segcol_list_iter_impl *) segcol_iter_get_impl(*iter);
+	
+	iter_impl->node = cur_node;
+	iter_impl->mapping = cur_mapping;
 
 	/* 
 	 * at this point we either have an invalid iter (search failed)
@@ -619,7 +718,10 @@ static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid)
 
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
-	*valid = (iter_impl != NULL) && (iter_impl->node != iter_impl->node->next);
+	/* Iterator is valid if it is not NULL and its node its not the head 
+	 * or tail */
+	*valid = (iter_impl != NULL) && (iter_impl->node != iter_impl->node->next)
+		&& (iter_impl->node != iter_impl->node->prev);
 
 	return 0;
 }

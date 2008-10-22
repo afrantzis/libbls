@@ -273,6 +273,28 @@ class SegcolTestsList(unittest.TestCase):
 			segs = [("abcdef", 0, i, 1), ("012345", 1, 6 - i - 1, 1)]
 			self.check_iter_segments(del_segcol, segs)
 
+	def testFindStressTest(self):
+		"Find a segment stress test"
+		
+		segs = []
+
+		for i in xrange(1000):
+			(err, seg1) = segment_new("abcdef")
+			segment_change(seg1, 0, 6)
+			segs.append(seg1)
+
+			segcol_append(self.segcol, seg1)
+		
+		for i in xrange(6000):
+			(err, iter) = segcol_find(self.segcol, i)
+			seg = segcol_iter_get_segment(iter)[1]
+			mapping = segcol_iter_get_mapping(iter)[1]
+
+			self.assertEqual(mapping, (i/6)*6)
+
+			self.assertEqual(seg, segs[i/6])
+			
+
 
 
 if __name__ == '__main__':
