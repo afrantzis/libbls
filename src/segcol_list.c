@@ -63,7 +63,7 @@ static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping);
 static int segcol_list_iter_free(segcol_iter_t *iter);
 
 /**
- * Inserts a node before another node in a list
+ * Inserts a node before another node in a list.
  *
  * @param p the node to which the new noded is inserted before
  * @param q the node to insert
@@ -86,7 +86,7 @@ static int list_insert_before(struct list_node *p, struct list_node *q)
 }
 
 /**
- * Inserts a node after another node in a list
+ * Inserts a node after another node in a list.
  *
  * @param p the node to which the new noded is inserted after
  * @param q the node to insert
@@ -129,7 +129,6 @@ static int list_delete_chain(struct list_node *first, struct list_node *last)
 	struct list_node *prev_node = first->prev;
 	struct list_node *next_node = last->next;
 
-	/* If the start node was the first in the list update the list head */
 	next_node->prev = prev_node;
 
 	prev_node->next = next_node;
@@ -141,7 +140,7 @@ static int list_delete_chain(struct list_node *first, struct list_node *last)
 }
 
 /**
- * Creates a new list_node
+ * Creates a new list_node.
  *
  * @param[out] node the new list node
  *
@@ -166,6 +165,7 @@ static int list_new_node(struct list_node **node)
  * 
  * @param segcol_list the segcol_list to search
  * @param[out] node the found node (or NULL if not found)
+ * @param[out] mapping the mapping of the found node
  * @param offset the offset to look for
  *
  * @return the operation error code
@@ -434,11 +434,6 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	off_t last_mapping;
 
 	/* Find the first and last list nodes that contain the range */
-	/* 
-	 * TODO: Possibly optimize to avoid traversing the list twice.
-	 * A caching segcol_list_find() would solve this.
-	 */
-
 	int err = find_node(segcol, &first_node, &first_mapping, offset);
 	if (err)
 		return err;
