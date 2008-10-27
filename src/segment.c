@@ -101,15 +101,9 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	*seg1 = NULL;
 
-	/* Get all info using functions instead of direct structure 
-	 * accesss to make this implementation-independent */
-	size_t size;
-	off_t start;
-	void *data;
-
-	segment_get_size(seg, &size);
-	segment_get_start(seg, &start);
-	segment_get_data(seg, &data);
+	size_t size = seg->size;
+	off_t start = seg->start;
+	void *data = seg->data;
 
 	/* is index out of range */
 	if (split_index >= size)
