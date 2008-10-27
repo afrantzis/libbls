@@ -15,7 +15,26 @@ class SegmentTests(unittest.TestCase):
 		self.assertNotEqual(self.seg, None)
 		self.assertEqual(segment_get_size(self.seg)[1], 0)
 		self.assert_(segment_get_data(self.seg)[1] is self.abc)
+	
+	def testCopy(self):
+		"Copy a segment"
 
+		self.testChange()
+
+		(err, seg1) = segment_copy(self.seg)
+
+		self.assertEqual(segment_get_start(seg1)[1],
+				segment_get_start(self.seg)[1])
+
+		self.assertEqual(segment_get_end(seg1)[1],
+				segment_get_end(self.seg)[1])
+
+		self.assertEqual(segment_get_size(seg1)[1],
+				segment_get_size(self.seg)[1])
+
+		self.assert_(segment_get_data(seg1)[1] is
+				segment_get_data(self.seg)[1])
+		
 	def testClear(self):
 		"Clear a segment"
 

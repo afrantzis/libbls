@@ -24,6 +24,8 @@ typedef void (*segment_data_usage_func)(void *data, int change);
 int segment_new(segment_t **seg, void *data,
 		segment_data_usage_func data_usage_func);
 
+int segment_copy(segment_t *seg, segment_t **seg_copy);
+
 int segment_free(segment_t *seg);
 
 int segment_clear(segment_t *seg);

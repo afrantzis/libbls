@@ -48,6 +48,33 @@ int segment_new(segment_t **seg, void *data,
 }
 
 /**
+ * Creates a copy of a segment_t.
+ *
+ * @param seg the segment_t to copy
+ * @param[out] seg_copy the new copy of the segment
+ *
+ * @return the operation error code
+ */
+int segment_copy(segment_t *seg, segment_t **seg_copy)
+{
+	if (seg == NULL || seg_copy == NULL)
+		return EINVAL;
+
+	int err = segment_new(seg_copy, seg->data, seg->data_usage_func);
+	if (err)
+		return err;
+
+	err = segment_change(*seg_copy, seg->start, seg->size);
+
+	if (err) {
+		segment_free(*seg_copy);
+		return err;
+	}
+	
+	return 0;
+}
+
+/**
  * Frees a segment_t.
  *
  * @param seg the segment_t to free
