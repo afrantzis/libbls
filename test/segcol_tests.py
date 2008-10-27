@@ -4,7 +4,7 @@ from libbless import *
 class SegcolTestsList(unittest.TestCase):
 
 	def setUp(self):
-		(err, self.segcol) = segcol_new("list")
+		(err, self.segcol) = segcol_list_new()
 		self.assertEqual(err, 0)
 
 	def tearDown(self):

@@ -27,9 +27,6 @@ typedef struct segcol segcol_t;
  */
 typedef struct segcol_iter segcol_iter_t;
 
-
-int segcol_new(segcol_t **segcol, char *impl);
-
 int segcol_free(segcol_t *segcol);
 
 int segcol_append(segcol_t *segcol, segment_t *seg); 

@@ -6,19 +6,9 @@
 
 struct segcol {
 	void *impl;
+	struct segcol_funcs *funcs; 
+
 	size_t size;
-	
-	int (*free)(segcol_t *segcol);
-	int (*append)(segcol_t *segcol, segment_t *seg); 
-	int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg); 
-	int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
-	int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
-	int (*iter_new)(segcol_t *segcol, void **iter);
-	int (*iter_next)(segcol_iter_t *iter);
-	int (*iter_is_valid)(segcol_iter_t *iter, int *valid);
-	int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg);
-	int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping);
-	int (*iter_free)(segcol_iter_t *iter);
 };
 
 
@@ -28,36 +18,35 @@ struct segcol_iter {
 };
 
 
+/**********************
+ * Internal functions *
+ **********************/
+
 /**
- * Registers functions
+ * Creates a segcol_t using a specific implementation.
+ *
+ * @param[out] segcol the created segcol_t
+ * @param impl the implementation private data
+ * @param funcs function pointers to the implementations' functions
+ *
+ * @return the operation status code
  */
-void segcol_register_impl(segcol_t *segcol,
-		void *impl,
-		int (*free)(segcol_t *segcol),
-		int (*append)(segcol_t *segcol, segment_t *seg), 
-		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg), 
-		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length),
-		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset),
-		int (*iter_new)(segcol_t *segcol, void **iter),
-		int (*iter_next)(segcol_iter_t *iter),
-		int (*iter_is_valid)(segcol_iter_t *iter, int *valid),
-		int (*iter_get_segment)(segcol_iter_t *iter, segment_t **seg),
-		int (*iter_get_mapping)(segcol_iter_t *iter, off_t *mapping),
-		int (*iter_free)(segcol_iter_t *iter)
-		)
+int segcol_create_impl(segcol_t **segcol, void *impl,
+		struct segcol_funcs *funcs)
 {
-	segcol->impl = impl;
-	segcol->free = free;
-	segcol->append = append;
-	segcol->insert = insert;
-	segcol->delete = delete;
-	segcol->find = find;
-	segcol->iter_new = iter_new;
-	segcol->iter_next = iter_next;
-	segcol->iter_is_valid = iter_is_valid;
-	segcol->iter_get_segment = iter_get_segment;
-	segcol->iter_get_mapping = iter_get_mapping;
-	segcol->iter_free = iter_free;
+	if (segcol == NULL)
+		return EINVAL;
+
+	*segcol = malloc(sizeof(segcol_t));
+
+	if (*segcol == NULL)
+		return ENOMEM;
+
+	(*segcol)->size = 0;
+	(*segcol)->impl = impl;
+	(*segcol)->funcs = funcs;
+
+	return 0;
 }
 
 /**
@@ -76,36 +65,9 @@ void *segcol_iter_get_impl(segcol_iter_t *iter)
 	return iter->impl;
 }
 
-/**
- * Creates a new segcol_t.
- *
- * The new segcol_t is can be implemented in a number of ways. The impl
- * argument specifies the implementation to use. Available implementations
- * are:
- *	- "list"
- *
- * @param impl the implementation to use
- *
- * @param[out] segcol the created segcol_t
- *
- * @return the operation error code
- */
-int segcol_new(segcol_t **segcol, char *impl)
-{
-	if (segcol == NULL || impl == NULL)
-		return EINVAL;
-
-	*segcol = malloc(sizeof(segcol_t));
-
-	(*segcol)->size = 0;
-
-	if (!strncmp(impl, "list", 4))
-		segcol_list_new(*segcol);	
-	else
-		return EINVAL;
-
-	return 0;
-}
+/*****************
+ * API functions *
+ *****************/
 
 /**
  * Frees the resources of a segcol_t.
@@ -119,7 +81,7 @@ int segcol_new(segcol_t **segcol, char *impl)
  */
 int segcol_free(segcol_t *segcol)
 {
-	(*segcol->free)(segcol);
+	(*segcol->funcs->free)(segcol);
 	free(segcol);
 	return 0;
 }
@@ -138,7 +100,7 @@ int segcol_free(segcol_t *segcol)
  */
 int segcol_append(segcol_t *segcol, segment_t *seg)
 {
-	int err = (*segcol->append)(segcol, seg);
+	int err = (*segcol->funcs->append)(segcol, seg);
 
 	if (!err) {
 		size_t size;
@@ -164,7 +126,7 @@ int segcol_append(segcol_t *segcol, segment_t *seg)
  */
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 {
-	int err = (*segcol->insert)(segcol, offset, seg);
+	int err = (*segcol->funcs->insert)(segcol, offset, seg);
 
 	if (!err) {
 		size_t size;
@@ -187,7 +149,7 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  */
 int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length)
 {
-	int err = (*segcol->delete)(segcol, deleted, offset, length);
+	int err = (*segcol->funcs->delete)(segcol, deleted, offset, length);
 
 	if (!err) {
 		segcol->size -= length;
@@ -207,7 +169,7 @@ int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t len
  */
 int segcol_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	return (*segcol->find)(segcol, iter, offset);
+	return (*segcol->funcs->find)(segcol, iter, offset);
 }
 
 /**
@@ -223,7 +185,7 @@ int segcol_iter_new(segcol_t *segcol, segcol_iter_t **iter)
 	*iter = malloc(sizeof(segcol_iter_t));
 
 	(*iter)->segcol = segcol;
-	(*segcol->iter_new)(segcol, &(*iter)->impl);
+	(*segcol->funcs->iter_new)(segcol, &(*iter)->impl);
 
 	return 0;
 }
@@ -237,7 +199,7 @@ int segcol_iter_new(segcol_t *segcol, segcol_iter_t **iter)
  */
 int segcol_iter_next(segcol_iter_t *iter)
 {
-	return (*iter->segcol->iter_next)(iter);
+	return (*iter->segcol->funcs->iter_next)(iter);
 }
 
 /**
@@ -250,7 +212,7 @@ int segcol_iter_next(segcol_iter_t *iter)
  */
 int segcol_iter_is_valid(segcol_iter_t *iter, int *valid)
 {
-	return (*iter->segcol->iter_is_valid)(iter, valid);
+	return (*iter->segcol->funcs->iter_is_valid)(iter, valid);
 }
 
 /**
@@ -263,7 +225,7 @@ int segcol_iter_is_valid(segcol_iter_t *iter, int *valid)
  */
 int segcol_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 {
-	return (*iter->segcol->iter_get_segment)(iter, seg);
+	return (*iter->segcol->funcs->iter_get_segment)(iter, seg);
 }
 
 /**
@@ -271,13 +233,14 @@ int segcol_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
  * segcol_iter_t.
  *
  * @param iter the iter to use
- * @param[out] mapping the mapping of the pointed segment or -1 if the iterator is invalid
+ * @param[out] mapping the mapping of the pointed segment or -1 if the 
+ *             iterator is invalid
  *
  * @return the operation error code
  */
 int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
 {
-	return (*iter->segcol->iter_get_mapping)(iter, mapping);
+	return (*iter->segcol->funcs->iter_get_mapping)(iter, mapping);
 }
 
 /**
@@ -285,14 +248,24 @@ int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
  * 
  * It is an error to use a segcol_iter_t after freeing it.
  *
+ * @param iter the iter to use
+ *
  * @return the operation error code
  */
 int segcol_iter_free(segcol_iter_t *iter)
 {
-	(*iter->segcol->iter_free)(iter);
+	(*iter->segcol->funcs->iter_free)(iter);
 	free(iter);
 }
 
+/**
+ * Gets the size of the data contained in a segcol_t.
+ * 
+ * @param segcol the segcol to get the size of
+ * @param[out] size the size of the segcol in bytes
+ *
+ * @return the operation error code
+ */
 int segcol_get_size(segcol_t *segcol, size_t *size)
 {
 	if (segcol == NULL || size == NULL)

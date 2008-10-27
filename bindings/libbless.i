@@ -5,6 +5,7 @@
 %{
 #include "segment.h"
 #include "segcol.h"
+#include "segcol_list.h"
 #include "buffer.h"
 %}
 
@@ -81,5 +82,7 @@
 
 %include "../src/segment.h"
 %include "../src/segcol.h"
+%include "../src/segcol_list.h"
 %include "../src/buffer.h"
+
 

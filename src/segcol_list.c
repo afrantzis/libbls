@@ -10,6 +10,8 @@
 
 #include "segcol.h"
 #include "segcol_internal.h"
+#include "segcol_list.h"
+
 
 /**
  * A node of a doubly linked list
@@ -48,8 +50,8 @@ static int segcol_list_clear_cache(struct segcol_list_impl *impl);
 static int segcol_list_set_cache(struct segcol_list_impl *impl,
 		struct list_node *node, off_t mapping);
 
-/* segcol implementation functions */
-int segcol_list_new(segcol_t *segcol);
+/* segcol API implementation functions */
+int segcol_list_new(segcol_t **segcol);
 static int segcol_list_free(segcol_t *segcol);
 static int segcol_list_append(segcol_t *segcol, segment_t *seg); 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
@@ -61,6 +63,21 @@ static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid);
 static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg);
 static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping);
 static int segcol_list_iter_free(segcol_iter_t *iter);
+
+/* Function pointers for the list implementation of segcol_t */
+static struct segcol_funcs segcol_list_funcs = {
+	.free = segcol_list_free,
+	.append = segcol_list_append,
+	.insert = segcol_list_insert,
+	.delete = segcol_list_delete,
+	.find = segcol_list_find,
+	.iter_new = segcol_list_iter_new,
+	.iter_next = segcol_list_iter_next,
+	.iter_is_valid = segcol_list_iter_is_valid,
+	.iter_get_segment = segcol_list_iter_get_segment,
+	.iter_get_mapping = segcol_list_iter_get_mapping,
+	.iter_free = segcol_list_iter_free
+};
 
 /**
  * Inserts a node before another node in a list.
@@ -232,21 +249,30 @@ static int segcol_list_set_cache(struct segcol_list_impl *impl,
 	return 0;
 }
 
+
+/*****************
+ * API functions *
+ *****************/
+
 /**
- * Creates a new segcol_t using a linked list implementation
+ * Creates a new segcol_t using a linked list implementation.
+ *
+ * @param[out] segcol the created segcol_t
  *
  * @return the operation error code
  */
-int segcol_list_new(segcol_t *segcol)
+int segcol_list_new(segcol_t **segcol)
 {
 	if (segcol == NULL)
 		return EINVAL;
 
+	/* Allocate memory for implementation */
 	struct segcol_list_impl *impl = malloc(sizeof(struct segcol_list_impl));
 	
 	if (impl == NULL)
 		return EINVAL;
 
+	/* Create head and tail nodes */
 	int err = list_new_node(&impl->head);
 
 	if (err) {
@@ -262,6 +288,7 @@ int segcol_list_new(segcol_t *segcol)
 		return err;
 	}
 	
+	/* Connect head and tail nodes */
 	impl->head->next = impl->tail;
 	impl->head->prev = impl->head;
 
@@ -270,21 +297,15 @@ int segcol_list_new(segcol_t *segcol)
 
 	segcol_list_clear_cache(impl);
 
-	/* Register functions */
-	segcol_register_impl(segcol,
-			impl,
-			segcol_list_free,
-			segcol_list_append,
-			segcol_list_insert,
-			segcol_list_delete,
-			segcol_list_find,
-			segcol_list_iter_new,
-			segcol_list_iter_next,
-			segcol_list_iter_is_valid,
-			segcol_list_iter_get_segment,
-			segcol_list_iter_get_mapping,
-			segcol_list_iter_free
-			);
+	/* Create segcol_t */
+	err = segcol_create_impl(segcol, impl, &segcol_list_funcs);
+
+	if (err) {
+		free(impl->tail);
+		free(impl->head);
+		free(impl);
+		return err;
+	}
 
 	return 0;
 }
@@ -551,7 +572,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	/* TODO: Optimize: We can put the node chain as is in the new
 	 * segcol_list. No need to add the segments one-by-one. */
 	if (deleted != NULL)
-		segcol_new(deleted, "list");
+		segcol_list_new(deleted);
 
 	struct list_node *n = first_node;
 
