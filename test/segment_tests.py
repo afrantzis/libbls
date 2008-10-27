@@ -5,7 +5,7 @@ class SegmentTests(unittest.TestCase):
 
 	def setUp(self):
 		self.abc = "abc"
-		(self.error, self.seg) = segment_new(self.abc)
+		(self.error, self.seg) = segment_new(self.abc, None)
 	
 	def tearDown(self):
 		segment_free(self.seg)

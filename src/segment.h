@@ -8,9 +8,21 @@
 
 #include <sys/types.h>
 
+/**
+ * Opaque type for segment ADT.
+ */
 typedef struct segment segment_t;
 
-int segment_new(segment_t **seg, void *data);
+/**
+ * Function called to change the usage count of some data.
+ *
+ * @param data the data whose usage count is being changed
+ * @param change the change in the usage count
+ */
+typedef void (*segment_data_usage_func)(void *data, int change);
+
+int segment_new(segment_t **seg, void *data,
+		segment_data_usage_func data_usage_func);
 
 int segment_free(segment_t *seg);
 

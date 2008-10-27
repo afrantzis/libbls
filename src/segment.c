@@ -11,17 +11,21 @@ struct segment {
 	void *data;
 	off_t start;
 	size_t size;
+	segment_data_usage_func data_usage_func;
 };
 
 /**
  * Creates a new empty segment_t.
  *
  * @param[out] seg the created segment or NULL
- * @param data the data object this segment is related to
+ * @param data the data object this segment is associated with
+ * @param data_usage_func the function to call to update the usage count of
+ *        the data associated with this segment (may be NULL)
  *
  * @return the operation error code
  */
-int segment_new(segment_t **seg, void *data)
+int segment_new(segment_t **seg, void *data,
+		segment_data_usage_func data_usage_func)
 {
 	segment_t *segp = NULL;
 
@@ -33,6 +37,10 @@ int segment_new(segment_t **seg, void *data)
 	segp->data = data;
 	segp->start = -1;
 	segp->size = 0;
+	segp->data_usage_func = data_usage_func;
+
+	if (data_usage_func != NULL)
+		(*data_usage_func)(data, 1);
 
 	*seg = segp;
 
@@ -48,6 +56,10 @@ int segment_new(segment_t **seg, void *data)
  */
 int segment_free(segment_t *seg)
 {
+	/* Decrease the usage count of the data */
+	if (seg->data_usage_func != NULL)
+		(*seg->data_usage_func)(seg->data, -1);
+
 	free(seg);
 
 	return 0;
@@ -103,7 +115,7 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 	if (split_index >= size)
 		return EINVAL;
 
-	err = segment_new(seg1, data);
+	err = segment_new(seg1, data, seg->data_usage_func);
 	if (err)
 		return err;
 
