@@ -40,11 +40,9 @@ class SegcolTestsList(unittest.TestCase):
 	def testAppend(self):
 		"Append segments to the segcol"
 
-		(err, seg1) = segment_new("abcdef", None)
-		segment_change(seg1, 0, 6)
+		(err, seg1) = segment_new("abcdef", 0, 6, None)
 
-		(err, seg2) = segment_new("012345", None)
-		segment_change(seg2, 0, 6)
+		(err, seg2) = segment_new("012345", 0, 6, None)
 
 		# Append segments and test segcol size
 		segcol_append(self.segcol, seg1)
@@ -84,9 +82,8 @@ class SegcolTestsList(unittest.TestCase):
 		seg = []
 
 		for i in xrange(nseg):
-			(err, seg_tmp) = segment_new("%d%d" % (i, i), None)
+			(err, seg_tmp) = segment_new("%d%d" % (i, i), 0, 2, None)
 			seg.append(("%d%d" % (i, i), 2 * i, 0, 2))
-			segment_change(seg_tmp, 0, 2)
 			segcol_append(self.segcol, seg_tmp)
 
 		self.check_iter_segments(self.segcol, seg)
@@ -97,8 +94,7 @@ class SegcolTestsList(unittest.TestCase):
 		# Append some segments to the segcol
 		self.testAppend()
 
-		(err, seg1) = segment_new("BBB", None)
-		segment_change(seg1, 0, 3)
+		(err, seg1) = segment_new("BBB", 0, 3, None)
 
 		# Insert segment at the beginning of anothe segment
 		self.assertEqual(segcol_insert(self.segcol, 0, seg1), 0)
@@ -115,8 +111,7 @@ class SegcolTestsList(unittest.TestCase):
 		# Insert some segments into the segcol
 		self.testInsertBeginning()
 
-		(err, seg1) = segment_new("EEE", None)
-		segment_change(seg1, 0, 3)
+		(err, seg1) = segment_new("EEE", 0, 3, None)
 
 		# Insert segment at the end of another segment
 		segcol_insert(self.segcol, 8, seg1)
@@ -134,8 +129,7 @@ class SegcolTestsList(unittest.TestCase):
 		# Insert some segments into the segcol
 		self.testInsertEnd()
 
-		(err, seg1) = segment_new("MMM", None)
-		segment_change(seg1, 0, 3)
+		(err, seg1) = segment_new("MMM", 0, 3, None)
 
 		# Insert segment at the end of another segment
 		segcol_insert(self.segcol, 5, seg1)
@@ -152,8 +146,7 @@ class SegcolTestsList(unittest.TestCase):
 	def testTryInsertNegative(self):
 		"Try to insert a segment at a negative index"
 
-		(err, seg1) = segment_new("ERROR", None)
-		segment_change(seg1, 0, 5)
+		(err, seg1) = segment_new("ERROR", 0, 5, None)
 		
 		err = segcol_insert(self.segcol, -1, seg1)
 		self.assertNotEqual(err, 0)
@@ -172,8 +165,7 @@ class SegcolTestsList(unittest.TestCase):
 	def testTryInsertBeyondEOF(self):
 		"Try to insert a segment beyond the end of a buffer"
 
-		(err, seg1) = segment_new("ERROR", None)
-		segment_change(seg1, 0, 5)
+		(err, seg1) = segment_new("ERROR", 0, 5, None)
 		
 		err = segcol_insert(self.segcol, 0, seg1)
 		self.assertNotEqual(err, 0)
@@ -233,8 +225,7 @@ class SegcolTestsList(unittest.TestCase):
 		"Delete a range from the middle of a segment"
 
 		# Append a segment to the segcol
-		(err, seg1) = segment_new("0123456789", None)
-		segment_change(seg1, 0, 10)
+		(err, seg1) = segment_new("0123456789", 0, 10, None)
 
 		segcol_append(self.segcol, seg1)
 		self.assertEqual(segcol_get_size(self.segcol)[1], 10)
@@ -279,8 +270,7 @@ class SegcolTestsList(unittest.TestCase):
 		segs = []
 
 		for i in xrange(1000):
-			(err, seg1) = segment_new("abcdef", None)
-			segment_change(seg1, 0, 6)
+			(err, seg1) = segment_new("abcdef", 0, 6, None)
 			segs.append(seg1)
 
 			segcol_append(self.segcol, seg1)

@@ -5,7 +5,7 @@ class SegmentTests(unittest.TestCase):
 
 	def setUp(self):
 		self.abc = "abc"
-		(self.error, self.seg) = segment_new(self.abc, None)
+		(self.error, self.seg) = segment_new(self.abc, 0, 0, None)
 	
 	def tearDown(self):
 		segment_free(self.seg)
@@ -19,7 +19,7 @@ class SegmentTests(unittest.TestCase):
 	def testCopy(self):
 		"Copy a segment"
 
-		self.testChange()
+		self.testChangeRange()
 
 		(err, seg1) = segment_copy(self.seg)
 
@@ -37,15 +37,14 @@ class SegmentTests(unittest.TestCase):
 		
 	def testClear(self):
 		"Clear a segment"
-
-		self.testChange()
+		self.testChangeRange()
 
 		segment_clear(self.seg)
 		self.assertEqual(segment_get_size(self.seg)[1], 0)
 
-	def testChange(self):
+	def testChangeRange(self):
 		"Change a segment"
-		segment_change(self.seg, 666, 112358)
+		segment_change_range(self.seg, 666, 112358)
 		
 		self.assertEqual(segment_get_start(self.seg)[1], 666)
 		self.assertEqual(segment_get_end(self.seg)[1], 666 + 112358 - 1)
@@ -54,7 +53,7 @@ class SegmentTests(unittest.TestCase):
 	
 	def testSplitMiddle(self):
 		"Split a segment in the middle"
-		segment_change(self.seg, 0, 1000)
+		segment_change_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 99)
 		
@@ -68,7 +67,7 @@ class SegmentTests(unittest.TestCase):
 
 	def testSplitEnd(self):
 		"Split a segment at the end"
-		segment_change(self.seg, 0, 1000)
+		segment_change_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 999)
 		
@@ -82,7 +81,7 @@ class SegmentTests(unittest.TestCase):
 
 	def testSplitStart(self):
 		"Split a segment at the start"
-		segment_change(self.seg, 0, 1000)
+		segment_change_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 0)
 		
@@ -95,7 +94,7 @@ class SegmentTests(unittest.TestCase):
 
 	def testSplitOutOfRange(self):
 		"Try to split at a point out of range"
-		segment_change(self.seg, 0, 1000)
+		segment_change_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 1000)
 		

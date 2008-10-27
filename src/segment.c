@@ -15,16 +15,18 @@ struct segment {
 };
 
 /**
- * Creates a new empty segment_t.
+ * Creates a new segment_t.
  *
  * @param[out] seg the created segment or NULL
  * @param data the data object this segment is associated with
+ * @param start the start offset of the segment
+ * @param size the size of the segment
  * @param data_usage_func the function to call to update the usage count of
  *        the data associated with this segment (may be NULL)
  *
  * @return the operation error code
  */
-int segment_new(segment_t **seg, void *data,
+int segment_new(segment_t **seg, void *data, off_t start, size_t size,
 		segment_data_usage_func data_usage_func)
 {
 	segment_t *segp = NULL;
@@ -34,13 +36,11 @@ int segment_new(segment_t **seg, void *data,
 	if (segp == NULL)
 		return errno;
 
-	segp->data = data;
-	segp->start = -1;
-	segp->size = 0;
-	segp->data_usage_func = data_usage_func;
+	/* Initialize to NULL, so that segment_change_data works correctly */
+	segp->data_usage_func = NULL;
 
-	if (data_usage_func != NULL)
-		(*data_usage_func)(data, 1);
+	segment_change_data(segp, data, data_usage_func);
+	segment_change_range(segp, start, size);
 
 	*seg = segp;
 
@@ -60,17 +60,12 @@ int segment_copy(segment_t *seg, segment_t **seg_copy)
 	if (seg == NULL || seg_copy == NULL)
 		return EINVAL;
 
-	int err = segment_new(seg_copy, seg->data, seg->data_usage_func);
+	int err = segment_new(seg_copy, seg->data, seg->start, seg->size,
+			seg->data_usage_func);
+
 	if (err)
 		return err;
 
-	err = segment_change(*seg_copy, seg->start, seg->size);
-
-	if (err) {
-		segment_free(*seg_copy);
-		return err;
-	}
-	
 	return 0;
 }
 
@@ -136,19 +131,17 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 	if (split_index >= size)
 		return EINVAL;
 
-	err = segment_new(seg1, data, seg->data_usage_func);
+	err = segment_new(seg1, data, start + split_index, size - split_index,
+			seg->data_usage_func);
+
 	if (err)
 		return err;
 
-	err = segment_change(*seg1, start + split_index, size - split_index);
-	if (err)
-		goto fail;
-	
 	/* Change 'seg' second so that if changing 'seg1' fails, 'seg' remains intact */
 	if (split_index == 0)
 		segment_clear(seg);
 	else {
-		err = segment_change(seg, start, split_index);
+		err = segment_change_range(seg, start, split_index);
 		if (err)
 			goto fail;
 	}
@@ -235,15 +228,44 @@ int segment_get_size(segment_t *seg, size_t *size)
 }
 
 /**
+ * Changes the data association of a segment_t.
+ *
+ * @param seg the segment_t
+ * @param data the new data associated with the segment
+ * @param data_usage_func the function to call to update the usage count of
+ *        the data associated with this segment (may be NULL)
+ *
+ * @return the operation error code
+ */
+int segment_change_data(segment_t *seg, void *data,
+		segment_data_usage_func data_usage_func)
+{
+	if (seg == NULL)
+		return EINVAL;
+
+	/* Decrease the usage count of the old data */
+	if (seg->data_usage_func != NULL)
+		(*seg->data_usage_func)(seg->data, -1);
+
+	seg->data = data;
+	seg->data_usage_func = data_usage_func;
+
+	/* Increase the usage count of the new data */
+	if (seg->data_usage_func != NULL)
+		(*seg->data_usage_func)(seg->data, 1);
+
+	return 0;
+}
+/**
  * Changes the range of a segment_t.
  *
  * @param seg the segment_t
  * @param start the new start offset
- * @param end the new end offset
+ * @param size the size of the segment
  *
  * @return the operation error code
  */
-int segment_change(segment_t *seg, off_t start, size_t size)
+int segment_change_range(segment_t *seg, off_t start, size_t size)
 {
 	if (seg == NULL)
 		return EINVAL;
