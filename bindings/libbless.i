@@ -6,6 +6,8 @@
 #include "segment.h"
 #include "segcol.h"
 #include "segcol_list.h"
+#include "data_object.h"
+#include "data_object_memory.h"
 #include "buffer.h"
 %}
 
@@ -44,7 +46,7 @@
 }
 
 /* The same rules for segment_t ** apply to other ** types */
-%apply segment_t ** { segcol_t ** , segcol_iter_t **, void **}
+%apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 
@@ -72,6 +74,51 @@
     }
 }
 
+/* Make data_object_read() binding output a PyBuffer */
+%typemap(argout) (data_object_t *obj, void **buf, off_t offset, size_t len)
+{
+    %append_output(PyBuffer_FromMemory(*((unsigned char **)$2), $4));
+}
+
+%{
+/* Gets a pointer to the first segment of raw data of a PyBuffer */
+void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
+{
+    PyTypeObject *tobj = obj->ob_type;
+
+    PyBufferProcs *procs = tobj->tp_as_buffer;
+
+    /* if object does not support the buffer interface... */
+    if (procs == NULL)
+        return NULL;
+
+    readbufferproc proc = procs->bf_getreadbuffer;
+
+    void *ptr;
+
+    *size = (*proc)(obj, 0, &ptr);
+
+    return ptr;
+}
+%}
+
+/* 
+ * Make the data_object_write() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception data_object_write
+{
+    ssize_t s;
+    arg3 = get_read_buf_pyobj(obj2, &s);
+
+    if (s >= arg4) {
+        arg4 = s;
+        $action
+    }
+    else
+        result = 666;
+}
+
 /*
  * Typemaps that handle output arguments.
  */
@@ -83,6 +130,8 @@
 %include "../src/segment.h"
 %include "../src/segcol.h"
 %include "../src/segcol_list.h"
+%include "../src/data_object.h"
+%include "../src/data_object_memory.h"
 %include "../src/buffer.h"
 
 
