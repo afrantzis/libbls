@@ -1,0 +1,7 @@
+Import('env')
+
+source = Glob('*.c')
+
+libbless = env.SharedLibrary('bless', source)
+
+Return('libbless')

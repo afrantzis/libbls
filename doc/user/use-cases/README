@@ -1,0 +1,6 @@
+This directory contains some use cases for libbless in the form of C source
+files. Their purpose is to help us develop an insight into the usefulness and
+elegance of the API. They can also serve as examples of how to use the API.
+
+NOTE: The files are not meant to be an implementation test and therefore are
+neither complete nor compilable. 
