@@ -158,10 +158,6 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  */
 int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length)
 {
-	/* Check range for overflow */
-	if (__MAX(off_t) - offset < length)
-		return EOVERFLOW;
-
 	int err = (*segcol->funcs->delete)(segcol, deleted, offset, length);
 
 	if (!err) {

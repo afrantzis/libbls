@@ -11,6 +11,7 @@
 #include "segcol.h"
 #include "segcol_internal.h"
 #include "segcol_list.h"
+#include "type_limits.h"
 
 
 /**
@@ -361,7 +362,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg) 
 {
-	if (segcol == NULL || seg == NULL)
+	if (segcol == NULL || seg == NULL || offset < 0)
 		return EINVAL;
 
 	struct segcol_list_impl *impl =
@@ -442,8 +443,12 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		offset, off_t length)
 { 
-	if (segcol == NULL)
+	if (segcol == NULL || offset < 0 || length < 0)
 		return EINVAL;
+
+	/* Check range for overflow */
+	if (__MAX(off_t) - offset < length)
+		return EOVERFLOW;
 
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -590,7 +595,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	if (segcol == NULL)
+	if (segcol == NULL || iter == NULL || offset < 0)
 		return EINVAL;
 
 	int err;
