@@ -10,7 +10,7 @@
 struct segment {
 	void *data;
 	off_t start;
-	size_t size;
+	off_t size;
 	segment_data_usage_func data_usage_func;
 };
 
@@ -26,7 +26,7 @@ struct segment {
  *
  * @return the operation error code
  */
-int segment_new(segment_t **seg, void *data, off_t start, size_t size,
+int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 		segment_data_usage_func data_usage_func)
 {
 	segment_t *segp = NULL;
@@ -123,7 +123,7 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	*seg1 = NULL;
 
-	size_t size = seg->size;
+	off_t size = seg->size;
 	off_t start = seg->start;
 	void *data = seg->data;
 
@@ -217,7 +217,7 @@ int segment_get_end(segment_t *seg, off_t *end)
  *
  * @return the operation error code
  */
-int segment_get_size(segment_t *seg, size_t *size)
+int segment_get_size(segment_t *seg, off_t *size)
 {
 	if (seg == NULL || size == NULL)
 		return EINVAL;
@@ -265,7 +265,7 @@ int segment_change_data(segment_t *seg, void *data,
  *
  * @return the operation error code
  */
-int segment_change_range(segment_t *seg, off_t start, size_t size)
+int segment_change_range(segment_t *seg, off_t start, off_t size)
 {
 	if (seg == NULL)
 		return EINVAL;

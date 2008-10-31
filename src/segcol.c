@@ -8,7 +8,7 @@ struct segcol {
 	void *impl;
 	struct segcol_funcs *funcs; 
 
-	size_t size;
+	off_t size;
 };
 
 
@@ -103,7 +103,7 @@ int segcol_append(segcol_t *segcol, segment_t *seg)
 	int err = (*segcol->funcs->append)(segcol, seg);
 
 	if (!err) {
-		size_t size;
+		off_t size;
 		segment_get_size(seg, &size);
 		segcol->size += size;
 	}
@@ -129,7 +129,7 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	int err = (*segcol->funcs->insert)(segcol, offset, seg);
 
 	if (!err) {
-		size_t size;
+		off_t size;
 		segment_get_size(seg, &size);
 		segcol->size += size;
 	}
@@ -147,7 +147,7 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  * 
  * @return the operation error code
  */
-int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length)
+int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length)
 {
 	int err = (*segcol->funcs->delete)(segcol, deleted, offset, length);
 
@@ -266,7 +266,7 @@ int segcol_iter_free(segcol_iter_t *iter)
  *
  * @return the operation error code
  */
-int segcol_get_size(segcol_t *segcol, size_t *size)
+int segcol_get_size(segcol_t *segcol, off_t *size)
 {
 	if (segcol == NULL || size == NULL)
 		return EINVAL;

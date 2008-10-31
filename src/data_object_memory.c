@@ -14,7 +14,7 @@
 
 
 /* forward declerations */
-static int data_object_memory_get_size(data_object_t *obj, size_t *size);
+static int data_object_memory_get_size(data_object_t *obj, off_t *size);
 static int data_object_memory_free(data_object_t *obj);
 static int data_object_memory_write(data_object_t *obj, off_t offset, void *data,
 		size_t len);
@@ -153,7 +153,7 @@ static int data_object_memory_free(data_object_t *obj)
 	return 0;
 }
 
-static int data_object_memory_get_size(data_object_t *obj, size_t *size)
+static int data_object_memory_get_size(data_object_t *obj, off_t *size)
 {
 	if (obj == NULL)
 		return EINVAL;
@@ -161,7 +161,7 @@ static int data_object_memory_get_size(data_object_t *obj, size_t *size)
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
-	*size = impl->size;
+	*size = (off_t) impl->size;
 
 	return 0;
 }

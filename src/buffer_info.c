@@ -57,7 +57,7 @@ int bless_buffer_get_fd(bless_buffer_t *buf, int *fd)
  *
  * @return the operation error code
  */
-int bless_buffer_get_size(bless_buffer_t *buf, size_t *size)
+int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 {
 	return -1;
 }

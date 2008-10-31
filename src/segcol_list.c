@@ -55,7 +55,7 @@ int segcol_list_new(segcol_t **segcol);
 static int segcol_list_free(segcol_t *segcol);
 static int segcol_list_append(segcol_t *segcol, segment_t *seg); 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
-static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
+static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length);
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
 static int segcol_list_iter_new(segcol_t *segcol, void **iter);
 static int segcol_list_iter_next(segcol_iter_t *iter);
@@ -440,7 +440,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  *        offset  offset + length
  */
 static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
-		offset, size_t length)
+		offset, off_t length)
 { 
 	if (segcol == NULL)
 		return EINVAL;
@@ -498,10 +498,10 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		return err;
 
 	/* Calculate new size, after having deleted the chain */
-	size_t new_size;
+	off_t new_size;
 	segcol_get_size(segcol, &new_size);
 
-	size_t last_seg_size;
+	off_t last_seg_size;
 	err = segment_get_size(last_node->segment, &last_seg_size);
 
 	new_size -= last_mapping + last_seg_size - first_mapping;
@@ -609,7 +609,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	/* linear search of list nodes */
 	while (cur_node != cur_node->next && cur_node != cur_node->prev) {
 		segment_t *seg = cur_node->segment;
-		size_t seg_size;
+		off_t seg_size;
 		err = segment_get_size(seg, &seg_size);
 		if (err)
 			return err;
@@ -694,7 +694,7 @@ static int segcol_list_iter_next(segcol_iter_t *iter)
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
 	if (iter_impl->node != iter_impl->node->next) {
-		size_t node_size;
+		off_t node_size;
 		segment_get_size(iter_impl->node->segment, &node_size);
 		iter_impl->node = iter_impl->node->next;
 		iter_impl->mapping = iter_impl->mapping + node_size;

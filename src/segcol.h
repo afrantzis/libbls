@@ -33,7 +33,7 @@ int segcol_append(segcol_t *segcol, segment_t *seg);
 
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
 
-int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
+int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length);
 
 int segcol_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
 
@@ -56,7 +56,7 @@ int segcol_iter_free(segcol_iter_t *iter);
 
 /** @} */
 
-int segcol_get_size(segcol_t *segcol, size_t *size);
+int segcol_get_size(segcol_t *segcol, off_t *size);
 
 /** @} */
 

@@ -22,7 +22,7 @@ struct segcol_funcs {
 		int (*append)(segcol_t *segcol, segment_t *seg); 
 		int (*insert)(segcol_t *segcol, off_t offset, segment_t *seg); 
 		int (*delete)(segcol_t *segcol, segcol_t **deleted, off_t offset,
-				size_t length);
+				off_t length);
 		int (*find)(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
 		int (*iter_new)(segcol_t *segcol, void **iter);
 		int (*iter_next)(segcol_iter_t *iter);
