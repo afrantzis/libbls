@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "segment.h"
+#include "type_limits.h"
 
 struct segment {
 	void *data;
@@ -34,17 +35,26 @@ int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 	segp = (segment_t *) malloc(sizeof(segment_t));
 
 	if (segp == NULL)
-		return errno;
+		return ENOMEM;
 
 	/* Initialize to NULL, so that segment_change_data works correctly */
 	segp->data_usage_func = NULL;
 
-	segment_change_data(segp, data, data_usage_func);
-	segment_change_range(segp, start, size);
+	int err = segment_change_data(segp, data, data_usage_func);
+	if (err)
+		goto fail;
+
+	err = segment_change_range(segp, start, size);
+	if (err)
+		goto fail;
 
 	*seg = segp;
 
 	return 0;
+
+fail:
+	free(segp);
+	return err;
 }
 
 /**
@@ -165,7 +175,7 @@ fail:
  */
 int segment_get_data(segment_t *seg, void  **data)
 {
-	if (seg == NULL)
+	if (seg == NULL || data == NULL)
 		return EINVAL;
 
 	*data = seg->data;
@@ -183,7 +193,7 @@ int segment_get_data(segment_t *seg, void  **data)
  */
 int segment_get_start(segment_t *seg, off_t *start)
 {
-	if (seg == NULL)
+	if (seg == NULL || start == NULL)
 		return EINVAL;
 
 	*start = seg->start;
@@ -201,7 +211,7 @@ int segment_get_start(segment_t *seg, off_t *start)
  */
 int segment_get_end(segment_t *seg, off_t *end)
 {
-	if (seg == NULL)
+	if (seg == NULL || end == NULL)
 		return EINVAL;
 
 	*end = seg->start + seg->size - 1;
@@ -256,6 +266,7 @@ int segment_change_data(segment_t *seg, void *data,
 
 	return 0;
 }
+
 /**
  * Changes the range of a segment_t.
  *
@@ -267,13 +278,16 @@ int segment_change_data(segment_t *seg, void *data,
  */
 int segment_change_range(segment_t *seg, off_t start, off_t size)
 {
-	if (seg == NULL)
+	if (seg == NULL || start < 0 || size < 0)
 		return EINVAL;
+
+	/* Check if range would overflow off_t */
+	if (__MAX(off_t) - start < size)
+		return EOVERFLOW;
 
 	seg->start = start;
 	seg->size = size;
 
 	return 0;
 }
-
 
