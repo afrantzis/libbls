@@ -538,8 +538,10 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		 * to the split in the handling of the first node. Take this into
 		 * account to correctly calculate the index for the second split.
 		 */
-		int last_seg_dec = 0; if (first_node == last_node) last_seg_dec =
-			offset - first_mapping;
+		int last_seg_dec = 0;
+		
+		if (first_node == last_node)
+			last_seg_dec = offset - first_mapping;
 
 		segment_t *tmp_seg;
 		segment_split(last_node->segment, &tmp_seg,

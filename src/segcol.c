@@ -3,6 +3,7 @@
 
 #include "segcol.h"
 #include "segcol_internal.h"
+#include "type_limits.h"
 
 struct segcol {
 	void *impl;
@@ -100,13 +101,17 @@ int segcol_free(segcol_t *segcol)
  */
 int segcol_append(segcol_t *segcol, segment_t *seg)
 {
+	off_t seg_size;
+	segment_get_size(seg, &seg_size);
+
+	/* Check for segcol->size overflow */
+	if (__MAX(off_t) - segcol->size < seg_size)
+		return EOVERFLOW;
+
 	int err = (*segcol->funcs->append)(segcol, seg);
 
-	if (!err) {
-		off_t size;
-		segment_get_size(seg, &size);
-		segcol->size += size;
-	}
+	if (!err) 
+		segcol->size += seg_size;
 
 	return err;
 }
@@ -126,13 +131,17 @@ int segcol_append(segcol_t *segcol, segment_t *seg)
  */
 int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 {
+	off_t seg_size;
+	segment_get_size(seg, &seg_size);
+
+	/* Check for segcol->size overflow */
+	if (__MAX(off_t) - segcol->size < seg_size)
+		return EOVERFLOW;
+
 	int err = (*segcol->funcs->insert)(segcol, offset, seg);
 
-	if (!err) {
-		off_t size;
-		segment_get_size(seg, &size);
-		segcol->size += size;
-	}
+	if (!err) 
+		segcol->size += seg_size;
 
 	return err;
 }
@@ -149,6 +158,10 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  */
 int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length)
 {
+	/* Check range for overflow */
+	if (__MAX(off_t) - offset < length)
+		return EOVERFLOW;
+
 	int err = (*segcol->funcs->delete)(segcol, deleted, offset, length);
 
 	if (!err) {
