@@ -1,0 +1,45 @@
+Size data types in libbless
+================================
+Alexandros Frantzis, 31 Oct 2008
+
+1. Data types for sizes
+-----------------------
+
+Libbless uses the two standard data types for representing sizes: off_t and
+size_t. The off_t type is used for the sizes of (bless_)buffers and objects that
+represent files. The size_t type is used for in-memory objects.
+
+In the case where it cannot be known what type of object is the off_t data type
+is used. For example the data_object ADT can represent either file or memory
+objects. To be able to cope with both it uses off_t for its size property.
+
+A little care is needed to ensure that the off_t and size_t types are correctly
+used.  The off_t type is used for all variables having to do with either
+offsets or sizes in buffers/files (the 'off_t' name is a bit misleading):
+
+int segcol_delete(segcol_t *segcol, segcol_t **deleted, 
+        off_t offset, off_t length);
+
+On the other hand, if data comes from a file but ends up in memory the 
+size_t type must be used:
+
+int data_object_read(data_object_t *obj, void **buf, 
+        off_t offset, size_t len);
+
+The above function returns a pointer to memory containing the data from
+a data object (eg a file). Regardless of the size of the data object the
+data must fit into memory and therefore its length is of type size_t.
+
+2. Overflow concerns
+--------------------
+
+Whenever there is danger of overflow (or underflow) a suitable check
+is performed. In the case that an overflow is predicted the EOVERFLOW
+error value is returned.
+
+Although off_t is a signed integer, libbless enforces use of only its 
+positive range (an error of EINVAL is raised if an off_t typed argument is
+negative). This makes it easier to check for overflow, because off_t becomes
+practically unsigned. So all overflow checks for (a + b) can be of the form 
+(MAX_A - a < b).
+
