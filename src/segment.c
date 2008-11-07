@@ -37,14 +37,14 @@ int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 	if (segp == NULL)
 		return ENOMEM;
 
-	/* Initialize to NULL, so that segment_change_data works correctly */
+	/* Initialize to NULL, so that segment_set_data works correctly */
 	segp->data_usage_func = NULL;
 
-	int err = segment_change_data(segp, data, data_usage_func);
+	int err = segment_set_data(segp, data, data_usage_func);
 	if (err)
 		goto fail;
 
-	err = segment_change_range(segp, start, size);
+	err = segment_set_range(segp, start, size);
 	if (err)
 		goto fail;
 
@@ -151,7 +151,7 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 	if (split_index == 0)
 		segment_clear(seg);
 	else {
-		err = segment_change_range(seg, start, split_index);
+		err = segment_set_range(seg, start, split_index);
 		if (err)
 			goto fail;
 	}
@@ -202,24 +202,6 @@ int segment_get_start(segment_t *seg, off_t *start)
 }
 
 /**
- * Gets the end offset of a segment_t.
- *
- * @param seg the segment_t
- * @param[out] end the end offset
- *
- * @return the operation error code
- */
-int segment_get_end(segment_t *seg, off_t *end)
-{
-	if (seg == NULL || end == NULL)
-		return EINVAL;
-
-	*end = seg->start + seg->size - 1;
-
-	return 0;
-}
-
-/**
  * Gets the size of a segment_t.
  *
  * @param seg the segment_t
@@ -238,7 +220,7 @@ int segment_get_size(segment_t *seg, off_t *size)
 }
 
 /**
- * Changes the data association of a segment_t.
+ * Sets the data association of a segment_t.
  *
  * @param seg the segment_t
  * @param data the new data associated with the segment
@@ -247,7 +229,7 @@ int segment_get_size(segment_t *seg, off_t *size)
  *
  * @return the operation error code
  */
-int segment_change_data(segment_t *seg, void *data,
+int segment_set_data(segment_t *seg, void *data,
 		segment_data_usage_func data_usage_func)
 {
 	if (seg == NULL)
@@ -268,7 +250,7 @@ int segment_change_data(segment_t *seg, void *data,
 }
 
 /**
- * Changes the range of a segment_t.
+ * Sets the range of a segment_t.
  *
  * @param seg the segment_t
  * @param start the new start offset
@@ -276,7 +258,7 @@ int segment_change_data(segment_t *seg, void *data,
  *
  * @return the operation error code
  */
-int segment_change_range(segment_t *seg, off_t start, off_t size)
+int segment_set_range(segment_t *seg, off_t start, off_t size)
 {
 	if (seg == NULL || start < 0 || size < 0)
 		return EINVAL;

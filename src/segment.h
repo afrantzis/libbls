@@ -36,13 +36,11 @@ int segment_get_data(segment_t *seg, void **data);
 
 int segment_get_start(segment_t *seg, off_t *start);
 
-int segment_get_end(segment_t *seg, off_t *end);
-
 int segment_get_size(segment_t *seg, off_t *size);
 
-int segment_change_data(segment_t *seg, void *data,
+int segment_set_data(segment_t *seg, void *data,
 		segment_data_usage_func data_usage_func);
 
-int segment_change_range(segment_t *seg, off_t start, off_t size);
+int segment_set_range(segment_t *seg, off_t start, off_t size);
 
 #endif /* _SEGMENT_H */
