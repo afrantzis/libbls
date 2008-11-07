@@ -11,6 +11,7 @@
 #include "segcol.h"
 #include "segcol_internal.h"
 #include "segcol_list.h"
+#include "type_limits.h"
 
 
 /**
@@ -55,7 +56,7 @@ int segcol_list_new(segcol_t **segcol);
 static int segcol_list_free(segcol_t *segcol);
 static int segcol_list_append(segcol_t *segcol, segment_t *seg); 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg); 
-static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, size_t length);
+static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t length);
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset);
 static int segcol_list_iter_new(segcol_t *segcol, void **iter);
 static int segcol_list_iter_next(segcol_iter_t *iter);
@@ -361,7 +362,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg) 
 {
-	if (segcol == NULL || seg == NULL)
+	if (segcol == NULL || seg == NULL || offset < 0)
 		return EINVAL;
 
 	struct segcol_list_impl *impl =
@@ -440,10 +441,14 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
  *        offset  offset + length
  */
 static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
-		offset, size_t length)
+		offset, off_t length)
 { 
-	if (segcol == NULL)
+	if (segcol == NULL || offset < 0 || length < 0)
 		return EINVAL;
+
+	/* Check range for overflow */
+	if (__MAX(off_t) - offset < length)
+		return EOVERFLOW;
 
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -498,10 +503,10 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		return err;
 
 	/* Calculate new size, after having deleted the chain */
-	size_t new_size;
+	off_t new_size;
 	segcol_get_size(segcol, &new_size);
 
-	size_t last_seg_size;
+	off_t last_seg_size;
 	err = segment_get_size(last_node->segment, &last_seg_size);
 
 	new_size -= last_mapping + last_seg_size - first_mapping;
@@ -538,8 +543,10 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		 * to the split in the handling of the first node. Take this into
 		 * account to correctly calculate the index for the second split.
 		 */
-		int last_seg_dec = 0; if (first_node == last_node) last_seg_dec =
-			offset - first_mapping;
+		int last_seg_dec = 0;
+		
+		if (first_node == last_node)
+			last_seg_dec = offset - first_mapping;
 
 		segment_t *tmp_seg;
 		segment_split(last_node->segment, &tmp_seg,
@@ -588,7 +595,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
-	if (segcol == NULL)
+	if (segcol == NULL || iter == NULL || offset < 0)
 		return EINVAL;
 
 	int err;
@@ -609,7 +616,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	/* linear search of list nodes */
 	while (cur_node != cur_node->next && cur_node != cur_node->prev) {
 		segment_t *seg = cur_node->segment;
-		size_t seg_size;
+		off_t seg_size;
 		err = segment_get_size(seg, &seg_size);
 		if (err)
 			return err;
@@ -694,7 +701,7 @@ static int segcol_list_iter_next(segcol_iter_t *iter)
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
 	if (iter_impl->node != iter_impl->node->next) {
-		size_t node_size;
+		off_t node_size;
 		segment_get_size(iter_impl->node->segment, &node_size);
 		iter_impl->node = iter_impl->node->next;
 		iter_impl->mapping = iter_impl->mapping + node_size;

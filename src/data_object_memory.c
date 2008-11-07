@@ -11,10 +11,11 @@
 #include "data_object.h"
 #include "data_object_internal.h"
 #include "data_object_memory.h"
+#include "type_limits.h"
 
 
 /* forward declerations */
-static int data_object_memory_get_size(data_object_t *obj, size_t *size);
+static int data_object_memory_get_size(data_object_t *obj, off_t *size);
 static int data_object_memory_free(data_object_t *obj);
 static int data_object_memory_write(data_object_t *obj, off_t offset, void *data,
 		size_t len);
@@ -104,15 +105,18 @@ int data_object_memory_new_data(data_object_t **obj, void *data, size_t size)
 static int data_object_memory_read(data_object_t *obj, void **buf, off_t offset,
 		size_t len)
 {
-	if (obj == NULL || buf == NULL)
+	if (obj == NULL || buf == NULL || offset < 0)
 		return EINVAL;
+
+	/* Check for overflow */
+	if (__MAX(off_t) - offset < len)
+		return EOVERFLOW;
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
 	/* Make sure that the range is valid */
-	/* TODO: Check for overflow */
-	if (offset < 0 || offset + len - 1 * (len != 0) >= impl->size)
+	if (offset + len - 1 * (len != 0) >= impl->size)
 		return EINVAL;
 
 	*buf = impl->data + offset;
@@ -123,15 +127,18 @@ static int data_object_memory_read(data_object_t *obj, void **buf, off_t offset,
 static int data_object_memory_write(data_object_t *obj, off_t offset, void *data,
 		size_t len)
 {
-	if (obj == NULL || data == NULL)
+	if (obj == NULL || data == NULL || offset < 0)
 		return EINVAL;
+
+	/* Check for overflow */
+	if (__MAX(off_t) - offset < len)
+		return EOVERFLOW;
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
 	/* Make sure that the range is valid */
-	/* TODO: Check for overflow */
-	if (offset < 0 || offset + len - 1 * (len != 0) >= impl->size)
+	if (offset + len - 1 * (len != 0) >= impl->size)
 		return EINVAL;
 
 	memcpy(impl->data + offset, data, len);
@@ -153,7 +160,7 @@ static int data_object_memory_free(data_object_t *obj)
 	return 0;
 }
 
-static int data_object_memory_get_size(data_object_t *obj, size_t *size)
+static int data_object_memory_get_size(data_object_t *obj, off_t *size)
 {
 	if (obj == NULL)
 		return EINVAL;
@@ -161,7 +168,7 @@ static int data_object_memory_get_size(data_object_t *obj, size_t *size)
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
-	*size = impl->size;
+	*size = (off_t) impl->size;
 
 	return 0;
 }

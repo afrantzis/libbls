@@ -124,7 +124,7 @@ int data_object_free(data_object_t *obj)
  *
  * @return the operation error code
  */
-int data_object_get_size(data_object_t *obj, size_t *size)
+int data_object_get_size(data_object_t *obj, off_t *size)
 {
 	return (*obj->funcs->get_size)(obj, size);
 }

@@ -21,6 +21,6 @@ int data_object_write(data_object_t *obj, off_t offset, void *data, size_t len);
 
 int data_object_free(data_object_t *obj);
 
-int data_object_get_size(data_object_t *obj, size_t *size);
+int data_object_get_size(data_object_t *obj, off_t *size);
 
 #endif

@@ -35,7 +35,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
  *
  * @return the operation error code
  */
-int bless_buffer_delete(bless_buffer_t *buf, off_t offset, size_t len)
+int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t len)
 {
 	return -1;
 }
@@ -69,7 +69,7 @@ int bless_buffer_read(bless_buffer_t *src, off_t src_offset, void *dst,
  * @return the operation error code
  */
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
-		off_t dst_offset, size_t len)
+		off_t dst_offset, off_t len)
 {
 	return -1;
 }
