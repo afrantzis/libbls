@@ -118,9 +118,14 @@ int segment_clear(segment_t *seg)
 /**
  * Splits a segment.
  *
+ * This functions splits a segment into two. The original segment is changed
+ * in-place and a new one is created. The caller is responsible for managing
+ * the new segment (eg freeing it).
+ *
  * @param seg the segment_t to split
- * @param[out] seg1 the new segment
- * @param split_index the index of the point in the segment_t to split at
+ * @param[out] seg1 the created new segment
+ * @param split_index the index in the original segment_t that will be the 
+ *                    start of the new segment_t
  *
  * @return the operation error code
  */

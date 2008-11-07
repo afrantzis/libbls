@@ -9,6 +9,21 @@
 #include <sys/types.h>
 
 /**
+ * @defgroup segment Segment ADT
+ *
+ * A segment holds information about a continuous part of a data object.
+ *
+ * By default, when a segment becomes associated with a data object, the
+ * segment is not responsible for managing the data object's memory. This
+ * kind of memory management can be achieved be specifying the data_usage_func
+ * when creating the segment or changing its data association. The function 
+ * is called whenever the segment is created or freed and updates the data 
+ * object's usage count.
+ *
+ * @{
+ */
+
+/**
  * Opaque type for segment ADT.
  */
 typedef struct segment segment_t;
@@ -42,5 +57,7 @@ int segment_set_data(segment_t *seg, void *data,
 		segment_data_usage_func data_usage_func);
 
 int segment_set_range(segment_t *seg, off_t start, off_t size);
+
+/** @} */
 
 #endif /* _SEGMENT_H */
