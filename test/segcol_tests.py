@@ -283,8 +283,24 @@ class SegcolTestsList(unittest.TestCase):
 			self.assertEqual(mapping, (i/6)*6)
 
 			self.assertEqual(seg, segs[i/6])
-			
 
+	def testTryFindInvalidOffset(self):
+		"Try to search for invalid offsets"
+
+		(err, iter) = segcol_find(self.segcol, 0)
+		self.assertNotEqual(err, 0)
+
+		# Insert some segments into the segcol
+		self.testInsertBeginning()
+		size = segcol_get_size(self.segcol)[1]
+
+		(err, iter) = segcol_find(self.segcol, size)
+		self.assertNotEqual(err, 0)
+
+		# Segcol should remain ["BBB"]-["abcdef"]-["012345"]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
+
+		self.check_iter_segments(self.segcol, segs)
 
 
 if __name__ == '__main__':

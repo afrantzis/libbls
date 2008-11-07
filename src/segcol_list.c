@@ -373,10 +373,6 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	if (err)
 		return err;
 
-	int valid;
-	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
-			return EINVAL;
-
 	segcol_list_clear_cache(impl);
 
 	segment_t *pseg;
@@ -599,6 +595,15 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 	int err;
 
+	/* Make sure offset is in range */
+	off_t segcol_size;
+	err = segcol_get_size(segcol, &segcol_size);
+	if (err)
+		return err;
+
+	if (offset >= segcol_size)
+		return EINVAL;
+
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
@@ -642,7 +647,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 		if (offset < cur_mapping) {
 			cur_node = cur_node->prev;
 			/* 
-			 * Fix the mapping in the next iteration. Otherwise we would
+			 * Fix the mapping in the next iteration. Otherwise we would have
 			 * to get the size here, which is a waste since we are doing
 			 * that at the start of the loop.
 			 */
@@ -666,10 +671,6 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	iter_impl->node = cur_node;
 	iter_impl->mapping = cur_mapping;
 
-	/* 
-	 * at this point we either have an invalid iter (search failed)
-	 * or a valid iter that points to the correct node (search succeeded)
-	 */
 	return 0;
 }
 
