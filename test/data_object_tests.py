@@ -5,21 +5,22 @@ class DataObjectMemoryTests(unittest.TestCase):
 
 	def setUp(self):
 		(err, self.obj) = data_object_memory_new(10)
-	
+
 	def tearDown(self):
 		data_object_free(self.obj)
 
 	def testNew(self):
 		"Create a segment"
-	
+
 	def testWriteWhole(self):
 		"Write to a whole data object"
 
 		data = "0123456789" 
-		err = data_object_write(self.obj, 0, data, 10)
+		(err, buf) = data_object_get_data(self.obj, 0, 10, DATA_OBJECT_WRITE)
+		buf[:] = data
 		self.assertEqual(err, 0)
 
-		(err, buf) = data_object_read(self.obj, 0, 10)
+		(err, buf) = data_object_get_data(self.obj, 0, 10, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		for i in range(len(buf)):
@@ -33,10 +34,11 @@ class DataObjectMemoryTests(unittest.TestCase):
 		whole_data = "abcd456789"
 
 		data = "abcd" 
-		err = data_object_write(self.obj, 0, data, 4)
+		(err, buf) = data_object_get_data(self.obj, 0, 4, DATA_OBJECT_WRITE)
+		buf[:] = data
 		self.assertEqual(err, 0)
 
-		(err, buf) = data_object_read(self.obj, 0, 10)
+		(err, buf) = data_object_get_data(self.obj, 0, 10, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		for i in range(len(buf)):
@@ -50,10 +52,11 @@ class DataObjectMemoryTests(unittest.TestCase):
 		whole_data = "012345wxyz"
 
 		data = "wxyz" 
-		err = data_object_write(self.obj, 6, data, 4)
+		(err, buf) = data_object_get_data(self.obj, 6, 4, DATA_OBJECT_WRITE)
+		buf[:] = data
 		self.assertEqual(err, 0)
 
-		(err, buf) = data_object_read(self.obj, 0, 10)
+		(err, buf) = data_object_get_data(self.obj, 0, 10, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		for i in range(len(buf)):
@@ -67,10 +70,11 @@ class DataObjectMemoryTests(unittest.TestCase):
 		whole_data = "012klmn789"
 
 		data = "klmn" 
-		err = data_object_write(self.obj, 3, data, 4)
+		(err, buf) = data_object_get_data(self.obj, 3, 4, DATA_OBJECT_WRITE)
+		buf[:] = data
 		self.assertEqual(err, 0)
 
-		(err, buf) = data_object_read(self.obj, 0, 10)
+		(err, buf) = data_object_get_data(self.obj, 0, 10, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		for i in range(len(buf)):
@@ -81,7 +85,7 @@ class DataObjectMemoryTests(unittest.TestCase):
 
 		self.testWriteWhole()
 
-		(err, buf) = data_object_read(self.obj, 0, 4)
+		(err, buf) = data_object_get_data(self.obj, 0, 4, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		data = "0123"
@@ -89,7 +93,7 @@ class DataObjectMemoryTests(unittest.TestCase):
 		for i in range(len(buf)):
 			self.assertEqual(buf[i], data[i])
 
-		(err, buf) = data_object_read(self.obj, 3, 4)
+		(err, buf) = data_object_get_data(self.obj, 3, 4, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		data = "3456"
@@ -97,7 +101,7 @@ class DataObjectMemoryTests(unittest.TestCase):
 		for i in range(len(buf)):
 			self.assertEqual(buf[i], data[i])
 
-		(err, buf) = data_object_read(self.obj, 6, 4)
+		(err, buf) = data_object_get_data(self.obj, 6, 4, DATA_OBJECT_READ)
 		self.assertEqual(err, 0)
 
 		data = "6789"
@@ -116,29 +120,29 @@ class DataObjectMemoryTests(unittest.TestCase):
 	def testReadInvalid(self):
 		"Try to read from invalid ranges in a data object"
 
-		(err, buf) = data_object_read(self.obj, -1, 5)
+		(err, buf) = data_object_get_data(self.obj, -1, 5, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#1")
 
 		# Yes, this one is actually valid!
-		(err, buf) = data_object_read(self.obj, 0, 0)
+		(err, buf) = data_object_get_data(self.obj, 0, 0, DATA_OBJECT_READ)
 		self.assertEqual(err, 0, "#2")
 
-		(err, buf) = data_object_read(self.obj, 0, 11)
+		(err, buf) = data_object_get_data(self.obj, 0, 11, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#3")
-		
-		(err, buf) = data_object_read(self.obj, 5, 17)
+
+		(err, buf) = data_object_get_data(self.obj, 5, 17, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#4")
 
-		(err, buf) = data_object_read(self.obj, 9, 2)
+		(err, buf) = data_object_get_data(self.obj, 9, 2, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#5")
 
-		(err, buf) = data_object_read(self.obj, 10, 0)
+		(err, buf) = data_object_get_data(self.obj, 10, 0, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#6")
 
-		(err, buf) = data_object_read(self.obj, 10, 1)
+		(err, buf) = data_object_get_data(self.obj, 10, 1, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#7")
 
-		(err, buf) = data_object_read(self.obj, 17, 444)
+		(err, buf) = data_object_get_data(self.obj, 17, 444, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#8")
 
 if __name__ == '__main__':

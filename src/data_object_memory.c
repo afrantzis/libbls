@@ -17,15 +17,12 @@
 /* forward declerations */
 static int data_object_memory_get_size(data_object_t *obj, off_t *size);
 static int data_object_memory_free(data_object_t *obj);
-static int data_object_memory_write(data_object_t *obj, off_t offset, void *data,
-		size_t len);
-static int data_object_memory_read(data_object_t *obj, void **buf, off_t offset,
-		size_t len);
+static int data_object_memory_get_data(data_object_t *obj, void **buf, off_t offset,
+		size_t *length, data_object_flags flags);
 
 /* Function pointers for the memory implementation of data_object_t */
 static struct data_object_funcs data_object_memory_funcs = {
-	.read = data_object_memory_read,
-	.write = data_object_memory_write,
+	.get_data = data_object_memory_get_data,
 	.free = data_object_memory_free,
 	.get_size = data_object_memory_get_size
 };
@@ -102,11 +99,13 @@ int data_object_memory_new_data(data_object_t **obj, void *data, size_t size)
 }
 
 
-static int data_object_memory_read(data_object_t *obj, void **buf, off_t offset,
-		size_t len)
+static int data_object_memory_get_data(data_object_t *obj, void **buf, 
+		off_t offset, size_t *length, data_object_flags flags)
 {
-	if (obj == NULL || buf == NULL || offset < 0)
+	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
 		return EINVAL;
+
+	size_t len = *length;
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < len)
@@ -120,28 +119,6 @@ static int data_object_memory_read(data_object_t *obj, void **buf, off_t offset,
 		return EINVAL;
 
 	*buf = impl->data + offset;
-
-	return 0;
-}
-
-static int data_object_memory_write(data_object_t *obj, off_t offset, void *data,
-		size_t len)
-{
-	if (obj == NULL || data == NULL || offset < 0)
-		return EINVAL;
-
-	/* Check for overflow */
-	if (__MAX(off_t) - offset < len)
-		return EOVERFLOW;
-
-	struct data_object_memory_impl *impl =
-		data_object_get_impl(obj);
-
-	/* Make sure that the range is valid */
-	if (offset + len - 1 * (len != 0) >= impl->size)
-		return EINVAL;
-
-	memcpy(impl->data + offset, data, len);
 
 	return 0;
 }

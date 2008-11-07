@@ -74,50 +74,19 @@
     }
 }
 
-/* Make data_object_read() binding output a PyBuffer */
-%typemap(argout) (data_object_t *obj, void **buf, off_t offset, size_t len)
+/* handle 'length' in data_object_get_data() */
+%typemap(in) size_t *length = size_t *INPUT;
+
+/* Make data_object_get_data() binding output a PyBuffer */
+%typemap(argout) (data_object_t *obj, void **buf, off_t offset,
+size_t *length, data_object_flags flags)
 {
-    %append_output(PyBuffer_FromMemory(*((unsigned char **)$2), $4));
-}
-
-%{
-/* Gets a pointer to the first segment of raw data of a PyBuffer */
-void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
-{
-    PyTypeObject *tobj = obj->ob_type;
-
-    PyBufferProcs *procs = tobj->tp_as_buffer;
-
-    /* if object does not support the buffer interface... */
-    if (procs == NULL)
-        return NULL;
-
-    readbufferproc proc = procs->bf_getreadbuffer;
-
-    void *ptr;
-
-    *size = (*proc)(obj, 0, &ptr);
-
-    return ptr;
-}
-%}
-
-/* 
- * Make the data_object_write() binding accept as data input objects that
- * support the PyBuffer interface.
- */
-%exception data_object_write
-{
-    ssize_t s;
-    arg3 = get_read_buf_pyobj(obj2, &s);
-
-    if (s >= arg4) {
-        arg4 = s;
-        $action
-    }
+    if (($5 | DATA_OBJECT_RW) != 0)
+        %append_output(PyBuffer_FromReadWriteMemory(*((unsigned char **)$2), *$4));
     else
-        result = 666;
+        %append_output(PyBuffer_FromMemory(*((unsigned char **)$2), *$4));
 }
+
 
 /*
  * Typemaps that handle output arguments.
@@ -125,7 +94,7 @@ void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
 
 %apply int *OUTPUT { int * };
 %apply long long *OUTPUT { off_t * };
-%apply unsigned long long  *OUTPUT { size_t * };
+%apply unsigned long long *OUTPUT { size_t * };
 
 %include "../src/segment.h"
 %include "../src/segcol.h"

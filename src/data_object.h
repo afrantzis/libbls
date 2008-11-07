@@ -15,9 +15,17 @@
  */
 typedef struct data_object data_object_t;
 
-int data_object_read(data_object_t *obj, void **buf, off_t offset, size_t len);
+/** 
+ * Flags for the usage of data returned by data_object_get_data().
+ */
+typedef enum { 
+	DATA_OBJECT_READ = 1, /**< Data will be used just for reading */
+	DATA_OBJECT_WRITE = 2, /**< Data will be used just for writing */
+	DATA_OBJECT_RW = 3 /**< Data will be used for both reading and writing */
+} data_object_flags;
 
-int data_object_write(data_object_t *obj, off_t offset, void *data, size_t len);
+int data_object_get_data(data_object_t *obj, void **buf, off_t offset,
+		size_t *length, data_object_flags flags);
 
 int data_object_free(data_object_t *obj);
 
