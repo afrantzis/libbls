@@ -133,7 +133,6 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
  * This operation doesn't free the memory
  * occupied by the nodes.
  *
- * @param impl the list to delete the chain from
  * @param first the first node in the chain to delete
  * @param last the last node in the chain to delete
  *
@@ -181,7 +180,7 @@ static int list_new_node(struct list_node **node)
 /**
  * Finds the node in the segcol_list that contains a logical offset.
  * 
- * @param segcol_list the segcol_list to search
+ * @param segcol the segcol_t to search
  * @param[out] node the found node (or NULL if not found)
  * @param[out] mapping the mapping of the found node
  * @param offset the offset to look for
