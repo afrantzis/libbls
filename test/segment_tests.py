@@ -26,9 +26,6 @@ class SegmentTests(unittest.TestCase):
 		self.assertEqual(segment_get_start(seg1)[1],
 				segment_get_start(self.seg)[1])
 
-		self.assertEqual(segment_get_end(seg1)[1],
-				segment_get_end(self.seg)[1])
-
 		self.assertEqual(segment_get_size(seg1)[1],
 				segment_get_size(self.seg)[1])
 
@@ -44,57 +41,56 @@ class SegmentTests(unittest.TestCase):
 
 	def testChangeRange(self):
 		"Change a segment"
-		segment_change_range(self.seg, 666, 112358)
+		segment_set_range(self.seg, 666, 112358)
 		
 		self.assertEqual(segment_get_start(self.seg)[1], 666)
-		self.assertEqual(segment_get_end(self.seg)[1], 666 + 112358 - 1)
 
 		self.assertEqual(segment_get_size(self.seg)[1], 112358)
 	
 	def testSplitMiddle(self):
 		"Split a segment in the middle"
-		segment_change_range(self.seg, 0, 1000)
+		segment_set_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 99)
 		
 		self.assertEqual(segment_get_start(self.seg)[1], 0)
-		self.assertEqual(segment_get_end(self.seg)[1], 98)
+		self.assertEqual(segment_get_size(self.seg)[1], 99)
 
 		self.assertEqual(segment_get_start(seg1)[1], 99)
-		self.assertEqual(segment_get_end(seg1)[1], 999)
+		self.assertEqual(segment_get_size(seg1)[1], 901)
 		
 		segment_free(seg1)
 
 	def testSplitEnd(self):
 		"Split a segment at the end"
-		segment_change_range(self.seg, 0, 1000)
+		segment_set_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 999)
 		
 		self.assertEqual(segment_get_start(self.seg)[1], 0)
-		self.assertEqual(segment_get_end(self.seg)[1], 998)
+		self.assertEqual(segment_get_size(self.seg)[1], 999)
 
 		self.assertEqual(segment_get_start(seg1)[1], 999)
-		self.assertEqual(segment_get_end(seg1)[1], 999)
+		self.assertEqual(segment_get_size(seg1)[1], 1)
 		
 		segment_free(seg1)
 
 	def testSplitStart(self):
 		"Split a segment at the start"
-		segment_change_range(self.seg, 0, 1000)
+		segment_set_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 0)
 		
 		self.assertEqual(segment_get_size(self.seg)[1], 0)
 
 		self.assertEqual(segment_get_start(seg1)[1], 0)
-		self.assertEqual(segment_get_end(seg1)[1], 999)
+		self.assertEqual(segment_get_size(seg1)[1], 1000)
 		
 		segment_free(seg1)
 
 	def testSplitOutOfRange(self):
 		"Try to split at a point out of range"
-		segment_change_range(self.seg, 0, 1000)
+		segment_set_range(self.seg, 0, 1000)
 
 		(err, seg1) = segment_split(self.seg, 1000)
 		

@@ -7,12 +7,15 @@
 #ifndef _DATA_OBJECT_INTERNAL_H
 #define _DATA_OBJECT_INTERNAL_H
 
+#include <sys/types.h>
+#include "data_object.h"
+
 /**
  * The functions in the data_object ADT that must be implemented.
  */
 struct data_object_funcs {
-	int (*read)(data_object_t *obj, void **buf, off_t start, size_t len);
-	int (*write)(data_object_t *obj, off_t offset, void *data, size_t len);
+	int (*get_data)(data_object_t *obj, void **buf, off_t offset,
+		size_t *length, data_object_flags flags);
 	int (*free)(data_object_t *obj);
 	int (*get_size)(data_object_t *obj, off_t *size);
 };

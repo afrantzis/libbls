@@ -121,7 +121,7 @@ int segcol_append(segcol_t *segcol, segment_t *seg)
  * 
  * After the invocation of this function the segcol_t is responsible
  * for the memory handling of the specified segment. The segment should
- * not be further manipulated by the user.
+ * not be further manipulated by the caller.
  *
  * @param segcol the segcol_t to insert into
  * @param offset the logical offset at which to insert
@@ -148,9 +148,10 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 
 /**
  * Deletes a logical range from the segcol_t.
- * 
+ *
  * @param segcol the segcol_t to delete from
- * @param[out] deleted a new segcol_t containing the deleted segments or NULL on error
+ * @param[out] deleted if it is not NULL, on return it will point to a new 
+ *                     segcol_t containing the deleted segments
  * @param offset the logical offset to start deleting at
  * @param length the length of the range to delete
  * 
@@ -228,7 +229,7 @@ int segcol_iter_is_valid(segcol_iter_t *iter, int *valid)
  * Gets the segment pointed to by a segcol_iter_t.
  *
  * @param iter the iter to use
- * @param[out] the pointed segment or NULL if the iterator is invalid
+ * @param[out] seg the pointed segment or NULL if the iterator is invalid
  *
  * @return the operation error code
  */
@@ -257,7 +258,7 @@ int segcol_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
  * 
  * It is an error to use a segcol_iter_t after freeing it.
  *
- * @param iter the iter to use
+ * @param iter the segcol_iter_t to free
  *
  * @return the operation error code
  */

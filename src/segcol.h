@@ -12,7 +12,19 @@
 #include "segment.h"
 
 /**
- * @defgroup segcol Segment Collection ADT.
+ * @defgroup segcol Segment Collection ADT
+ *
+ * A Segment Collection manages a collection of segments virtually arranged
+ * in a continuous linear space.
+ *
+ * There may be many implementations of the Segment Collection ADT, each with
+ * its own performance characteristics. To create a Segment Collection one
+ * must use the constructor functions defined in each implementation 
+ * (eg segcol_list_new()).
+ *
+ * A note on error codes: all functions return EINVAL when an invalid range
+ * is specified (eg an offset is outside the limits of the virtual space of
+ * a Segment Collection).
  *
  * @{
  */

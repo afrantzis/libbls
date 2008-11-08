@@ -133,7 +133,6 @@ static int list_insert_after(struct list_node *p, struct list_node *q)
  * This operation doesn't free the memory
  * occupied by the nodes.
  *
- * @param impl the list to delete the chain from
  * @param first the first node in the chain to delete
  * @param last the last node in the chain to delete
  *
@@ -181,7 +180,7 @@ static int list_new_node(struct list_node **node)
 /**
  * Finds the node in the segcol_list that contains a logical offset.
  * 
- * @param segcol_list the segcol_list to search
+ * @param segcol the segcol_t to search
  * @param[out] node the found node (or NULL if not found)
  * @param[out] mapping the mapping of the found node
  * @param offset the offset to look for
@@ -373,10 +372,6 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	int err = segcol_list_find(segcol, &iter, offset);
 	if (err)
 		return err;
-
-	int valid;
-	if (segcol_list_iter_is_valid(iter, &valid) || !valid)
-			return EINVAL;
 
 	segcol_list_clear_cache(impl);
 
@@ -600,6 +595,15 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 	int err;
 
+	/* Make sure offset is in range */
+	off_t segcol_size;
+	err = segcol_get_size(segcol, &segcol_size);
+	if (err)
+		return err;
+
+	if (offset >= segcol_size)
+		return EINVAL;
+
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
@@ -643,7 +647,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 		if (offset < cur_mapping) {
 			cur_node = cur_node->prev;
 			/* 
-			 * Fix the mapping in the next iteration. Otherwise we would
+			 * Fix the mapping in the next iteration. Otherwise we would have
 			 * to get the size here, which is a waste since we are doing
 			 * that at the start of the loop.
 			 */
@@ -667,10 +671,6 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	iter_impl->node = cur_node;
 	iter_impl->mapping = cur_mapping;
 
-	/* 
-	 * at this point we either have an invalid iter (search failed)
-	 * or a valid iter that points to the correct node (search succeeded)
-	 */
 	return 0;
 }
 

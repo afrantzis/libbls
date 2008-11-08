@@ -59,42 +59,32 @@ void *data_object_get_impl(data_object_t *obj)
  * API functions *
  *****************/
 
-/**
- * Reads data from the data object.
- *
- * This function will provide a pointer that points to a location to read
- * the data from. This may be the original data (not a copy) and must not be 
- * altered!
- *
- * Furthermore, this pointer is valid only as long as no other access is made
- * to the data object (watch out for concurrency issues!).
- *
- * @param obj the obj to read from
- * @param[out] buf the buf that will point to the location to read data from
- * @param offset the offset in the data object to read from
- * @param len the length of the data to read
- *
- * @return the operation error code
- */
-int data_object_read(data_object_t *obj, void **buf, off_t offset, size_t len)
-{
-	return (*obj->funcs->read)(obj, buf, offset, len);
-}
 
-/**
- * Writes data to the data object.
+/** 
+ * Gets a pointer to data from the data object.
  *
- * @param obj the obj to write to
- * @param offset the offset in the data object to write to
- * @param data the data to write
- * @param len the length of the data to write
+ * This function provides a pointer that points to a location that contains
+ * the data range requested. It is possible that a call to this function
+ * retrieves only some of the requested data. Subsequent calls may be needed to
+ * complete the whole operation.
+ *
+ * Furthermore, the pointer returned is valid only as long as no other access
+ * is made to the data object (watch out for concurrency issues!).
+ *
+ * @param obj the obj to get the data from
+ * @param[out] buf the location that will contain the data
+ * @param offset the offset in the data object to get data from
+ * @param[in,out] length the length of the data to get, on return will contain
+ *                       the length of the data that was actually retrieved
+ * @param flags whether the data will be read or written to (or both)
  *
  * @return the operation error code
  */
-int data_object_write(data_object_t *obj, off_t offset, void *data,
-		size_t len)
+
+int data_object_get_data(data_object_t *obj, void **buf, off_t offset,
+		size_t *length, data_object_flags flags)
 {
-	return (*obj->funcs->write)(obj, offset, data, len);
+	return (*obj->funcs->get_data)(obj, buf, offset, length, flags);
 }
 
 /**
