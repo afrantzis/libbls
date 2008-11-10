@@ -8,6 +8,7 @@
 #include "segcol_list.h"
 #include "data_object.h"
 #include "data_object_memory.h"
+#include "data_object_file.h"
 #include "buffer.h"
 %}
 
@@ -101,6 +102,7 @@ size_t *length, data_object_flags flags)
 %include "../src/segcol_list.h"
 %include "../src/data_object.h"
 %include "../src/data_object_memory.h"
+%include "../src/data_object_file.h"
 %include "../src/buffer.h"
 
 
