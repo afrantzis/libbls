@@ -32,9 +32,11 @@ typedef struct segment segment_t;
  * Function called to change the usage count of some data.
  *
  * @param data the data whose usage count is being changed
- * @param change the change in the usage count
+ * @param change the change in the usage count or 0 to reset the count
+ *
+ * @return the operation error code
  */
-typedef void (*segment_data_usage_func)(void *data, int change);
+typedef int (*segment_data_usage_func)(void *data, int change);
 
 int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 		segment_data_usage_func data_usage_func);

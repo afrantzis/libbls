@@ -29,6 +29,8 @@ int data_object_get_data(data_object_t *obj, void **buf, off_t offset,
 
 int data_object_free(data_object_t *obj);
 
+int data_object_update_usage(void *obj, int change);
+
 int data_object_get_size(data_object_t *obj, off_t *size);
 
 #endif

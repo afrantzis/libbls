@@ -12,6 +12,7 @@
 struct data_object {
 	void *impl;
 	struct data_object_funcs *funcs;
+	int usage;
 };
 
 /**********************
@@ -42,6 +43,7 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 
 	(*obj)->impl = impl;
 	(*obj)->funcs = funcs;
+	(*obj)->usage = 0;
 
 	return 0;
 	
@@ -106,6 +108,40 @@ int data_object_free(data_object_t *obj)
 	return 0;
 }
 
+/**
+ * Updates the usage count of this data object.
+ *
+ * If the usage count falls to zero (or below) the data object
+ * is freed. This function is to be called by the memory management 
+ * system of segment_t.
+ *
+ * @param obj the data object
+ * @param change the change in the usage count or 0 to reset the count
+ *
+ * @return the operation error code
+ */
+int data_object_update_usage(void *obj, int change)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	data_object_t *data_obj = (data_object_t *) obj;
+
+	if (change == 0) {
+		data_obj->usage = 0;
+		return 0;
+	}
+
+	data_obj->usage += change;
+
+	if (data_obj->usage <= 0) {
+		int err = data_object_free(data_obj);
+		if (err)
+			return err;
+	}
+
+	return 0;
+}
 /**
  * Gets the size of the data object.
  *

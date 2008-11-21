@@ -240,16 +240,25 @@ int segment_set_data(segment_t *seg, void *data,
 	if (seg == NULL)
 		return EINVAL;
 
+	/* Increase the usage count of the new data */
+	if (data_usage_func != NULL) {
+		int err = (*data_usage_func)(data, 1);
+		if (err)
+			return err;
+	}
+
 	/* Decrease the usage count of the old data */
-	if (seg->data_usage_func != NULL)
-		(*seg->data_usage_func)(seg->data, -1);
+	if (seg->data_usage_func != NULL) {
+		int err = (*seg->data_usage_func)(seg->data, -1);
+		if (err) {
+			/* Reset the usage count of the new data */
+			(*data_usage_func)(data, 0);
+			return err;
+		}
+	}
 
 	seg->data = data;
 	seg->data_usage_func = data_usage_func;
-
-	/* Increase the usage count of the new data */
-	if (seg->data_usage_func != NULL)
-		(*seg->data_usage_func)(seg->data, 1);
 
 	return 0;
 }
