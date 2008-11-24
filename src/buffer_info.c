@@ -7,6 +7,7 @@
  * @author Alexandros Frantzis
  */
 
+#include <errno.h>
 #include "buffer.h"
 #include "buffer_internal.h"
 
@@ -59,6 +60,9 @@ int bless_buffer_get_fd(bless_buffer_t *buf, int *fd)
  */
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 {
-	return -1;
+	if (buf == NULL || size == NULL)
+		return EINVAL;
+
+	return segcol_get_size(buf->segcol, size);
 }
 

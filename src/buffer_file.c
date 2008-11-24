@@ -7,8 +7,11 @@
  * @author Michael Iatrou
  */
 
+#include <errno.h>
+#include <stdlib.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "segcol_list.h"
 
 /**
  * Creates an empty bless_buffer_t.
@@ -19,7 +22,21 @@
  */
 int bless_buffer_new(bless_buffer_t **buf)
 {
-	return NULL;
+	if (buf == NULL)
+		return EINVAL;
+
+	*buf = malloc(sizeof **buf);
+
+	if (*buf == NULL)
+		return ENOMEM;
+	
+	int err = segcol_list_new(&(*buf)->segcol);
+	if (err) {
+		free(buf);
+		return err;
+	}
+
+	return 0;
 }
 
 /**
@@ -33,7 +50,7 @@ int bless_buffer_new(bless_buffer_t **buf)
  *
  * @return the operation error code
  */
-int bless_buffer_create(bless_buffer_t **buf, int fd)
+int bless_buffer_new_from_file(bless_buffer_t **buf, int fd)
 {
 	return NULL;
 }
@@ -57,15 +74,15 @@ int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb)
 }
 
 /**
- * Destroys a bless_buffer_t.
+ * Frees a bless_buffer_t.
  *
- * Destroying a bless_buffer_t frees all
+ * Freeing a bless_buffer_t frees all
  * related resources but does not close any related files.
  *
  * @param buf the bless_buffer_t to close
  * @return the operation error code
  */
-int bless_buffer_destroy(bless_buffer_t *buf)
+int bless_buffer_free(bless_buffer_t *buf)
 {
 	return -1;
 }

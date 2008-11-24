@@ -44,11 +44,11 @@ typedef int (*bless_progress_cb)(void *info);
 
 int bless_buffer_new(bless_buffer_t **buf);
 
-int bless_buffer_create(bless_buffer_t **buf, int fd);
+int bless_buffer_new_from_file(bless_buffer_t **buf, int fd);
 
 int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb);
 
-int bless_buffer_destroy(bless_buffer_t *buf);
+int bless_buffer_free(bless_buffer_t *buf);
 
 /** @} */
 /**
@@ -57,19 +57,21 @@ int bless_buffer_destroy(bless_buffer_t *buf);
  * @{
  */
 
-int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
-		void *data, size_t len);
+int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length);
 
-int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t len);
+int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
+		void *data, size_t length);
+
+int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length);
 
 int bless_buffer_read(bless_buffer_t *src, off_t src_offset, void *dst,
-		off_t dst_offset, size_t len);
+		size_t dst_offset, size_t length);
 
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
-		off_t dst_offset, off_t len);
+		off_t dst_offset, off_t length);
 
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
-		void *data, size_t len, bless_progress_cb cb);
+		void *data, size_t length, bless_progress_cb cb);
 
 /** @} */
 /**

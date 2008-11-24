@@ -48,6 +48,7 @@
 
 /* The same rules for segment_t ** apply to other ** types */
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
+%apply segment_t ** { bless_buffer_t ** }
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 
@@ -88,6 +89,80 @@ size_t *length, data_object_flags flags)
         %append_output(PyBuffer_FromMemory(*((unsigned char **)$2), *$4));
 }
 
+%{
+/* Gets a pointer to the first segment of raw data of a PyBuffer */
+void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
+{
+    PyTypeObject *tobj = obj->ob_type;
+
+    PyBufferProcs *procs = tobj->tp_as_buffer;
+
+    /* if object does not support the buffer interface... */
+    if (procs == NULL)
+        return NULL;
+
+    readbufferproc proc = procs->bf_getreadbuffer;
+
+    void *ptr;
+
+    *size = (*proc)(obj, 0, &ptr);
+
+    return ptr;
+}
+
+/* Gets a write pointer to the first segment of raw data of a PyBuffer */
+void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
+{
+    PyTypeObject *tobj = obj->ob_type;
+
+    PyBufferProcs *procs = tobj->tp_as_buffer;
+
+    /* if object does not support the buffer interface... */
+    if (procs == NULL)
+        return NULL;
+
+    writebufferproc proc = procs->bf_getwritebuffer;
+
+    void *ptr;
+
+    *size = (*proc)(obj, 0, &ptr);
+
+    return ptr;
+}
+%}
+
+/* 
+ * Make the bless_buffer_append() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception bless_buffer_append
+{
+    ssize_t s;
+    arg2 = get_read_buf_pyobj(obj1, &s);
+
+    if (s != -1 && s >= arg3) {
+        $action
+    }
+    else
+        result = 666;
+}
+
+/* 
+ * Make the bless_buffer_read() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception bless_buffer_read
+{
+    ssize_t s;
+
+    arg3 = get_write_buf_pyobj(obj2, &s);
+
+    if (s != -1 && s >= arg5) {
+        $action
+    }
+    else
+        result = 666;
+}
 
 /*
  * Typemaps that handle output arguments.
