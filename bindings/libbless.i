@@ -90,8 +90,8 @@ size_t *length, data_object_flags flags)
 }
 
 %{
-/* Gets a pointer to the first segment of raw data of a PyBuffer */
-void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
+/* Gets a pointer to a copy of the first segment of raw data of a PyBuffer */
+void *get_read_buf_pyobj_copy(PyObject *obj, ssize_t *size)
 {
     PyTypeObject *tobj = obj->ob_type;
 
@@ -107,7 +107,13 @@ void *get_read_buf_pyobj(PyObject *obj, ssize_t *size)
 
     *size = (*proc)(obj, 0, &ptr);
 
-    return ptr;
+    if (*size == -1)
+        return NULL;
+        
+    void *data_copy = malloc(*size);
+    memcpy(data_copy, ptr, *size);
+
+    return data_copy;
 }
 
 /* Gets a write pointer to the first segment of raw data of a PyBuffer */
@@ -138,7 +144,7 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
 %exception bless_buffer_append
 {
     ssize_t s;
-    arg2 = get_read_buf_pyobj(obj1, &s);
+    arg2 = get_read_buf_pyobj_copy(obj1, &s);
 
     if (s != -1 && s >= arg3) {
         $action
@@ -147,6 +153,21 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
         result = 666;
 }
 
+/* 
+ * Make the bless_buffer_insert() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception bless_buffer_insert
+{
+    ssize_t s;
+    arg3 = get_read_buf_pyobj_copy(obj2, &s);
+
+    if (s != -1 && s >= arg4) {
+        $action
+    }
+    else
+        result = 666;
+}
 /* 
  * Make the bless_buffer_read() binding accept as data input objects that
  * support the PyBuffer interface.

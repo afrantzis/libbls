@@ -156,7 +156,36 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		void *data, size_t length)
 {
-	return -1;
+	if (buf == NULL || data == NULL || offset < 0) 
+		return EINVAL;
+
+	if (__MAX(size_t) - (size_t)data < length - 1 * (length != 0))
+		return EOVERFLOW;
+
+	segcol_t *sc = buf->segcol;
+
+	/* Create a data object and a segment pointing to it */
+	data_object_t *obj;
+	int err = data_object_memory_new_data(&obj, data, length);
+	if (err)
+		return err;
+
+	segment_t *seg;
+	err = segment_new(&seg, obj, 0, length, data_object_update_usage);
+	if (err) {
+		data_object_free(obj);
+		return err;
+	}
+
+	/* Insert segment into the segcol */
+	err = segcol_insert(sc, offset, seg);
+	if (err) {
+		/* No need to free obj, this is handled by segment_free */
+		segment_free(seg);
+		return err;
+	}
+
+	return 0;
 }
 
 /**
