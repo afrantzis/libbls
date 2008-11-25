@@ -3,6 +3,7 @@
 %include "typemaps.i"
 
 %{
+#include "type_limits.h"
 #include "segment.h"
 #include "segcol.h"
 #include "segcol_list.h"
@@ -15,6 +16,19 @@
 %apply long long { ssize_t };
 %apply unsigned long long { size_t };
 %apply long long { off_t };
+
+%inline %{
+off_t get_max_off_t(void)
+{
+    return __MAX(off_t);
+}
+
+size_t get_max_size_t(void)
+{
+    return __MAX(size_t);
+}
+
+%}
 
 /* Don't perform any conversions on void pointers */
 %typemap(in) void *
