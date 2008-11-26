@@ -442,7 +442,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		return EINVAL;
 
 	/* Check range for overflow */
-	if (__MAX(off_t) - offset < length)
+	if (__MAX(off_t) - offset < length - 1 * (length != 0))
 		return EOVERFLOW;
 
 	struct segcol_list_impl *impl = 
