@@ -96,7 +96,29 @@ class SegmentTests(unittest.TestCase):
 		
 		self.assertNotEqual(err, 0)
 		self.assertEqual(seg1, None)
+	
+	def testRangeOverflow(self):
+		"Try boundary conditions for overflow"
 
+		# These should succeed
+		err = segment_set_range(self.seg, 0, get_max_off_t()) 
+		self.assertEqual(err, 0)
+
+		err = segment_set_range(self.seg, get_max_off_t(), 0) 
+		self.assertEqual(err, 0)
+
+		err = segment_set_range(self.seg, 1, get_max_off_t()) 
+		self.assertEqual(err, 0)
+
+		err = segment_set_range(self.seg, get_max_off_t(), 1) 
+		self.assertEqual(err, 0)
+
+		# These should fail
+		err = segment_set_range(self.seg, 2, get_max_off_t()) 
+		self.assertNotEqual(err, 0)
+
+		err = segment_set_range(self.seg, get_max_off_t(), 2) 
+		self.assertNotEqual(err, 0)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -1,6 +1,7 @@
 import unittest
 import os
 import hashlib
+import errno
 from libbless import *
 
 def get_file_fd(name):
@@ -114,6 +115,20 @@ class DataObjectFileTests(unittest.TestCase):
 
 		# Compare our hash digest with the precomputed one
 		self.assertEqual(digest, expected_digest)
+
+	def testGetDataOverflow(self):
+		"Test boundary cases for get_data overflow"
+
+		# This one fails because of invalid range, not overflow
+		(err, buf) = data_object_get_data(self.obj, get_max_off_t(), 0, 
+				DATA_OBJECT_READ)
+		self.assertEqual(err, errno.EINVAL)
+
+		# But this one fails because of overflow (overflow
+		# is checked before range)
+		(err, buf) = data_object_get_data(self.obj, get_max_off_t(), 2,
+				DATA_OBJECT_READ)
+		self.assertEqual(err, errno.EOVERFLOW)
 
 if __name__ == '__main__':
 	unittest.main()

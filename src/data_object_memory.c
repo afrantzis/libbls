@@ -75,6 +75,10 @@ int data_object_memory_new_data(data_object_t **obj, void *data, size_t size)
 	if (obj == NULL)
 		return EINVAL;
 
+	/* Check for overflow */
+	if (__MAX(size_t) - (size_t)data < size - 1 * (size != 0))
+		return EOVERFLOW;
+
 	/* Allocate memory for implementation */
 	struct data_object_memory_impl *impl =
 		malloc (sizeof(struct data_object_memory_impl));
@@ -108,7 +112,7 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 	size_t len = *length;
 
 	/* Check for overflow */
-	if (__MAX(off_t) - offset < len)
+	if (__MAX(off_t) - offset < len - 1 * (len != 0))
 		return EOVERFLOW;
 
 	struct data_object_memory_impl *impl =

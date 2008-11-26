@@ -1,4 +1,5 @@
 import unittest
+import errno
 from libbless import *
 
 class DataObjectMemoryTests(unittest.TestCase):
@@ -144,6 +145,44 @@ class DataObjectMemoryTests(unittest.TestCase):
 
 		(err, buf) = data_object_get_data(self.obj, 17, 444, DATA_OBJECT_READ)
 		self.assertNotEqual(err, 0, "#8")
+
+	def testNewDataOverflow(self):
+		"Test boundary cases for new_data overflow"
+
+		(err, obj) = data_object_memory_new_ptr(0, get_max_size_t())
+		self.assertEqual(err, 0)
+		
+		(err, obj) = data_object_memory_new_ptr(1, get_max_size_t())
+		self.assertEqual(err, 0)
+
+		(err, obj) = data_object_memory_new_ptr(2, get_max_size_t())
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 0)
+		self.assertEqual(err, 0)
+		
+		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 1)
+		self.assertEqual(err, 0)
+
+		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 2)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+	def testGetDataOverflow(self):
+		"Test boundary cases for get_data overflow"
+
+		(err, obj) = data_object_memory_new_ptr(0, get_max_size_t())
+		self.assertEqual(err, 0)
+
+		# This one fails because of invalid range, not overflow
+		(err, buf) = data_object_get_data(obj, get_max_off_t(), 0, 
+				DATA_OBJECT_READ)
+		self.assertEqual(err, errno.EINVAL)
+
+		# But this one fails because of overflow (overflow
+		# is checked before range)
+		(err, buf) = data_object_get_data(obj, get_max_off_t(), 2,
+				DATA_OBJECT_READ)
+		self.assertEqual(err, errno.EOVERFLOW)
 
 if __name__ == '__main__':
 	unittest.main()
