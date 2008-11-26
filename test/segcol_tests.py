@@ -302,6 +302,106 @@ class SegcolTestsList(unittest.TestCase):
 
 		self.check_iter_segments(self.segcol, segs)
 
+	def testAppendOverflow(self):
+		"Try boundary conditions for overflow in append"
+
+		# Test 1
+		(err, seg1) = segment_new(None, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg1)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg2)
+		self.assertNotEqual(err, 0)
+
+		# Clear segcol
+		(err, deleted) = segcol_delete(self.segcol, 0, get_max_off_t())
+
+		# Test 2
+		(err, seg1) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg1)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, get_max_off_t() - 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg2)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg2)
+		self.assertNotEqual(err, 0)
+
+	def testInsertOverflow(self):
+		"Try boundary conditions for overflow in insert"
+
+		# Test 1
+		(err, seg1) = segment_new(None, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg1)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_insert(self.segcol, 0, seg2)
+		self.assertNotEqual(err, 0)
+
+		err = segcol_insert(self.segcol, get_max_off_t(), seg2)
+		self.assertNotEqual(err, 0)
+
+		# Clear segcol
+		(err, deleted) = segcol_delete(self.segcol, 0, get_max_off_t())
+
+		# Test 2
+		(err, seg1) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg1)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, get_max_off_t() - 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_insert(self.segcol, 0, seg2)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		err = segcol_insert(self.segcol, get_max_off_t(), seg2)
+		self.assertNotEqual(err, 0)
+
+		err = segcol_insert(self.segcol, 0, seg2)
+		self.assertNotEqual(err, 0)
+
+	def testDeleteOverflow(self):
+		"Try boundary conditions for overflow in delete"
+
+		# Test 1
+		(err, seg1) = segment_new(None, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+
+		err = segcol_append(self.segcol, seg1)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new(None, 0, 1, None)
+		self.assertEqual(err, 0)
+
+		(err, deleted) = segcol_delete(self.segcol, 1, get_max_off_t())
+		self.assertNotEqual(err, 0)
+
+		(err, deleted) = segcol_delete(self.segcol, get_max_off_t(), 2)
+		self.assertNotEqual(err, 0)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -278,7 +278,7 @@ int segment_set_range(segment_t *seg, off_t start, off_t size)
 		return EINVAL;
 
 	/* Check if range would overflow off_t */
-	if (__MAX(off_t) - start < size)
+	if (__MAX(off_t) - start < size - 1 * (size != 0))
 		return EOVERFLOW;
 
 	seg->start = start;
