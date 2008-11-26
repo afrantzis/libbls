@@ -119,7 +119,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 	size_t len = *length;
 
 	/* Check for overflow */
-	if (__MAX(off_t) - offset < len)
+	if (__MAX(off_t) - offset < len - 1 * (len != 0))
 		return EOVERFLOW;
 
 	struct data_object_file_impl *impl =

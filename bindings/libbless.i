@@ -17,18 +17,6 @@
 %apply unsigned long long { size_t };
 %apply long long { off_t };
 
-%inline %{
-off_t get_max_off_t(void)
-{
-    return __MAX(off_t);
-}
-
-size_t get_max_size_t(void)
-{
-    return __MAX(size_t);
-}
-
-%}
 
 /* Don't perform any conversions on void pointers */
 %typemap(in) void *
@@ -110,6 +98,26 @@ size_t *length, data_object_flags flags)
 %apply int *OUTPUT { int * };
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long *OUTPUT { size_t * };
+
+/*
+ * These should be placed at the end so the typemaps will apply to them
+ */
+%inline %{
+off_t get_max_off_t(void)
+{
+    return __MAX(off_t);
+}
+
+size_t get_max_size_t(void)
+{
+    return __MAX(size_t);
+}
+
+int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
+{
+    return data_object_memory_new_data(o, (void *)ptr, len);
+}
+%}
 
 %include "../src/segment.h"
 %include "../src/segcol.h"
