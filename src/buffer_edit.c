@@ -114,8 +114,10 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 	if (buf == NULL || data == NULL) 
 		return EINVAL;
 
-	if (__MAX(size_t) - (size_t)data < length - 1 * (length != 0))
-		return EOVERFLOW;
+	/* 
+	 * No need to check for overflow, because it is detected by the
+	 * functions that follow.
+	 */
 
 	segcol_t *sc = buf->segcol;
 
@@ -159,8 +161,10 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	if (buf == NULL || data == NULL || offset < 0) 
 		return EINVAL;
 
-	if (__MAX(size_t) - (size_t)data < length - 1 * (length != 0))
-		return EOVERFLOW;
+	/* 
+	 * No need to check for overflow, because it is detected by the
+	 * functions that follow.
+	 */
 
 	segcol_t *sc = buf->segcol;
 

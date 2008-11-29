@@ -1,4 +1,5 @@
 import unittest
+import errno
 from ctypes import create_string_buffer
 from libbless import *
 
@@ -190,6 +191,56 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_insert(self.buf, size + 1, data, len(data))
 		self.assertNotEqual(err, 0)
+	
+	def testAppendOverflow1(self):
+		"Try boundary conditions for overflow in append (size_t)"
+
+		# Try to append a large block of memory (overflows size_t)
+		err = bless_buffer_append_ptr(self.buf, 2, get_max_size_t())
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_append_ptr(self.buf, 1, get_max_size_t())
+		self.assertEqual(err, 0)
+
+	def testAppendOverflow2(self):
+		"Try boundary conditions for overflow in append (off_t)"
+
+		# Add a large segment to the buffer
+		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+		
+		err = bless_buffer_append_segment(self.buf, seg)
+		self.assertEqual(err, 0)
+
+		# Try to append additional data (overflows off_t)
+		err = bless_buffer_append_ptr(self.buf, bless_malloc(1), 1)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+	def testInsertOverflow1(self):
+		"Try boundary conditions for overflow in insert (size_t)"
+
+		err = bless_buffer_append_ptr(self.buf, 1, 1)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert_ptr(self.buf, 0, 2, get_max_size_t())
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_insert_ptr(self.buf, 0, 1, get_max_size_t())
+		self.assertEqual(err, 0)
+
+	def testInsertOverflow2(self):
+		"Try boundary conditions for overflow in insert (off_t)"
+
+		# Add a large segment to the buffer
+		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+		
+		err = bless_buffer_append_segment(self.buf, seg)
+		self.assertEqual(err, 0)
+
+		# Try to insert additional data (overflows off_t)
+		err = bless_buffer_insert_ptr(self.buf, 0, bless_malloc(1), 1)
+		self.assertEqual(err, errno.EOVERFLOW)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -11,6 +11,7 @@
 #include "data_object_memory.h"
 #include "data_object_file.h"
 #include "buffer.h"
+#include "buffer_internal.h"
 %}
 
 %apply long long { ssize_t };
@@ -196,22 +197,66 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
 %apply unsigned long long *OUTPUT { size_t * };
 
 /*
- * These should be placed at the end so the typemaps will apply to them
+ * Helper functions available only in python code for testing purposes.
+ *
+ * These should be placed at the end of the SWIG file so the typemaps 
+ * will apply to them.
  */
 %inline %{
+/* Get the maximum value of off_t */
 off_t get_max_off_t(void)
 {
     return __MAX(off_t);
 }
 
+/* Get the maximum value of size_t */
 size_t get_max_size_t(void)
 {
     return __MAX(size_t);
 }
 
+/* Call data_object_memory_new_data with the data pointer as size_t */
 int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
 {
     return data_object_memory_new_data(o, (void *)ptr, len);
+}
+
+/* Call bless_buffer_append with the data pointer as size_t */
+int bless_buffer_append_ptr(bless_buffer_t *buf, size_t ptr, size_t len)
+{
+    return bless_buffer_append(buf, (void *)ptr, len);
+}
+
+/* Call bless_buffer_insert with the data pointer as size_t */
+int bless_buffer_insert_ptr(bless_buffer_t *buf, off_t ofs, size_t ptr,
+size_t len)
+{
+    return bless_buffer_insert(buf, ofs, (void *)ptr, len);
+}
+
+/* Append a segment to buffer */ 
+int bless_buffer_append_segment(bless_buffer_t *buf, segment_t *seg)
+{
+    if (buf == NULL || seg == NULL) 
+        return EINVAL;
+
+    segcol_t *sc = buf->segcol;
+
+    /* Append segment to the segcol */
+    int err = segcol_append(sc, seg);
+    if (err) {
+        return err;
+    }
+
+    return 0;
+}
+
+/* Malloc memory and return the address cast to size_t */
+size_t bless_malloc(size_t s)
+{
+    void *p = malloc(s);
+
+    return (size_t)p;
 }
 %}
 
