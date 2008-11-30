@@ -242,5 +242,42 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_insert_ptr(self.buf, 0, bless_malloc(1), 1)
 		self.assertEqual(err, errno.EOVERFLOW)
 
+	def testReadOverflow1(self):
+		"Try boundary conditions for overflow in read (size_t)"
+
+		# Add a large segment to the buffer
+		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+		
+		err = bless_buffer_append_segment(self.buf, seg)
+		self.assertEqual(err, 0)
+		
+		# Check for overflow
+		err = bless_buffer_read_ptr(self.buf, 0, 2, 0, get_max_size_t())
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_read_ptr(self.buf, 0, 2, get_max_size_t(), 0)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_read_ptr(self.buf, 0, get_max_size_t(), 2, 0)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_read_ptr(self.buf, 0, get_max_size_t(), 0, 2)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+	def testReadOverflow2(self):
+		"Try boundary conditions for overflow in read (off_t)"
+
+		# Add a large segment to the buffer
+		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
+		self.assertEqual(err, 0)
+		
+		err = bless_buffer_append_segment(self.buf, seg)
+		self.assertEqual(err, 0)
+
+		# Check for overflow
+		err = bless_buffer_read_ptr(self.buf, get_max_off_t(), 2, 0, 2);
+		self.assertEqual(err, errno.EOVERFLOW)
+
 if __name__ == '__main__':
 	unittest.main()

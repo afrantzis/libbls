@@ -234,6 +234,13 @@ size_t len)
     return bless_buffer_insert(buf, ofs, (void *)ptr, len);
 }
 
+/* Call bless_buffer_read with the data pointer as size_t */
+int bless_buffer_read_ptr(bless_buffer_t *src, off_t src_offset, size_t dst,
+size_t dst_offset, size_t length)
+{
+    return bless_buffer_read(src, src_offset, (void *)dst, dst_offset, length);
+}
+
 /* Append a segment to buffer */ 
 int bless_buffer_append_segment(bless_buffer_t *buf, segment_t *seg)
 {

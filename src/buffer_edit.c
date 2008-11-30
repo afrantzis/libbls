@@ -288,12 +288,23 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 			/* Copy data to user-provided buffer */
 			memcpy(cur_dst, data, nbytes);
 
-			/* read_start and and cur_offset may overflow here */
+			/* 
+			 * cur_dst, read_start and cur_offset may overflow here in the last
+			 * iteration. This doesn't affect the algorithm because their
+			 * values won't be used (because it's the last iteration). The
+			 * problem is that signed overflow leads to undefined behaviour
+			 * according to the C standard, so will must not allow read_start 
+			 * and cur_offset to overflow. Unsigned overflow just wraps around
+			 * so there is no problem for cur_dst.
+			 */
 			cur_dst += nbytes;
-			read_start += nbytes;
 			read_length -= nbytes;
-			cur_offset += nbytes;
 			bytes_left -= nbytes;
+
+			if (__MAX(off_t) - read_start >= nbytes)
+				read_start += nbytes;
+			if (__MAX(off_t) - cur_offset >= nbytes)
+				cur_offset += nbytes;
 		}
 
 		if (bytes_left == 0)
