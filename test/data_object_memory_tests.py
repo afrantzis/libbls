@@ -5,7 +5,8 @@ from libbless import *
 class DataObjectMemoryTests(unittest.TestCase):
 
 	def setUp(self):
-		(err, self.obj) = data_object_memory_new(10)
+		(err, self.obj) = data_object_memory_new_ptr(bless_malloc(10), 10)
+		data_object_set_data_ownership(self.obj, 1)
 
 	def tearDown(self):
 		data_object_free(self.obj)
@@ -147,7 +148,7 @@ class DataObjectMemoryTests(unittest.TestCase):
 		self.assertNotEqual(err, 0, "#8")
 
 	def testNewDataOverflow(self):
-		"Test boundary cases for new_data overflow"
+		"Test boundary cases for new overflow"
 
 		(err, obj) = data_object_memory_new_ptr(0, get_max_size_t())
 		self.assertEqual(err, 0)

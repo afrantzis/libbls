@@ -215,10 +215,10 @@ size_t get_max_size_t(void)
     return __MAX(size_t);
 }
 
-/* Call data_object_memory_new_data with the data pointer as size_t */
+/* Call data_object_memory_new with the data pointer as size_t */
 int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
 {
-    return data_object_memory_new_data(o, (void *)ptr, len);
+    return data_object_memory_new(o, (void *)ptr, len);
 }
 
 /* Call bless_buffer_append with the data pointer as size_t */

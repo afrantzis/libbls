@@ -123,7 +123,7 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 
 	/* Create a data object and a segment pointing to it */
 	data_object_t *obj;
-	int err = data_object_memory_new_data(&obj, data, length);
+	int err = data_object_memory_new(&obj, data, length);
 	if (err)
 		return err;
 
@@ -183,7 +183,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	/* Create a data object and a segment pointing to it */
 	data_object_t *obj;
-	int err = data_object_memory_new_data(&obj, data, length);
+	int err = data_object_memory_new(&obj, data, length);
 	if (err)
 		return err;
 

@@ -34,31 +34,6 @@ struct data_object_memory_impl {
 };
 
 /**
- * Creates a new empty memory data object.
- *
- * @param[out] obj the created data object
- * @param size the size of the data object
- *
- * @return the operation error code
- */
-int data_object_memory_new(data_object_t **obj, size_t size)
-{
-	void *data = malloc(size);
-
-	if (data == NULL)
-		return ENOMEM;
-
-	int err = data_object_memory_new_data(obj, data, size);
-
-	if (err) {
-		free(data);
-		return err;
-	}
-
-	return 0;
-}
-
-/**
  * Creates a new memory data object initialized with data.
  *
  * The data object by default doesn't own the data passed to it.
@@ -72,7 +47,7 @@ int data_object_memory_new(data_object_t **obj, size_t size)
  *
  * @return the operation error code
  */
-int data_object_memory_new_data(data_object_t **obj, void *data, size_t size)
+int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 {
 	if (obj == NULL)
 		return EINVAL;
