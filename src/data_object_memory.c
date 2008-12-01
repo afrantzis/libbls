@@ -61,8 +61,10 @@ int data_object_memory_new(data_object_t **obj, size_t size)
 /**
  * Creates a new memory data object initialized with data.
  *
- * On success the data object will own the data (it is responsible for
- * further memory management).
+ * The data object by default doesn't own the data passed to it.
+ * That means that when the data object is freed the data will
+ * not be freed. To change data ownership by the data_object_t
+ * use data_object_set_data_ownership().
  *
  * @param[out] obj the created data object
  * @param data the data that this data object will contain
@@ -135,7 +137,15 @@ static int data_object_memory_free(data_object_t *obj)
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
-	free(impl->data);
+	/* Free the data memory only if we own it */
+	int own;
+	int err = data_object_get_data_ownership(obj, &own);
+	if (err)
+		return err;
+
+	if (own)
+		free(impl->data);
+
 	free(impl);
 
 	return 0;

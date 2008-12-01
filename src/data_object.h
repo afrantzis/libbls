@@ -33,4 +33,8 @@ int data_object_update_usage(void *obj, int change);
 
 int data_object_get_size(data_object_t *obj, off_t *size);
 
+int data_object_set_data_ownership(data_object_t *obj, int own);
+
+int data_object_get_data_ownership(data_object_t *obj, int *own);
+
 #endif

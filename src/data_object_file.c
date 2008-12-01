@@ -43,9 +43,10 @@ struct data_object_file_impl {
 /**
  * Creates a new file data object.
  *
- * If the data object is successfully created it gains ownership
- * of the file descriptor passed to it. When the data object is
- * freed it also closes the associated file descriptor.
+ * The data object by default doesn't own the file passed to it.
+ * That means that when the data object is freed the file will
+ * not be closed. To change data ownership by the data_object_t
+ * use data_object_set_data_ownership().
  *
  * @param[out] obj the created data object
  * @param fd the file descriptor of the file to use
@@ -177,7 +178,14 @@ static int data_object_file_free(data_object_t *obj)
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
 
-	close(impl->fd);
+	/* Close the file only if we own it */
+	int own;
+	int err = data_object_get_data_ownership(obj, &own);
+	if (err)
+		return err;
+
+	if (own)
+		close(impl->fd);
 
 	free(impl);
 

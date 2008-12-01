@@ -12,7 +12,9 @@
 struct data_object {
 	void *impl;
 	struct data_object_funcs *funcs;
+
 	int usage;
+	int own_data; 
 };
 
 /**********************
@@ -44,6 +46,8 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 	(*obj)->impl = impl;
 	(*obj)->funcs = funcs;
 	(*obj)->usage = 0;
+	/* We don't own the data by default */
+	(*obj)->own_data = 0;
 
 	return 0;
 	
@@ -155,3 +159,39 @@ int data_object_get_size(data_object_t *obj, off_t *size)
 	return (*obj->funcs->get_size)(obj, size);
 }
 
+/**
+ * Sets whether the data object owns its data.
+ *
+ * @param obj the data object 
+ * @param own whether the data objects owns its data.
+ *
+ * @return the operation error code
+ */
+int data_object_set_data_ownership(data_object_t *obj, int own)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	obj->own_data = own;
+
+	return 0;
+}
+
+
+/**
+ * Gets whether the data object owns its data.
+ *
+ * @param obj the data object 
+ * @param[out] own whether the data objects owns its data.
+ *
+ * @return the operation error code
+ */
+int data_object_get_data_ownership(data_object_t *obj, int *own)
+{
+	if (obj == NULL || own == NULL)
+		return EINVAL;
+
+	*own = obj->own_data;
+
+	return 0;
+}
