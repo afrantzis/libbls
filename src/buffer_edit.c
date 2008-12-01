@@ -136,13 +136,26 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 
 	/* Append segment to the segcol */
 	err = segcol_append(sc, seg);
-	if (err) {
-		/* No need to free obj, this is handled by segment_free */
-		segment_free(seg);
-		return err;
-	}
+	if (err) 
+		goto fail;
+
+	/* 
+	 * Give the ownership of the data to the data object.
+	 * This must be done last. If it is done earlier and any function
+	 * fails, the data_object_t will be freed and with it the
+	 * data it contains. Alas, we don't want this to happen: if the
+	 * function fails the caller will surely be expecting their data to
+	 * still be available. 
+	 */
+	err = data_object_set_data_ownership(obj, 1);
+	if (err)
+		goto fail;
 
 	return 0;
+fail:
+	/* No need to free obj, this is handled by segment_free */
+	segment_free(seg);
+	return err;
 }
 
 /**
@@ -183,13 +196,27 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	/* Insert segment into the segcol */
 	err = segcol_insert(sc, offset, seg);
-	if (err) {
-		/* No need to free obj, this is handled by segment_free */
-		segment_free(seg);
-		return err;
-	}
+	if (err)
+		goto fail;
+
+	/* 
+	 * Give the ownership of the data to the data object.
+	 * This must be done last. If it is done earlier and any function
+	 * fails, the data_object_t will be freed and with it the
+	 * data it contains. Alas, we don't want this to happen: if the
+	 * function fails the caller will surely be expecting their data to
+	 * still be available. 
+	 */
+	err = data_object_set_data_ownership(obj, 1);
+	if (err)
+		goto fail;
 
 	return 0;
+
+fail:
+	/* No need to free obj, this is handled by segment_free */
+	segment_free(seg);
+	return err;
 }
 
 /**
