@@ -97,12 +97,45 @@ static int get_data_from_iter(segcol_iter_t *iter, data_object_t **data_obj,
 }
 
 /**
- * Wrapper for free returning an int
+ * Create a segment from a bless_buffer_source_t.
+ *
+ * @param[out] seg the created segment
+ * @param src the source
+ * @param src_offset the start of the segment range in src
+ * @param length the length of the segment range
+ *
+ * @return the operation error code
  */
-static int data_free(void *data)
+static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *src,
+		off_t src_offset, off_t length)
 {
-	free(data);
+	data_object_t *obj = (data_object_t *) src;
+
+	/* Create a segment pointing to the data object */
+	int err = segment_new(seg, obj, src_offset, length, data_object_update_usage);
+	if (err)
+		return err;
+
+	/* 
+	 * Check if the specified file range is valid. This is done 
+	 * here so that overflow has already been checked by segment_new().
+	 */
+	off_t obj_size;
+	err = data_object_get_size(obj, &obj_size);
+	if (err)
+		goto fail;
+
+	if (src_offset + length - 1 * (length != 0) >= obj_size) {
+		err = EINVAL;
+		goto fail;
+	}
+
 	return 0;
+
+fail:
+	/* No need to free obj, this is handled by segment_free */
+	segment_free(*seg);
+	return err;
 }
 
 /*****************/
@@ -113,14 +146,16 @@ static int data_free(void *data)
  * Appends data to a bless_buffer_t.
  *
  * @param buf the bless_buffer_t to append data to
- * @param data a pointer to the data to append
- * @param len the length of the data to append
+ * @param src the source of the data
+ * @param src_offset the offset of the data in the source
+ * @param length the length of the data to append
  *
  * @return the operation error code
  */
-int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
+int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
+		off_t src_offset, off_t length)
 {
-	if (buf == NULL || data == NULL) 
+	if (buf == NULL || src == NULL) 
 		return EINVAL;
 
 	/* 
@@ -128,36 +163,17 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 	 * functions that follow.
 	 */
 
-	segcol_t *sc = buf->segcol;
+	segment_t *seg;
 
-	/* Create a data object and a segment pointing to it */
-	data_object_t *obj;
-	int err = data_object_memory_new(&obj, data, length);
+	int err = create_segment_from_source(&seg, src, src_offset, length);
 	if (err)
 		return err;
-
-	segment_t *seg;
-	err = segment_new(&seg, obj, 0, length, data_object_update_usage);
-	if (err) {
-		data_object_free(obj);
-		return err;
-	}
+	
+	segcol_t *sc = buf->segcol;
 
 	/* Append segment to the segcol */
 	err = segcol_append(sc, seg);
 	if (err) 
-		goto fail;
-
-	/* 
-	 * Give the ownership of the data to the data object.
-	 * This must be done last. If it is done earlier and any function
-	 * fails, the data_object_t will be freed and with it the
-	 * data it contains. Alas, we don't want this to happen: if the
-	 * function fails the caller will surely be expecting their data to
-	 * still be available. 
-	 */
-	err = data_object_set_data_free_func(obj, data_free);
-	if (err)
 		goto fail;
 
 	return 0;
@@ -177,10 +193,10 @@ fail:
  *
  * @return the operation error code
  */
-int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
-		void *data, size_t length)
+int bless_buffer_insert(bless_buffer_t *buf, off_t offset, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length)
 {
-	if (buf == NULL || data == NULL || offset < 0) 
+	if (buf == NULL || src == NULL) 
 		return EINVAL;
 
 	/* 
@@ -188,40 +204,20 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	 * functions that follow.
 	 */
 
+	segment_t *seg;
+
+	int err = create_segment_from_source(&seg, src, src_offset, length);
+	if (err)
+		return err;
+
 	segcol_t *sc = buf->segcol;
 
-	/* Create a data object and a segment pointing to it */
-	data_object_t *obj;
-	int err = data_object_memory_new(&obj, data, length);
-	if (err)
-		return err;
-
-	segment_t *seg;
-	err = segment_new(&seg, obj, 0, length, data_object_update_usage);
-	if (err) {
-		data_object_free(obj);
-		return err;
-	}
-
-	/* Insert segment into the segcol */
+	/* Insert segment to the segcol */
 	err = segcol_insert(sc, offset, seg);
-	if (err)
-		goto fail;
-
-	/* 
-	 * Give the ownership of the data to the data object.
-	 * This must be done last. If it is done earlier and any function
-	 * fails, the data_object_t will be freed and with it the
-	 * data it contains. Alas, we don't want this to happen: if the
-	 * function fails the caller will surely be expecting their data to
-	 * still be available. 
-	 */
-	err = data_object_set_data_free_func(obj, data_free);
-	if (err)
+	if (err) 
 		goto fail;
 
 	return 0;
-
 fail:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(seg);
@@ -329,7 +325,7 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 			 * iteration. This doesn't affect the algorithm because their
 			 * values won't be used (because it's the last iteration). The
 			 * problem is that signed overflow leads to undefined behaviour
-			 * according to the C standard, so will must not allow read_start 
+			 * according to the C standard, so we must not allow read_start 
 			 * and cur_offset to overflow. Unsigned overflow just wraps around
 			 * so there is no problem for cur_dst.
 			 */

@@ -18,12 +18,17 @@
 %apply unsigned long long { size_t };
 %apply long long { off_t };
 
-
 /* Don't perform any conversions on void pointers */
 %typemap(in) void *
 {
     $1 = $input;
 }
+
+/* Handle bless_buffer_source_t normally. This is needed because
+ * bless_buffer_source_t is typedef void and the previous rule is
+ * used (but we don't want to).
+ */
+%typemap(in) bless_buffer_source_t * = SWIGTYPE *;
 
 /*
  * The typemaps below are used to handle functions that return values in arguments.
@@ -51,7 +56,7 @@
 
 /* The same rules for segment_t ** apply to other ** types */
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
-%apply segment_t ** { bless_buffer_t ** }
+%apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 
@@ -144,10 +149,10 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
  * Make the bless_buffer_append() binding accept as data input objects that
  * support the PyBuffer interface.
  */
-%exception bless_buffer_append
+%exception bless_buffer_source_memory
 {
     ssize_t s;
-    arg2 = get_read_buf_pyobj_copy(obj1, &s);
+    arg2 = get_read_buf_pyobj_copy(obj0, &s);
 
     if (s != -1 && s >= arg3) {
         $action
@@ -156,21 +161,6 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
         result = 666;
 }
 
-/* 
- * Make the bless_buffer_insert() binding accept as data input objects that
- * support the PyBuffer interface.
- */
-%exception bless_buffer_insert
-{
-    ssize_t s;
-    arg3 = get_read_buf_pyobj_copy(obj2, &s);
-
-    if (s != -1 && s >= arg4) {
-        $action
-    }
-    else
-        result = 666;
-}
 /* 
  * Make the bless_buffer_read() binding accept as data input objects that
  * support the PyBuffer interface.
@@ -221,17 +211,10 @@ int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
     return data_object_memory_new(o, (void *)ptr, len);
 }
 
-/* Call bless_buffer_append with the data pointer as size_t */
-int bless_buffer_append_ptr(bless_buffer_t *buf, size_t ptr, size_t len)
+/* Call bless_buffer_source_memory with the data pointer as size_t */
+int bless_buffer_source_memory_ptr(bless_buffer_source_t **src, size_t ptr, size_t len, bless_data_free_func *func)
 {
-    return bless_buffer_append(buf, (void *)ptr, len);
-}
-
-/* Call bless_buffer_insert with the data pointer as size_t */
-int bless_buffer_insert_ptr(bless_buffer_t *buf, off_t ofs, size_t ptr,
-size_t len)
-{
-    return bless_buffer_insert(buf, ofs, (void *)ptr, len);
+    return bless_buffer_source_memory(src, (void *)ptr, len, func);
 }
 
 /* Call bless_buffer_read with the data pointer as size_t */
@@ -274,5 +257,7 @@ size_t bless_malloc(size_t s)
 %include "../src/data_object_memory.h"
 %include "../src/data_object_file.h"
 %include "../src/buffer.h"
+%include "../src/buffer_source.h"
+
 
 

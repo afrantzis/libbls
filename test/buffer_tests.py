@@ -22,8 +22,11 @@ class BufferTests(unittest.TestCase):
 		"Append data to the buffer"
 
 		# Append data
-		data1 = "0123456789"
-		err = bless_buffer_append(self.buf, data1, 10)
+		data1 = "0123456789" 
+		(err, data1_src) = bless_buffer_source_memory(data1, 10, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, data1_src, 0, 10)
 		self.assertEqual(err, 0)
 
 		read_data1 = create_string_buffer(10)
@@ -35,7 +38,10 @@ class BufferTests(unittest.TestCase):
 
 		# Append more data
 		data2 = "abcdefghij"
-		err = bless_buffer_append(self.buf, data2, 10)
+		(err, data2_src) = bless_buffer_source_memory(data2, 10, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, data2_src, 0, 10)
 		self.assertEqual(err, 0)
 
 		read_data2 = create_string_buffer(20)
@@ -52,8 +58,10 @@ class BufferTests(unittest.TestCase):
 		"Try boundary cases for appending to buffer"
 
 		# Try to append zero data (should succeed!)
-		data = "abcdefghij"
-		err = bless_buffer_append(self.buf, data, 0)
+		(err, data_src) = bless_buffer_source_memory("abcdefghij", 10, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, data_src, 0, 0)
 		self.assertEqual(err, 0)
 
 		(err, size) = bless_buffer_get_size(self.buf)
@@ -131,7 +139,10 @@ class BufferTests(unittest.TestCase):
 
 		# Insert data
 		data = "INSERTEDDATA"
-		err = bless_buffer_insert(self.buf, pos, data, len(data))
+		(err, data_src) = bless_buffer_source_memory(data, len(data), None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert(self.buf, pos, data_src, 0, len(data))
 		self.assertEqual(err, 0)
 
 		# Test insert
@@ -168,9 +179,11 @@ class BufferTests(unittest.TestCase):
 		"Try some boundary cases of buffer insertion"
 
 		data = "INSERTEDDATA"
+		(err, data_src) = bless_buffer_source_memory(data, len(data), None)
+		self.assertEqual(err, 0)
 
 		# Try to insert in an empty buffer
-		err = bless_buffer_insert(self.buf, 0, data, len(data))
+		err = bless_buffer_insert(self.buf, 0, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
 
 		self.testAppend()
@@ -179,30 +192,30 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Try to insert in a negative offset
-		err = bless_buffer_insert(self.buf, -1, data, len(data))
+		err = bless_buffer_insert(self.buf, -1, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
 
-		err = bless_buffer_insert(self.buf, -10000, data, len(data))
+		err = bless_buffer_insert(self.buf, -10000, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
 		
 		# Try to insert out of range
-		err = bless_buffer_insert(self.buf, size, data, len(data))
+		err = bless_buffer_insert(self.buf, size, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
 
-		err = bless_buffer_insert(self.buf, size + 1, data, len(data))
+		err = bless_buffer_insert(self.buf, size + 1, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
-	
-	def testAppendOverflow1(self):
-		"Try boundary conditions for overflow in append (size_t)"
+		
+	def testSourceMemory(self):
+		"Try boundary conditions for overflow in _source_memory (size_t)"
 
 		# Try to append a large block of memory (overflows size_t)
-		err = bless_buffer_append_ptr(self.buf, 2, get_max_size_t())
+		(err, src) = bless_buffer_source_memory_ptr(2, get_max_size_t(), None)
 		self.assertEqual(err, errno.EOVERFLOW)
 
-		err = bless_buffer_append_ptr(self.buf, 1, get_max_size_t())
+		(err, src) = bless_buffer_source_memory_ptr(1, get_max_size_t(), None)
 		self.assertEqual(err, 0)
 
-	def testAppendOverflow2(self):
+	def testAppendOverflow(self):
 		"Try boundary conditions for overflow in append (off_t)"
 
 		# Add a large segment to the buffer
@@ -213,33 +226,27 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Try to append additional data (overflows off_t)
-		err = bless_buffer_append_ptr(self.buf, bless_malloc(1), 1)
-		self.assertEqual(err, errno.EOVERFLOW)
-
-	def testInsertOverflow1(self):
-		"Try boundary conditions for overflow in insert (size_t)"
-
-		err = bless_buffer_append_ptr(self.buf, 1, 1)
+		(err, data_src) = bless_buffer_source_memory_ptr(bless_malloc(1), 1, None)
 		self.assertEqual(err, 0)
 
-		err = bless_buffer_insert_ptr(self.buf, 0, 2, get_max_size_t())
+		err = bless_buffer_append(self.buf, data_src, 0, 1)
 		self.assertEqual(err, errno.EOVERFLOW)
 
-		err = bless_buffer_insert_ptr(self.buf, 0, 1, get_max_size_t())
-		self.assertEqual(err, 0)
-
-	def testInsertOverflow2(self):
+	def testInsertOverflow(self):
 		"Try boundary conditions for overflow in insert (off_t)"
-
+  	
 		# Add a large segment to the buffer
 		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
 		self.assertEqual(err, 0)
 		
 		err = bless_buffer_append_segment(self.buf, seg)
 		self.assertEqual(err, 0)
-
+  	
 		# Try to insert additional data (overflows off_t)
-		err = bless_buffer_insert_ptr(self.buf, 0, bless_malloc(1), 1)
+		(err, data_src) = bless_buffer_source_memory_ptr(bless_malloc(1), 1, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert(self.buf, 0, data_src, 0, 1)
 		self.assertEqual(err, errno.EOVERFLOW)
 
 	def testReadOverflow1(self):
@@ -271,7 +278,7 @@ class BufferTests(unittest.TestCase):
 		# Add a large segment to the buffer
 		(err, seg) = segment_new(0, 0, get_max_off_t(), None)
 		self.assertEqual(err, 0)
-		
+
 		err = bless_buffer_append_segment(self.buf, seg)
 		self.assertEqual(err, 0)
 

@@ -11,6 +11,7 @@
 
 #include <unistd.h>
 
+#include "buffer_source.h"
 /**
  * @defgroup buffer Buffer Module
  *
@@ -57,10 +58,11 @@ int bless_buffer_free(bless_buffer_t *buf);
  * @{
  */
 
-int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length);
+int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
+		off_t src_offset, off_t length);
 
-int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
-		void *data, size_t length);
+int bless_buffer_insert(bless_buffer_t *buf, off_t offset, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length);
 
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length);
 
