@@ -178,14 +178,17 @@ static int data_object_file_free(data_object_t *obj)
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
 
-	/* Close the file only if we own it */
-	int own;
-	int err = data_object_get_data_ownership(obj, &own);
+	/* Free the data (close the file) */
+	data_free_func data_free;
+	int err = data_object_get_data_free_func(obj, &data_free);
 	if (err)
 		return err;
 
-	if (own)
-		close(impl->fd);
+	if (data_free != NULL) {
+		err = data_free((void *)impl->fd);
+		if (err)
+			return err;
+	}
 
 	free(impl);
 

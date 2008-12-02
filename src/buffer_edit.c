@@ -9,6 +9,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "data_object.h"
@@ -95,6 +96,15 @@ static int get_data_from_iter(segcol_iter_t *iter, data_object_t **data_obj,
 	return 0;
 }
 
+/**
+ * Wrapper for free returning an int
+ */
+static int data_free(void *data)
+{
+	free(data);
+	return 0;
+}
+
 /*****************/
 /* API Functions */
 /*****************/
@@ -108,7 +118,6 @@ static int get_data_from_iter(segcol_iter_t *iter, data_object_t **data_obj,
  *
  * @return the operation error code
  */
-
 int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 {
 	if (buf == NULL || data == NULL) 
@@ -147,7 +156,7 @@ int bless_buffer_append(bless_buffer_t *buf, void *data, size_t length)
 	 * function fails the caller will surely be expecting their data to
 	 * still be available. 
 	 */
-	err = data_object_set_data_ownership(obj, 1);
+	err = data_object_set_data_free_func(obj, data_free);
 	if (err)
 		goto fail;
 
@@ -207,7 +216,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	 * function fails the caller will surely be expecting their data to
 	 * still be available. 
 	 */
-	err = data_object_set_data_ownership(obj, 1);
+	err = data_object_set_data_free_func(obj, data_free);
 	if (err)
 		goto fail;
 

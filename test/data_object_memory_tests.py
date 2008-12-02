@@ -6,7 +6,6 @@ class DataObjectMemoryTests(unittest.TestCase):
 
 	def setUp(self):
 		(err, self.obj) = data_object_memory_new_ptr(bless_malloc(10), 10)
-		data_object_set_data_ownership(self.obj, 1)
 
 	def tearDown(self):
 		data_object_free(self.obj)

@@ -12,9 +12,8 @@
 struct data_object {
 	void *impl;
 	struct data_object_funcs *funcs;
-
 	int usage;
-	int own_data; 
+	data_free_func data_free;
 };
 
 /**********************
@@ -47,7 +46,7 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 	(*obj)->funcs = funcs;
 	(*obj)->usage = 0;
 	/* We don't own the data by default */
-	(*obj)->own_data = 0;
+	(*obj)->data_free = NULL;
 
 	return 0;
 	
@@ -160,38 +159,41 @@ int data_object_get_size(data_object_t *obj, off_t *size)
 }
 
 /**
- * Sets whether the data object owns its data.
+ * Sets the function used to free the data held by the data object.
+ *
+ * If the function is NULL, the data won't be freed when the data object is
+ * freed.
  *
  * @param obj the data object 
- * @param own whether the data objects owns its data.
+ * @param data_free the function used to free the data held by the data object
  *
  * @return the operation error code
  */
-int data_object_set_data_ownership(data_object_t *obj, int own)
+int data_object_set_data_free_func(data_object_t *obj, data_free_func data_free)
 {
 	if (obj == NULL)
 		return EINVAL;
 
-	obj->own_data = own;
+	obj->data_free = data_free;
 
 	return 0;
 }
 
-
 /**
- * Gets whether the data object owns its data.
+ * Gets the function used to free the data held by the data object.
  *
  * @param obj the data object 
- * @param[out] own whether the data objects owns its data.
+ * @param[out] data_free the function used to free the data held by the data object
  *
  * @return the operation error code
  */
-int data_object_get_data_ownership(data_object_t *obj, int *own)
+int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free)
 {
-	if (obj == NULL || own == NULL)
+	if (obj == NULL)
 		return EINVAL;
 
-	*own = obj->own_data;
+	*data_free = obj->data_free;
 
 	return 0;
 }
+

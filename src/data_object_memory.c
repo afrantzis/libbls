@@ -112,14 +112,17 @@ static int data_object_memory_free(data_object_t *obj)
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
-	/* Free the data memory only if we own it */
-	int own;
-	int err = data_object_get_data_ownership(obj, &own);
+	/* Free the data */
+	data_free_func data_free;
+	int err = data_object_get_data_free_func(obj, &data_free);
 	if (err)
 		return err;
 
-	if (own)
-		free(impl->data);
+	if (data_free != NULL) {
+		err = data_free(impl->data);
+		if (err)
+			return err;
+	}
 
 	free(impl);
 
