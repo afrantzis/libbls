@@ -45,8 +45,6 @@ typedef int (*bless_progress_cb)(void *info);
 
 int bless_buffer_new(bless_buffer_t **buf);
 
-int bless_buffer_new_from_file(bless_buffer_t **buf, int fd);
-
 int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb);
 
 int bless_buffer_free(bless_buffer_t *buf);

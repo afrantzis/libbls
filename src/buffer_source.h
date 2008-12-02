@@ -18,4 +18,7 @@ typedef int (bless_data_free_func)(void *);
 int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 		size_t length, bless_data_free_func *data_free);
 
+int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
+		bless_data_free_func *data_free);
+
 int bless_buffer_source_unref(bless_buffer_source_t *src);

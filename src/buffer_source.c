@@ -58,6 +58,54 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 }
 
 /**
+ * Create a file source for bless_buffer_t.
+ *
+ * If the data_free function is NULL the file won't be closed
+ * when this source object is freed.
+ *
+ * @param[out] src the created bless_buffer_source_t.
+ * @param fd the file descriptor associated with this source object 
+ * @param length the length of the data
+ * @param data_free the function to call to close the file
+ *
+ * @return the operation error code
+ */
+int bless_buffer_source_file(bless_buffer_source_t **src, int fd, 
+		bless_data_free_func *data_free)
+{
+	if (src == NULL)
+		return EINVAL;
+
+	/* Create the data object and set its data free function */
+	data_object_t *obj;
+	int err = data_object_file_new(&obj, fd);
+	if (err)
+		return err;
+
+	err = data_object_set_data_free_func(obj, data_free);
+	if (err) {
+		data_object_free(obj);
+		return err;
+	}
+
+	/* 
+	 * Increase the usage count of this data object. This is done 
+	 * so that the user is able to use it safely multiple times
+	 * eg appending various parts of it to the buffer. When the
+	 * user is done they should call bless_buffer_source_unref().
+	 */
+	err = data_object_update_usage(obj, 1);
+	if (err) {
+		data_object_free(obj);
+		return err;
+	}
+
+	*src = obj;
+
+	return 0;
+}
+
+/**
  * Decrease the usage count of a source object.
  *
  * This function should be called when the user is done

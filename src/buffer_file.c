@@ -40,22 +40,6 @@ int bless_buffer_new(bless_buffer_t **buf)
 }
 
 /**
- * Creates a bless_buffer_t from a file descriptor.
- *
- * The created bless_buffer_t initially contains data from
- * the specified file descriptor.
- *
- * @param[out] buf the created empty bless_buffer_t
- * @param fd the file descriptor.
- *
- * @return the operation error code
- */
-int bless_buffer_new_from_file(bless_buffer_t **buf, int fd)
-{
-	return NULL;
-}
-
-/**
  * Saves the contents of a bless_buffer_t.
  *
  * The contents are saved in the file pointed to by the specified file

@@ -1,7 +1,21 @@
 import unittest
 import errno
 from ctypes import create_string_buffer
+import os
 from libbless import *
+
+def get_file_fd(name):
+	"""Get the fd of a file.
+	   We need this so that the tests can be executed from within
+	   the test directory as well as from the source tree root"""
+	try:
+		fd = os.open("test/%s" % name, os.O_RDONLY)
+		return fd
+	except:
+		pass
+	
+	fd = os.open("%s" % name, os.O_RDONLY)
+	return fd
 
 class BufferTests(unittest.TestCase):
 
@@ -28,6 +42,8 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_append(self.buf, data1_src, 0, 10)
 		self.assertEqual(err, 0)
+		err = bless_buffer_source_unref(data1_src)
+		self.assertEqual(err, 0)
 
 		read_data1 = create_string_buffer(10)
 		err = bless_buffer_read(self.buf, 0, read_data1, 0, 10)
@@ -36,12 +52,15 @@ class BufferTests(unittest.TestCase):
 		for i in range(len(read_data1)):
 			self.assertEqual(read_data1[i], data1[i])
 
+		
 		# Append more data
 		data2 = "abcdefghij"
 		(err, data2_src) = bless_buffer_source_memory(data2, 10, None)
 		self.assertEqual(err, 0)
 
 		err = bless_buffer_append(self.buf, data2_src, 0, 10)
+		self.assertEqual(err, 0)
+		err = bless_buffer_source_unref(data2_src)
 		self.assertEqual(err, 0)
 
 		read_data2 = create_string_buffer(20)
@@ -54,6 +73,7 @@ class BufferTests(unittest.TestCase):
 			else:
 				self.assertEqual(read_data2[i], data1[i])
 
+		
 	def testAppendBoundaryCases(self):
 		"Try boundary cases for appending to buffer"
 
@@ -62,6 +82,8 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		err = bless_buffer_append(self.buf, data_src, 0, 0)
+		self.assertEqual(err, 0)
+		err = bless_buffer_source_unref(data_src)
 		self.assertEqual(err, 0)
 
 		(err, size) = bless_buffer_get_size(self.buf)
@@ -144,7 +166,9 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_insert(self.buf, pos, data_src, 0, len(data))
 		self.assertEqual(err, 0)
-
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+		
 		# Test insert
 		appended_data = "0123456789abcdefghij"
 		expected_data = "%s%s%s" % (appended_data[:pos], data, appended_data[pos:])
@@ -205,6 +229,9 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_insert(self.buf, size + 1, data_src, 0, len(data))
 		self.assertNotEqual(err, 0)
 		
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+		
 	def testSourceMemory(self):
 		"Try boundary conditions for overflow in _source_memory (size_t)"
 
@@ -213,6 +240,9 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, errno.EOVERFLOW)
 
 		(err, src) = bless_buffer_source_memory_ptr(1, get_max_size_t(), None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
 
 	def testAppendOverflow(self):
@@ -232,6 +262,9 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_append(self.buf, data_src, 0, 1)
 		self.assertEqual(err, errno.EOVERFLOW)
 
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+		
 	def testInsertOverflow(self):
 		"Try boundary conditions for overflow in insert (off_t)"
   	
@@ -248,6 +281,9 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_insert(self.buf, 0, data_src, 0, 1)
 		self.assertEqual(err, errno.EOVERFLOW)
+
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
 
 	def testReadOverflow1(self):
 		"Try boundary conditions for overflow in read (size_t)"
@@ -285,6 +321,198 @@ class BufferTests(unittest.TestCase):
 		# Check for overflow
 		err = bless_buffer_read_ptr(self.buf, get_max_off_t(), 2, 0, 2);
 		self.assertEqual(err, errno.EOVERFLOW)
+
+	def testSourceFile(self):
+		"Try to open an invalid file"
+
+		# Try to append from an invalid file
+		(err, data_src) = bless_buffer_source_file(-1, None)
+		self.assertEqual(err, errno.EBADF)
+
+	def testAppendFromFile(self):
+		"Append data to the buffer from a file"
+
+		fd = get_file_fd("buffer_test_file1.bin")
+		
+		(err, data_src) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		# Append data
+		err = bless_buffer_append(self.buf, data_src, 0, 10)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(10)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 10)
+		self.assertEqual(err, 0)
+		
+		expected_data = "1234567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+		
+		# Append more data from the same file
+		err = bless_buffer_append(self.buf, data_src, 3, 7)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(17)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 17)
+		self.assertEqual(err, 0)
+		
+		expected_data = "12345678904567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+		
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+
+		# Append more data from another file
+		fd = get_file_fd("buffer_test_file2.bin")
+		(err, data_src) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, data_src, 2, 5)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(22)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 22)
+		self.assertEqual(err, 0)
+		
+		expected_data = "12345678904567890cdefg"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+	
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+
+	def testAppendFromFileBoundaryCases(self):
+		"Try boundary cases for appending to buffer from a file"
+		
+		fd = get_file_fd("buffer_test_file1.bin")
+		
+		(err, data_src) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		# Try to append zero data (should succeed!)
+		err = bless_buffer_append(self.buf, data_src, 0, 0)
+		self.assertEqual(err, 0)
+		
+		(err, size) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(size, 0)
+		
+		# Try to append an invalid range from the file
+		err = bless_buffer_append(self.buf, data_src, 0, 11)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_append(self.buf, data_src, 1, 10)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_append(self.buf, data_src, 10, 0)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_append(self.buf, data_src, 10, 1)
+		self.assertEqual(err, errno.EINVAL)
+
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+
+	def testInsertFromFile(self):
+		"Insert data to the buffer from a file"
+
+		fd = get_file_fd("buffer_test_file1.bin")
+		
+		(err, data_src) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		# Append data
+		err = bless_buffer_append(self.buf, data_src, 0, 10)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(10)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 10)
+		self.assertEqual(err, 0)
+		
+		expected_data = "1234567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+		
+		# Insert data from another file 
+		fd = get_file_fd("buffer_test_file2.bin")
+
+		(err, data_src1) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert(self.buf, 2, data_src1, 3, 7)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(17)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 17)
+		self.assertEqual(err, 0)
+		
+		expected_data = "12defghij34567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+		
+		# Insert more data from the first file
+		err = bless_buffer_insert(self.buf, 4, data_src, 2, 5)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(22)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 22)
+		self.assertEqual(err, 0)
+		
+		expected_data = "12de34567fghij34567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+	
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(data_src1)
+		self.assertEqual(err, 0)
+
+	def testInsertFromFileBoundaryCases(self):
+		"Try boundary cases for inserting to buffer from a file"
+		
+		fd = get_file_fd("buffer_test_file1.bin")
+		
+		(err, data_src) = bless_buffer_source_file(fd, None)
+		self.assertEqual(err, 0)
+
+		# Append data
+		err = bless_buffer_append(self.buf, data_src, 0, 10)
+		self.assertEqual(err, 0)
+		
+		read_data = create_string_buffer(10)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, 10)
+		self.assertEqual(err, 0)
+		
+		expected_data = "1234567890"
+		for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+		
+		# Try to insert zero data (should succeed!)
+		err = bless_buffer_insert(self.buf, 0, data_src, 0, 0)
+		self.assertEqual(err, 0)
+		
+		(err, size) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(size, 10)
+		
+		# Try to insert an invalid range from the file
+		err = bless_buffer_insert(self.buf, 0, data_src, 0, 11)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_insert(self.buf, 0, data_src, 1, 10)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_insert(self.buf, 0, data_src, 10, 0)
+		self.assertEqual(err, errno.EINVAL)
+		
+		err = bless_buffer_insert(self.buf, 0, data_src, 10, 1)
+		self.assertEqual(err, errno.EINVAL)
+
+		err = bless_buffer_source_unref(data_src)
+		self.assertEqual(err, 0)
 
 if __name__ == '__main__':
 	unittest.main()
