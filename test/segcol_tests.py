@@ -264,6 +264,21 @@ class SegcolTestsList(unittest.TestCase):
 			segs = [("abcdef", 0, i, 1), ("012345", 1, 6 - i - 1, 1)]
 			self.check_iter_segments(del_segcol, segs)
 
+	def testDeleteNoDeleted(self):
+		"Delete a range from a segcol but don't ask for the deleted segments"
+
+		# Append some segments to the segcol
+		self.testAppend()
+
+		for i in xrange(5, 0, -1):
+			segcol_get_size(self.segcol)
+			err = segcol_delete_no_deleted(self.segcol, i, 2)
+			self.assertEqual(err, 0)
+			
+			# Segcol should now be ["abcde"f]-[0"12345"]
+			segs = [("abcdef", 0, 0, i), ("012345", i, 6 - i, i)]
+			self.check_iter_segments(self.segcol, segs)
+
 	def testFindStressTest(self):
 		"Find a segment stress test"
 		
