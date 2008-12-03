@@ -353,8 +353,8 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 		
 	new_node->segment = seg;
 
-	/* Find the node to append after (last node) */
-	err = list_insert_before(impl->tail, new_node);
+	/* Append at the end */
+	list_insert_before(impl->tail, new_node);
 	
 	return 0;
 }
@@ -389,9 +389,10 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segcol_iter_free(iter);
 	
 	/* create a list node containing the new segment */
-	struct list_node *qnode = malloc(sizeof(struct list_node));
-	if (qnode == NULL)
-		return ENOMEM;
+	struct list_node *qnode;
+	err = list_new_node(&qnode);
+	if (err)
+		return err;
 
 	qnode->segment = seg;
 
@@ -408,9 +409,19 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		list_insert_before(pnode, qnode);
 	} else {
 		segment_t *rseg;
-		segment_split(pseg, &rseg, split_index);
+		err = segment_split(pseg, &rseg, split_index);
+		if (err)
+			return err;
 		
-		struct list_node *rnode = malloc(sizeof(struct list_node));
+		struct list_node *rnode;
+		err = list_new_node(&rnode);
+		if (err) {
+			int err1 = segment_merge(pseg, rseg);
+			/* Unrecoverable error */
+			if (err1)
+				return -1;
+			return err;
+		}
 		rnode->segment = rseg;
 
 		list_insert_after(pnode, qnode);
@@ -633,9 +644,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 	/* Make sure offset is in range */
 	off_t segcol_size;
-	err = segcol_get_size(segcol, &segcol_size);
-	if (err)
-		return err;
+	segcol_get_size(segcol, &segcol_size);
 
 	if (offset >= segcol_size)
 		return EINVAL;
@@ -658,8 +667,6 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 		segment_t *seg = cur_node->segment;
 		off_t seg_size;
 		err = segment_get_size(seg, &seg_size);
-		if (err)
-			return err;
 
 		/* 
 		 * When we move backwards in the list the new mapping is the
