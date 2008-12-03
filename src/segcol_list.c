@@ -343,6 +343,17 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	if (segcol == NULL || seg == NULL)
 		return EINVAL;
 
+	/* 
+	 * If the segment size is 0, return successfully without adding
+	 * anything. Free the segment as we will not be using it.
+	 */
+	off_t seg_size;
+	segment_get_size(seg, &seg_size);
+	if (seg_size == 0) {
+		segment_free(seg);
+		return 0;
+	}
+
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 	
@@ -372,6 +383,19 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	int err = segcol_list_find(segcol, &iter, offset);
 	if (err)
 		return err;
+
+	/* 
+	 * If the segment size is 0, return successfully without adding
+	 * anything. Free the segment as we will not be using it.
+	 * This check is placed after the first find_node() so that the
+	 * validity of offset (if it is in range) is checked first.
+	 */
+	off_t seg_size;
+	segment_get_size(seg, &seg_size);
+	if (seg_size == 0) {
+		segment_free(seg);
+		return 0;
+	}
 
 	segcol_list_clear_cache(impl);
 
@@ -459,7 +483,6 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
-
 	struct list_node *first_node = NULL;
 	struct list_node *last_node = NULL;
 	off_t first_mapping;
@@ -470,7 +493,17 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	if (err)
 		return err;
 
-	err = find_node(segcol, &last_node, &last_mapping, offset + length - 1);
+	/* 
+	 * If the length is 0 return successfully without doing anything.
+	 * This check is placed after the first find_node() so that the
+	 * validity of offset (if it is in range) is checked first.
+	 */
+	if (length == 0)
+		return 0;
+
+	err = find_node(segcol, &last_node, &last_mapping,
+			offset + length - 1 * (length != 0));
+
 	if (err)
 		return err;
 
