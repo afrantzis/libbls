@@ -117,6 +117,12 @@ int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
 {
     return data_object_memory_new_data(o, (void *)ptr, len);
 }
+
+/* Delete a range from a segment but don't return the deleted segments */
+int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
+{
+    return segcol_delete(segcol, NULL, offset, length);
+}
 %}
 
 %include "../src/segment.h"
