@@ -1,4 +1,5 @@
 import unittest
+import errno
 from libbless import *
 
 class SegmentTests(unittest.TestCase):
@@ -96,7 +97,72 @@ class SegmentTests(unittest.TestCase):
 		
 		self.assertNotEqual(err, 0)
 		self.assertEqual(seg1, None)
-	
+		
+	def testMerge(self):
+		"Merge two segments"
+		segment_set_range(self.seg, 0, 1000)
+
+		(err, seg1) = segment_split(self.seg, 600)
+		self.assertEqual(err, 0)
+
+		self.assertEqual(segment_get_start(self.seg)[1], 0)
+		self.assertEqual(segment_get_size(self.seg)[1], 600)
+
+		self.assertEqual(segment_get_start(seg1)[1], 600)
+		self.assertEqual(segment_get_size(seg1)[1], 400)
+
+		# Merge the segments
+		err = segment_merge(self.seg, seg1)
+		self.assertEqual(err, 0)
+		self.assertEqual(segment_get_start(self.seg)[1], 0)
+		self.assertEqual(segment_get_size(self.seg)[1], 1000)
+
+		self.assertEqual(segment_get_start(seg1)[1], 600)
+		self.assertEqual(segment_get_size(seg1)[1], 400)
+		
+		segment_free(seg1)
+
+	def testMergeBoundaryCases(self):
+		"Try boundary conditions when merging"
+
+		err = segment_set_range(self.seg, 0, 1000)
+		self.assertEqual(err, 0)
+
+		(err, seg1) = segment_copy(self.seg)
+		self.assertEqual(err, 0)
+
+		err = segment_set_range(self.seg, 1001, 10)
+		self.assertEqual(err, 0)
+
+		err = segment_merge(self.seg, seg1)
+		self.assertNotEqual(err, 0)
+
+		segment_free(seg1)
+
+	def testMergeOverflow(self):
+		"Try boundary conditions for overflow when merging"
+
+		err = segment_set_range(self.seg, 0, 1)
+		self.assertEqual(err, 0)
+
+		(err, seg1) = segment_copy(self.seg)
+		self.assertEqual(err, 0)
+
+		err = segment_set_range(seg1, 1, get_max_off_t())
+		self.assertEqual(err, 0)
+
+		err = segment_merge(self.seg, seg1)
+		self.assertEqual(err, errno.EOVERFLOW)
+
+		# This should succeed
+		err = segment_set_range(seg1, 1, get_max_off_t() - 1)
+		self.assertEqual(err, 0)
+
+		err = segment_merge(self.seg, seg1)
+		self.assertEqual(err, 0)
+
+		segment_free(seg1)
+
 	def testRangeOverflow(self):
 		"Try boundary conditions for overflow"
 

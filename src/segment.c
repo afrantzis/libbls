@@ -170,6 +170,46 @@ fail:
 	return err;
 }
 
+/** 
+ * Merges two segments.
+ *
+ * This function merges two related segments. Segment seg1
+ * must be a continuation of the first segment for the 
+ * merge to succeed. The first segment is changed in place.
+ * 
+ * @param seg the first segment 
+ * @param seg1 the segment to merge with the first segment 
+ * 
+ * @return 
+ */
+int segment_merge(segment_t *seg, segment_t *seg1)
+{
+	if (seg == NULL || seg1 == NULL)
+		return EINVAL;
+
+	/* Segments must point to the same object */
+	if (seg->data != seg1->data)
+		return EINVAL;
+
+	/* Calculate the size of the merged segment */
+	if (__MAX(off_t) - seg->size < seg1->size)
+		return EOVERFLOW;
+
+	off_t new_size = seg->size + seg1->size;
+
+	/* Make sure the range of the merged segment doesn't overflow */
+	if (__MAX(off_t) - seg->start < new_size - 1 * (new_size != 0))
+		return EOVERFLOW;
+
+	/* seg1 must be a continuation of seg */
+	if (seg->start + seg->size != seg1->start)
+		return EINVAL;
+
+	seg->size = new_size;
+
+	return 0;
+}
+
 /**
  * Gets data object a segment_t is related to.
  *
