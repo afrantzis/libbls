@@ -488,7 +488,7 @@ class BufferTests(unittest.TestCase):
 		
 		expected_data = "1234567890"
 		for i in range(len(read_data)):
-				self.assertEqual(read_data[i], expected_data[i])
+			self.assertEqual(read_data[i], expected_data[i])
 		
 		# Try to insert zero data (should succeed!)
 		err = bless_buffer_insert(self.buf, 0, data_src, 0, 0)
@@ -513,6 +513,65 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_source_unref(data_src)
 		self.assertEqual(err, 0)
+
+	def testDelete(self):
+		"Delete data from the buffer"
+
+		self.testInsertFromFile()
+
+		data = "12de34567fghij34567890"
+
+		for i in range(len(data)/2, 1, -1):
+			err = bless_buffer_delete(self.buf, i - 1, 2)
+			self.assertEqual(err, 0)
+
+			read_data = create_string_buffer(2 * (i - 1))
+			err = bless_buffer_read(self.buf, 0, read_data, 0, len(read_data))
+			self.assertEqual(err, 0)
+
+			expected_data = data[:i-1] + data[len(data)-i+1:]
+
+			for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
+			
+	def testDeleteBoundaryCases(self):
+		"Try boundary cases for deleting from a buffer"
+
+		# Try to delete from an empty buffer
+		err = bless_buffer_delete(self.buf, 0, 0)
+		self.assertNotEqual(err, 0)
+		
+		# Insert some data
+		self.testInsertFromFile()
+		
+		(err, buf_size) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+
+		# Try to delete zero data (should succeed!)
+		err = bless_buffer_delete(self.buf, 0, 0)
+		self.assertEqual(err, 0)
+		
+		err = bless_buffer_delete(self.buf, 1, 0)
+		self.assertEqual(err, 0)
+
+		# Make sure that buffer didn't change
+		(err, buf_size1) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(buf_size1, buf_size)
+
+		# Try to delete from an invalid range
+		err = bless_buffer_delete(self.buf, 0, buf_size + 1)
+		self.assertNotEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, -1, buf_size)
+		self.assertNotEqual(err, 0)
+		
+		err = bless_buffer_delete(self.buf, buf_size, 2)
+		self.assertNotEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, buf_size, -1)
+		self.assertNotEqual(err, 0)
+
 
 if __name__ == '__main__':
 	unittest.main()

@@ -235,7 +235,20 @@ fail:
  */
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 {
-	return -1;
+	if (buf == NULL) 
+		return EINVAL;
+
+	/* 
+	 * No need to check for overflow, valid ranges etc.
+	 * They are all checked in segcol_delete().
+	 */
+
+	int err = segcol_delete(buf->segcol, NULL, offset, length);
+
+	if (err)
+		return err;
+
+	return 0;
 }
 
 /**
