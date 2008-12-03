@@ -353,8 +353,8 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 		
 	new_node->segment = seg;
 
-	/* Find the node to append after (last node) */
-	err = list_insert_before(impl->tail, new_node);
+	/* Append at the end */
+	list_insert_before(impl->tail, new_node);
 	
 	return 0;
 }
@@ -389,9 +389,10 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segcol_iter_free(iter);
 	
 	/* create a list node containing the new segment */
-	struct list_node *qnode = malloc(sizeof(struct list_node));
-	if (qnode == NULL)
-		return ENOMEM;
+	struct list_node *qnode;
+	err = list_new_node(&qnode);
+	if (err)
+		return err;
 
 	qnode->segment = seg;
 
@@ -408,9 +409,19 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		list_insert_before(pnode, qnode);
 	} else {
 		segment_t *rseg;
-		segment_split(pseg, &rseg, split_index);
+		err = segment_split(pseg, &rseg, split_index);
+		if (err)
+			return err;
 		
-		struct list_node *rnode = malloc(sizeof(struct list_node));
+		struct list_node *rnode;
+		err = list_new_node(&rnode);
+		if (err) {
+			int err1 = segment_merge(pseg, rseg);
+			/* Unrecoverable error */
+			if (err1)
+				return -1;
+			return err;
+		}
 		rnode->segment = rseg;
 
 		list_insert_after(pnode, qnode);
@@ -482,8 +493,10 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	if (err)
 		return err;
 	err = list_new_node(&node_b);
-	if (err)
+	if (err) {
+		free(node_a);
 		return err;
+	}
 
 	/* 
 	 * The nodes that should go before and after node_a and node_b, respectively 
@@ -493,16 +506,14 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct list_node *node_b_next = last_node->next;
 
     /* Delete the chain */
-	err = list_delete_chain(first_node, last_node);
-	if (err)
-		return err;
+	list_delete_chain(first_node, last_node);
 
 	/* Calculate new size, after having deleted the chain */
 	off_t new_size;
 	segcol_get_size(segcol, &new_size);
 
 	off_t last_seg_size;
-	err = segment_get_size(last_node->segment, &last_seg_size);
+	segment_get_size(last_node->segment, &last_seg_size);
 
 	new_size -= last_mapping + last_seg_size - first_mapping;
 
@@ -515,7 +526,9 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	 */
 	if (first_mapping < offset) {
 		segment_t *tmp_seg;
-		segment_split(first_node->segment, &tmp_seg, offset - first_mapping);
+		err = segment_split(first_node->segment, &tmp_seg, offset - first_mapping);
+		if (err)
+			goto fail_first_node;
 
 		node_a->segment = first_node->segment;
 		first_node->segment = tmp_seg;
@@ -544,8 +557,11 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 			last_seg_dec = offset - first_mapping;
 
 		segment_t *tmp_seg;
-		segment_split(last_node->segment, &tmp_seg,
+		err = segment_split(last_node->segment, &tmp_seg,
 				offset + length - last_mapping - last_seg_dec);
+		if (err)
+			goto fail_last_node;
+
 		node_b->segment = tmp_seg;
 	} else {
 		free(node_b);
@@ -556,36 +572,67 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	 * Insert incorrectly deleted parts of the segments back into segcol
 	 */
 
-	if (node_a != NULL) {
-		err = list_insert_after(node_a_prev, node_a);
+	if (node_a != NULL)
+		list_insert_after(node_a_prev, node_a);
 
-		if (err)
-			return err;
-	}
+	if (node_b != NULL)
+		list_insert_before(node_b_next, node_b);
 
-	if (node_b != NULL) {
-		err = list_insert_before(node_b_next, node_b);
+	/* Create a new segcol_t and put in the deleted segments */
+	segcol_t *deleted_tmp;
+	err = segcol_list_new(&deleted_tmp);
+	if (err)
+		goto fail_segcol_new_deleted;
 
-		if (err)
-			return err;
-	}
+	struct segcol_list_impl *deleted_impl = 
+		(struct segcol_list_impl *) segcol_get_impl(deleted_tmp);
 
-	/* Create a new segcol_t to put the deleted segments */
-	/* TODO: Optimize: We can put the node chain as is in the new
-	 * segcol_list. No need to add the segments one-by-one. */
-	if (deleted != NULL)
-		segcol_list_new(deleted);
+	list_insert_after(deleted_impl->head, first_node);
+	if (first_node != last_node)
+		list_insert_before(deleted_impl->tail, last_node);
 
-	struct list_node *n = first_node;
-
-	while(n != last_node->next) {
-		segcol_append(*deleted, n->segment);
-		struct list_node *next_node = n->next;
-		free(n);
-		n = next_node;
-	}
+	/* Either return the deleted segments or free them */
+	if (deleted != NULL) 
+		*deleted = deleted_tmp;
+	else
+		segcol_free(deleted_tmp);
 
 	return 0;
+/* 
+ * Handle failures so that the segcol is in its expected state
+ * after a failure and there are no memory leaks.
+ */
+fail_segcol_new_deleted:
+	if (node_b != NULL)
+		list_delete_chain(node_b, node_b);
+
+	if (node_a != NULL)
+		list_delete_chain(node_a, node_a);
+
+	if (node_b != NULL) {
+		int err1 = segment_merge(last_node->segment, node_b->segment);
+		/* Unrecoverable failure */
+		if (err1)
+			return -1;
+		free(node_b->segment);
+	}
+fail_last_node:
+	if (node_a != NULL) {
+		int err1 = segment_merge(node_a->segment, first_node->segment);
+		/* Unrecoverable failure */
+		if (err1)
+			return -1;
+		free(first_node->segment);
+		first_node->segment = node_a->segment; 
+	}
+fail_first_node:
+	list_insert_before(node_b_next, last_node);
+	list_insert_after(node_a_prev, first_node);
+
+	free(node_a);
+	free(node_b);
+
+	return err;
 }
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
@@ -597,9 +644,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 	/* Make sure offset is in range */
 	off_t segcol_size;
-	err = segcol_get_size(segcol, &segcol_size);
-	if (err)
-		return err;
+	segcol_get_size(segcol, &segcol_size);
 
 	if (offset >= segcol_size)
 		return EINVAL;
@@ -622,8 +667,6 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 		segment_t *seg = cur_node->segment;
 		off_t seg_size;
 		err = segment_get_size(seg, &seg_size);
-		if (err)
-			return err;
 
 		/* 
 		 * When we move backwards in the list the new mapping is the

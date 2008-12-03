@@ -248,6 +248,12 @@ size_t bless_malloc(size_t s)
 
     return (size_t)p;
 }
+
+/* Delete a range from a segment but don't return the deleted segments */
+int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
+{
+    return segcol_delete(segcol, NULL, offset, length);
+}
 %}
 
 %include "../src/segment.h"
