@@ -440,10 +440,8 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		struct list_node *rnode;
 		err = list_new_node(&rnode);
 		if (err) {
-			int err1 = segment_merge(pseg, rseg);
-			/* Unrecoverable error */
-			if (err1)
-				return -1;
+			segment_merge(pseg, rseg);
+			segment_free(rseg);
 			return err;
 		}
 		rnode->segment = rseg;
@@ -643,18 +641,12 @@ fail_segcol_new_deleted:
 		list_delete_chain(node_a, node_a);
 
 	if (node_b != NULL) {
-		int err1 = segment_merge(last_node->segment, node_b->segment);
-		/* Unrecoverable failure */
-		if (err1)
-			return -1;
+		segment_merge(last_node->segment, node_b->segment);
 		free(node_b->segment);
 	}
 fail_last_node:
 	if (node_a != NULL) {
-		int err1 = segment_merge(node_a->segment, first_node->segment);
-		/* Unrecoverable failure */
-		if (err1)
-			return -1;
+		segment_merge(node_a->segment, first_node->segment);
 		free(first_node->segment);
 		first_node->segment = node_a->segment; 
 	}
