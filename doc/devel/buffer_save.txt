@@ -1,0 +1,205 @@
+Saving a buffer
+===============
+Alexandros Frantzis, 08 Dec 2008
+
+1. Introduction
+---------------
+
+Buffers in libbless can contain data from both memory and file sources.  In
+order to save memory (and sometimes to make the editing feasible) the data from
+file sources is not loaded into main memory. The buffer keeps information about
+the contained files and ranges and reads the data in page-sized chunks when
+needed.
+
+In the simple case, saving a file consists of just reading data from the
+various sources and writing them out to the target file. Things become more
+complicated when the target file happens to be one of the file sources used in
+the buffer.
+
+In this text we are going to recognize the issues that can arise in such cases
+and propose an elegant way to resolve them.
+
+2. Illustrating the problem
+---------------------------
+
+Consider a buffer B containing segment [0-9] of file F at range [10-19] of the
+buffer:
+
+     S
+F:  | 00-09 | ..... |
+		  
+             S
+B:  | ..... |F:00-09| ..... |
+    ^       ^       ^
+    0       10      20
+
+To save the buffer to a file we read each segment and write it out to the file.
+However, if the target file is F then when we try to read the data of segment S
+we face a serious problem. The data we are going to read (and therefore write)
+is not the original data of F, but the data belonging to the previous segments
+of the buffer we wrote at positions 0-9. The solution in this case is to first
+write segment S so it gets the original data and then write out the remaining
+segments.
+
+The problem can become even more complicated when we have we have more segments
+from the target file. A particulary interesting case arises when a segment from
+the buffer which belongs to the target file happens to overlap with another
+segment of F which is also present in the buffer:
+
+     S               T
+F:  | 00-09 | ..... | 20-29 |
+    |       |
+        T                    S 
+B:  |..|F:20-29| .......... |F:00-09|
+    ^  ^       ^            ^
+    0  5       15           30
+
+In this case segment S in F overlaps with segment T in B. We can simply try to
+adapt the strategy used in the previous case and first write out the two target
+file segments. This works but only if we are extra careful.  In this case, if
+we first write segment T then when we try to read the data of segment S we will
+read wrong data (offsets 5-9 will contain data from segment T). If we do it the
+other way around everything works wonderfully. 
+
+Taking the last example one step further consider what happens if we have a
+cyclic overlap:
+
+     S               T
+F:  | 00-09 | ..... | 20-29 |
+    |       |       |       |
+        T               S    
+B:  |..|F:20-29| ..... |F:00-09|
+    ^  ^       ^       ^
+    0  5       15       25
+
+Now segment S in F overlaps with segment T in B and segment T in F overlaps
+with segment S in B. In this case there is no way to order the writes of
+segments S and T so that we end up with the correct data. A straightforward but
+wasteful way of tackling this problem is to save the buffer to a temporary file
+and then move the file to its final location. This works but requires space
+twice the size of the buffer we are trying to save. When buffers reach GiB in
+size this method may prove to be unfeasible.
+
+A more efficient method is to try to eliminate the cyclic overlapping by
+removing at least one overlap. In the previous case we can replace segment T in
+B with two segments M and T1 so that no overlap occurs. Segment M will contain
+a part of T's data but will actually store them in memory (or a temporary
+file if necessary) and the T1 segment will just be a T minus the range stored
+in M.  Using this scheme we have:
+
+     S                       T1
+F:  | 00-09 | ............. |25-29|
+    |       |               |     |
+         M   T1              S     
+B:  |...|...|F:25-29| ..... | F:00-09 |
+    ^   ^           ^       ^
+    0   5           15      25
+
+We have managed to eliminate the first overlap and now we can safely save the
+buffer by first writing T1 then S and then the remaining semgments of B.
+
+3. Modeling the problem
+-----------------------
+
+The examples presented in the previous section show representative but simple
+cases of the problems we can run into. In order to be able to handle cases
+of increased complexity it is useful to create a model of the problem. We can
+then use this model to find generic solutions and algorithms.
+
+The model we are going to present uses graphs. In our graphs nodes represent
+segments from the file we are going to save to that are also present in the
+buffer we are going to save. Edges between nodes denote segment overlap. More
+specifically, there is an edge from node (segment) P to node Q when segment P
+in the target file overlaps with segment Q in the buffer. Every edge carries
+with it the size of the overlapping range.
+
+To enhance understanding we present some buffers and their respective overlap
+graphs (P* denotes a self-loop on P):
+
+              P                    Q               R
+F:  |........|05-14       |.......|20-24  |.......|30-34  |
+
+             |            |       |       |       |       |
+                           P
+B1: |.....................|F:05-14        |...............|    P
+
+             |            |       |       |       |       |
+                           Q           P
+B2: |.....................|F:20-24|...|F:05-14        |...|    Q --> P
+
+             |            |       |       |       |       |
+                 P              Q
+B3: |...........|F:05-14       |F:20-24|..................|    P* Q*
+
+             |            |       |       |       |       |
+         R            P                        Q
+B4: |...|F:30-34|....|F:05-14         |.......|F:20-24|...|    R <-- P* <-- Q
+                                                                \___________^
+
+
+4. Solving the problem
+----------------------
+
+Using the overlap graph we can now systematically answer the question: in what
+order should the nodes (segments) be written to the file so that the correct
+data is written?
+
+First of all we can handle each connected component of the graph separately so
+it is enough to study the solution for one connected component.
+
+If the component has no cycles then we can just process the nodes in order of
+increasing in-degree. We first process the nodes that have in-degree 0 (no
+segment from the file overlaps with them in the buffer) and can be safely
+written to the file.  As each node is processed it is removed from the graph
+along with its incident edges. 
+
+As a special case, we can process a node that has a self-loop but no other
+incoming edge.  This is achieved by first writing to the file the
+non-overlapping part of the node and then the rest.
+
+In order to handle components with cycles (except self-loops) we must find a
+way to break the cycles. This can be achieved by removing the right edges. An
+edges from P to Q can be removed by replacing Q in the buffer by the segments
+Q1 and M. M contains an in memory copy of data of the overlapping range. Q1 is
+the part of Q that remains. This technique eliminates the overlap (because the
+overlapping part is know stored in memory) and removes the edge. It is obvious
+that we need extra memory to break a cycle. We can minimize the size of extra
+memory by choosing the edges to remove in a clever way.
+
+Once we have an acyclic component (self-loops allowed) we can process it as
+described previously.
+
+5. Algorithm
+------------
+
+Phase 1: Create the overlap graph. Make it undirected by denoting each edge
+with X/Y where X is the weight from A to B and Y is the weight from B to A.
+The effective weight of each edge (used in the maximum spanning tree algorithm
+used below) is the maximum of the two weights.
+
+Phase 2: Find the graph's connected components.
+
+Phase 3: Make the graph acyclic. To do that just find a spanning tree of
+each conncected component. It is even better and quite easy to find a maximum
+spanning tree so as to minimize the extra memory needed to break cycles. 
+
+Phase 4: Remove all unused edges as described in the previous section.  Process
+each uncyclic connected component as described in the previous section.
+
+6. Implementation Details
+-------------------------
+
+Phase 1: To create the overlap graph we have to scan the buffer segment
+collection for segments that belong to the file we want to save to. Each new
+segment that is found must be checked against all previous found file segments
+for overlap.  This is an O(n*f(k)) algorithm where n is the number of segments
+in the segment collection and k the number of segments belonging to the file.
+If we check for overlap naively f(k) = O(k) and therefore the algorithm is
+O(n*k). We can use an interval tree so that f(k) = O(logk) and the algorithm
+becomes O(n*logk).  As we don't expect k growing too large, we are going to
+implement this phase using the naive approach for simplicity.
+
+Phases 2 and 3: Use Prim's algorithm to find the maximum spanning tree. This
+can be made to work without explicitly splitting the graph to its connected
+components.
+
