@@ -12,6 +12,7 @@
 #include "data_object_file.h"
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "priority_queue.h"
 %}
 
 %apply long long { ssize_t };
@@ -57,6 +58,8 @@
 /* The same rules for segment_t ** apply to other ** types */
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
+%apply segment_t ** { priority_queue_t ** }
+
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 
@@ -264,6 +267,7 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 %include "../src/data_object_file.h"
 %include "../src/buffer.h"
 %include "../src/buffer_source.h"
+%include "../src/priority_queue.h"
 
 
 
