@@ -197,3 +197,25 @@ int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free
 	return 0;
 }
 
+/** 
+ * Compares the data held by two data objects.
+ * 
+ * @param[out] result 0 if they are equal, 1 otherwise
+ * @param obj1 one of the data objects to compare
+ * @param obj2 the other data object to compare
+ * 
+ * @return the operation error code 
+ */
+int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2)
+{
+	if (obj1 == NULL || obj2 == NULL || result == NULL)
+		return EINVAL;
+
+	/* Check if they are of the same type */
+	if (obj1->funcs != obj2->funcs) {
+		*result = 1;
+		return 0;
+	}
+
+	return (*obj1->funcs->compare)(result, obj1, obj2);
+}

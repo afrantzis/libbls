@@ -22,12 +22,15 @@ static int data_object_file_get_size(data_object_t *obj, off_t *size);
 static int data_object_file_free(data_object_t *obj);
 static int data_object_file_get_data(data_object_t *obj, void **buf, 
 		off_t offset, size_t *length, data_object_flags flags);
+static int data_object_file_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2);
 
 /* Function pointers for the file implementation of data_object_t */
 static struct data_object_funcs data_object_file_funcs = {
 	.get_data = data_object_file_get_data,
 	.free = data_object_file_free,
-	.get_size = data_object_file_get_size
+	.get_size = data_object_file_get_size,
+	.compare = data_object_file_compare
 };
 
 /* Private data for the file implementation of data_object_t */
@@ -38,6 +41,10 @@ struct data_object_file_impl {
 	void *page_data;
 	off_t page_offset;
 	long page_size;	
+
+	/* Device and inode of fd. Used in data object comparisons. */
+	dev_t dev;
+	ino_t inode;
 };
 
 /**
@@ -77,6 +84,15 @@ int data_object_file_new(data_object_t **obj, int fd)
 	}
 
 	impl->fd = fd;
+
+	/* Get file info */
+	struct stat st;
+	err = fstat(fd, &st);
+	if (err)
+		goto fail;
+
+	impl->dev = st.st_dev;
+	impl->inode = st.st_ino;
 
 	/* Get size of file */
 	impl->size = lseek(fd, 0, SEEK_END);
@@ -207,3 +223,21 @@ static int data_object_file_get_size(data_object_t *obj, off_t *size)
 
 	return 0;
 }
+
+static int data_object_file_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2)
+{
+	if (obj1 == NULL || obj2 == NULL || result == NULL)
+		return EINVAL;
+
+	struct data_object_file_impl *impl1 =
+		data_object_get_impl(obj1);
+
+	struct data_object_file_impl *impl2 =
+		data_object_get_impl(obj2);
+
+	*result = !((impl1->dev == impl2->dev) && (impl1->inode == impl2->inode));
+
+	return 0;
+}
+
