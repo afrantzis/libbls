@@ -18,6 +18,7 @@
 struct element {
 	void *data; /**< The data this element holds */
 	int key; /**< The priority key of this element */
+	size_t *pos; /**< Place to store the current position in the heap */ 
 };
 
 struct priority_queue {
@@ -33,6 +34,14 @@ static int downheap(priority_queue_t *pq, size_t n);
 /********************/
 /* Helper functions */
 /********************/
+
+static inline void place_element(struct element *h, size_t pos,
+        struct element e)
+{
+	h[pos] = e;
+	if (h[pos].pos != NULL)
+		*h[pos].pos = pos;
+}
 
 /** 
  * Restore the heap property by moving an element upwards.
@@ -59,12 +68,12 @@ static int upheap(priority_queue_t *pq, size_t n)
 	 * to check for i > 1.
 	 */
 	while (k.key > h[i / 2].key) {
-		h[i] = h[i / 2];
+		place_element(h, i, h[i / 2]);
 		i = i / 2;
 	}
 
 	/* Place the Element at its proper place */
-	h[i] = k;
+	place_element(h, i, k);
 
 	return 0;
 }
@@ -102,14 +111,14 @@ static int downheap(priority_queue_t *pq, size_t n)
 		if (k.key > h[j].key) break;
 
 		/* Move the current element upwards */
-		h[i] = h[j];
+		place_element(h, i, h[j]);
 
 		/* Move to chosen child */
 		i = j;
-     }
+	}
 
 	/* Place the Element at its proper place */
-	h[i] = k;
+	place_element(h, i, k);
 
 	return 0;
 }
@@ -206,10 +215,11 @@ int priority_queue_get_size(priority_queue_t *pq, size_t *size)
  * @param pq the priority queue to add the element to
  * @param data the element to be added 
  * @param key the priority key of the element to be added
+ * @param pos where to store the current position of the element in the heap
  * 
  * @return the operation error code
  */
-int priority_queue_add(priority_queue_t *pq, void *data, int key)
+int priority_queue_add(priority_queue_t *pq, void *data, int key, size_t *pos)
 {
 	if (pq == NULL)
 		return EINVAL;
@@ -228,6 +238,7 @@ int priority_queue_add(priority_queue_t *pq, void *data, int key)
 	/* Place the new element at the end of the heap */
 	pq->heap[++pq->size].data = data;
 	pq->heap[pq->size].key = key;
+	pq->heap[pq->size].pos = pos;
 
 	/* Fix the heap property */
 	upheap(pq, pq->size);
@@ -253,7 +264,7 @@ int priority_queue_remove_max(priority_queue_t *pq, void **data)
 	struct element k = pq->heap[1];
 	
 	/* Move the last element to the top */
-	pq->heap[1] = pq->heap[pq->size];
+	place_element(pq->heap, 1, pq->heap[pq->size]);
 
 	pq->size--;
 
@@ -261,6 +272,33 @@ int priority_queue_remove_max(priority_queue_t *pq, void **data)
 	downheap(pq, 1);
 
 	*data = k.data;
+
+	return 0;
+}
+
+/** 
+ * Change the priority key of an element.
+ * 
+ * @param pq the priority queue the element is in
+ * @param pos the position of the element in the priority queue 
+ * @param key the new key 
+ * 
+ * @return 
+ */
+int priority_queue_change_key(priority_queue_t *pq, size_t pos, int key)
+{
+	if (pq == NULL || pos > pq->size)
+		return EINVAL;
+
+	struct element *e = &pq->heap[pos];
+	int old_key = e->key;
+
+	e->key = key;
+
+	if (key < old_key)
+		downheap(pq, pos);
+	else if (key > old_key)
+		upheap(pq, pos);
 
 	return 0;
 }
