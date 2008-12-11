@@ -84,13 +84,13 @@
 /* Decrease reference count of data stored in a segment_t when it is freed */
 %exception segment_free
 {
-    $action
     if (arg1 != NULL) {
         void *data = NULL;
         segment_get_data(arg1, &data);
         if (data != NULL)
             Py_DECREF((PyObject *)data);
     }
+    $action
 }
 
 /* handle 'length' in data_object_get_data() */
