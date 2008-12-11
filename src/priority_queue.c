@@ -226,7 +226,8 @@ int priority_queue_add(priority_queue_t *pq, void *data, int key, size_t *pos)
 
 	/* Allocate more space if needed */
 	if (pq->size >= pq->capacity) {
-		size_t new_size = (5 * pq->capacity) / 4;
+		/* Increase by about 20%. Make sure that we increase at least 1! */
+		size_t new_size = ((5 * pq->capacity) / 4) + 1;
 		struct element *t = realloc(pq->heap, (new_size + 1) * sizeof *t);
 		if (t == NULL)
 			return ENOMEM;
