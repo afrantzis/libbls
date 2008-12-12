@@ -106,12 +106,12 @@ cases of the problems we can run into. In order to be able to handle cases
 of increased complexity it is useful to create a model of the problem. We can
 then use this model to find generic solutions and algorithms.
 
-The model we are going to present uses graphs. In our graphs nodes represent
+The model we are going to present uses graphs. In our graphs vertices represent
 segments from the file we are going to save to that are also present in the
-buffer we are going to save. Edges between nodes denote segment overlap. More
-specifically, there is an edge from node (segment) P to node Q when segment P
-in the target file overlaps with segment Q in the buffer. Every edge carries
-with it the size of the overlapping range.
+buffer we are going to save. Edges between vertices denote segment overlap.
+More specifically, there is an edge from vertex (segment) P to vertex Q when
+segment P in the target file overlaps with segment Q in the buffer. Every edge
+carries with it the size of the overlapping range.
 
 To enhance understanding we present some buffers and their respective overlap
 graphs (P* denotes a self-loop on P):
@@ -140,51 +140,44 @@ B4: |...|F:30-34|....|F:05-14         |.......|F:20-24|...|    R <-- P* <-- Q
 4. Solving the problem
 ----------------------
 
-Using the overlap graph we can now systematically answer the question: in what
-order should the nodes (segments) be written to the file so that the correct
-data is written?
+Using the overlap graph we can now answer the question: in what order should
+the vertices (segments) be written to the file so that the correct data is
+written?
 
-First of all we can handle each connected component of the graph separately so
-it is enough to study the solution for one connected component.
-
-If the component has no cycles then we can just process the nodes in order of
-increasing in-degree. We first process the nodes that have in-degree 0 (no
+If the graph has no cycles then we can just process the vertices in order of
+increasing in-degree. We first process the vertices that have in-degree 0 (no
 segment from the file overlaps with them in the buffer) and can be safely
-written to the file.  As each node is processed it is removed from the graph
+written to the file.  As each vertex is processed it is removed from the graph
 along with its incident edges. 
 
-As a special case, we can process a node that has a self-loop but no other
+As a special case, we can process a vertex that has a self-loop but no other
 incoming edge.  This is achieved by first writing to the file the
-non-overlapping part of the node and then the rest.
+non-overlapping part of the vertex and then the rest.
 
 In order to handle components with cycles (except self-loops) we must find a
-way to break the cycles. This can be achieved by removing the right edges. An
+way to break the cycles. This can be achieved by removing the correct edges. An
 edges from P to Q can be removed by replacing Q in the buffer by the segments
 Q1 and M. M contains an in memory copy of data of the overlapping range. Q1 is
 the part of Q that remains. This technique eliminates the overlap (because the
-overlapping part is know stored in memory) and removes the edge. It is obvious
-that we need extra memory to break a cycle. We can minimize the size of extra
-memory by choosing the edges to remove in a clever way.
+overlapping part is now stored in memory) and removes the edge. It is obvious
+that we need extra memory (or disk space if memory is not enough) to break a
+cycle. By choosing the edges to remove wisely we can minimize the amount of
+extra memory we are going to need.
 
-Once we have an acyclic component (self-loops allowed) we can process it as
+Once we have an acyclic graph (self-loops allowed) we can process it as
 described previously.
 
-5. Algorithm
-------------
+5. Algorithm outline
+--------------------
 
-Phase 1: Create the overlap graph. Make it undirected by denoting each edge
-with X/Y where X is the weight from A to B and Y is the weight from B to A.
-The effective weight of each edge (used in the maximum spanning tree algorithm
-used below) is the maximum of the two weights.
+Phase 1: Create the overlap graph.
 
-Phase 2: Find the graph's connected components.
+Phase 2: Make the graph acyclic. To do that just find a spanning tree of each
+connected component. It is even better to find a maximum spanning tree so as
+to minimize the extra memory needed to break cycles. 
 
-Phase 3: Make the graph acyclic. To do that just find a spanning tree of
-each conncected component. It is even better and quite easy to find a maximum
-spanning tree so as to minimize the extra memory needed to break cycles. 
-
-Phase 4: Remove all unused edges as described in the previous section.  Process
-each uncyclic connected component as described in the previous section.
+Phase 3: First break all unused edges and then process all vertices as
+described in the previous section.
 
 6. Implementation Details
 -------------------------
@@ -196,10 +189,12 @@ for overlap.  This is an O(n*f(k)) algorithm where n is the number of segments
 in the segment collection and k the number of segments belonging to the file.
 If we check for overlap naively f(k) = O(k) and therefore the algorithm is
 O(n*k). We can use an interval tree so that f(k) = O(logk) and the algorithm
-becomes O(n*logk).  As we don't expect k growing too large, we are going to
-implement this phase using the naive approach for simplicity.
+becomes O(n*logk).  As we don't expect k growing too large, for the time being
+we are going to implement this phase using the naive approach for simplicity.
 
-Phases 2 and 3: Use Prim's algorithm to find the maximum spanning tree. This
-can be made to work without explicitly splitting the graph to its connected
-components.
+Phases 2: Use Kruskal's algorithm to find the maximum spanning tree. This
+works directly in disconnected graphs (it finds a maximum spanning forest) and
+directed graphs! Compare this to Prim's algorithm that finds the maximum
+spanning tree for only one connected component of a disconnected graph and 
+without modification it works only for undirected graphs.
 
