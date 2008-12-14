@@ -79,7 +79,7 @@ static off_t calculate_overlap(off_t start1, off_t size1, off_t start2,
 		if (overlap == 0)
 			overlap = end2 - start1 + 1;
 		else
-			overlap -= end2 - end1;
+			overlap -= end1 - end2;
 	}
 
 	return overlap;

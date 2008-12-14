@@ -85,6 +85,38 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_dot(self.g, expected_lines)
 
+	def testSpanningTreeUndirectedCycle(self):
+		"Find the spanning tree of an overlap graph with an undirected cycle"
+
+		(err, seg1) = segment_new("", 5, 10, None)
+		self.assertEqual(err, 0)
+		(err, seg2) = segment_new("", 15, 5, None)
+		self.assertEqual(err, 0)
+		(err, seg3) = segment_new("", 40, 5, None)
+		self.assertEqual(err, 0)
+
+		err = overlap_graph_add_segment(self.g, seg1, 20)
+		self.assertEqual(err, 0)
+		err = overlap_graph_add_segment(self.g, seg2, 5)
+		self.assertEqual(err, 0)
+		err = overlap_graph_add_segment(self.g, seg3, 12)
+		self.assertEqual(err, 0)
+
+		expected_lines = ("0 [label = 0]\n", "1 [label = 1]\n",  "2 [label = 2]\n",
+				"0 -> 1 [label = 5]\n", "0 -> 2 [label = 3]\n",
+				"1 -> 2 [label = 2]\n") 
+
+		self.check_dot(self.g, expected_lines)
+
+		overlap_graph_max_spanning_tree(self.g)
+
+		expected_lines = ("0 [label = 0]\n", "1 [label = 1]\n",  "2 [label = 1]\n",
+				"0 -> 1 [label = 5 style = bold]\n", 
+				"0 -> 2 [label = 3 style = bold]\n",
+				"1 -> 2 [label = 2]\n") 
+
+		self.check_dot(self.g, expected_lines)
+
 
 if __name__ == '__main__':
 	unittest.main()
