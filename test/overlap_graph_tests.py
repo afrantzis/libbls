@@ -44,7 +44,7 @@ class OverlapGraphTests(unittest.TestCase):
 		err = overlap_graph_add_segment(self.g, seg2, 18)
 		self.assertEqual(err, 0)
 
-		expected_lines = ("0 [label = 0]\n", "1 [label = 0]\n",
+		expected_lines = ("0 [label = 0/0]\n", "1 [label = 0/0]\n",
 				"0 -> 0 [label = 7]\n", "1 -> 1 [label = 3]\n")
 
 		self.check_dot(self.g, expected_lines)
@@ -66,9 +66,10 @@ class OverlapGraphTests(unittest.TestCase):
 		err = overlap_graph_add_segment(self.g, seg3, 3)
 		self.assertEqual(err, 0)
 
-		expected_lines = ("0 [label = 1]\n", "1 [label = 1]\n",  "2 [label = 1]\n",
-				"0 -> 0 [label = 3]\n", "0 -> 2 [label = 3]\n",
-				"1 -> 0 [label = 2]\n", "2 -> 1 [label = 3]\n")
+		expected_lines =("0 [label = 1/1]\n", "1 [label = 1/1]\n",
+				"2 [label = 1/1]\n", "0 -> 0 [label = 3]\n",
+				"0 -> 2 [label = 3]\n", "1 -> 0 [label = 2]\n",
+				"2 -> 1 [label = 3]\n")
 
 		self.check_dot(self.g, expected_lines)
 
@@ -79,9 +80,10 @@ class OverlapGraphTests(unittest.TestCase):
 
 		overlap_graph_max_spanning_tree(self.g)
 
-		expected_lines = ("0 [label = 0]\n", "1 [label = 1]\n",  "2 [label = 1]\n",
-				"0 -> 0 [label = 3]\n", "0 -> 2 [label = 3 style = bold]\n",
-				"1 -> 0 [label = 2]\n", "2 -> 1 [label = 3 style = bold]\n")
+		expected_lines = ("0 [label = 0/1]\n", "1 [label = 1/0]\n",
+				"2 [label = 1/1]\n", "0 -> 0 [label = 3]\n",
+				"0 -> 2 [label = 3 style = bold]\n", "1 -> 0 [label = 2]\n",
+				"2 -> 1 [label = 3 style = bold]\n")
 
 		self.check_dot(self.g, expected_lines)
 
@@ -102,7 +104,8 @@ class OverlapGraphTests(unittest.TestCase):
 		err = overlap_graph_add_segment(self.g, seg3, 12)
 		self.assertEqual(err, 0)
 
-		expected_lines = ("0 [label = 0]\n", "1 [label = 1]\n",  "2 [label = 2]\n",
+		expected_lines = ("0 [label = 0/2]\n", "1 [label = 1/1]\n",
+				"2 [label = 2/0]\n",
 				"0 -> 1 [label = 5]\n", "0 -> 2 [label = 3]\n",
 				"1 -> 2 [label = 2]\n") 
 
@@ -110,13 +113,13 @@ class OverlapGraphTests(unittest.TestCase):
 
 		overlap_graph_max_spanning_tree(self.g)
 
-		expected_lines = ("0 [label = 0]\n", "1 [label = 1]\n",  "2 [label = 1]\n",
+		expected_lines = ("0 [label = 0/2]\n", "1 [label = 1/1]\n",
+				"2 [label = 2/0]\n",
 				"0 -> 1 [label = 5 style = bold]\n", 
 				"0 -> 2 [label = 3 style = bold]\n",
-				"1 -> 2 [label = 2]\n") 
+				"1 -> 2 [label = 2 style = bold]\n") 
 
 		self.check_dot(self.g, expected_lines)
-
 
 if __name__ == '__main__':
 	unittest.main()

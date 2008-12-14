@@ -154,14 +154,14 @@ As a special case, we can process a vertex that has a self-loop but no other
 incoming edge.  This is achieved by first writing to the file the
 non-overlapping part of the vertex and then the rest.
 
-In order to handle components with cycles (except self-loops) we must find a
+In order to handle graphs with cycles (except self-loops) we must find a
 way to break the cycles. This can be achieved by removing the correct edges. An
 edges from P to Q can be removed by replacing Q in the buffer by the segments
 Q1 and M. M contains an in memory copy of data of the overlapping range. Q1 is
 the part of Q that remains. This technique eliminates the overlap (because the
 overlapping part is now stored in memory) and removes the edge. It is obvious
 that we need extra memory (or disk space if memory is not enough) to break a
-cycle. By choosing the edges to remove wisely we can minimize the amount of
+cycle. By choosing the edges to remove wisely, we can minimize the amount of
 extra memory we are going to need.
 
 Once we have an acyclic graph (self-loops allowed) we can process it as
@@ -172,9 +172,8 @@ described previously.
 
 Phase 1: Create the overlap graph.
 
-Phase 2: Make the graph acyclic. To do that just find a spanning tree of each
-connected component. It is even better to find a maximum spanning tree so as
-to minimize the extra memory needed to break cycles. 
+Phase 2: Make the graph acyclic. Try to minimize the total weight of the
+removed edges in order to minimize extra memory usage.
 
 Phase 3: First break all unused edges and then process all vertices as
 described in the previous section.
@@ -192,9 +191,39 @@ O(n*k). We can use an interval tree so that f(k) = O(logk) and the algorithm
 becomes O(n*logk).  As we don't expect k growing too large, for the time being
 we are going to implement this phase using the naive approach for simplicity.
 
-Phases 2: Use Kruskal's algorithm to find the maximum spanning tree. This
-works directly in disconnected graphs (it finds a maximum spanning forest) and
-directed graphs! Compare this to Prim's algorithm that finds the maximum
-spanning tree for only one connected component of a disconnected graph and 
-without modification it works only for undirected graphs.
+Phases 2: Oh, no! The problem we are trying to solve (feedback arc set) is
+NP-Hard! Don't despair though, we can get reasonable results with only little
+extra work.
+
+The undirected counterpart of the problem we are trying to solve is the maximum
+spanning tree (MaxST) and can be efficiently solved by using various methods.
+We can use these methods to give a solution (but not the best) for our problem.
+We can do that because MST (Min or Max ST) algorithms remove undirected cycles
+and therefore directed ones. The only problem is that they remove more that we
+need them to (undirected cycles that are not directed).
+
+MST algorithms work by processing edges in non-decreasing or non-increasing
+order of weight and adding them to the already formed tree (Prim) or trees
+(Kruskal) if they aren't already connected to them by an undirected path.
+Because our goal is to avoid directed cycles we can be more lax with the rules
+of adding an edge. A simple but useful observation is that if the destination
+node of an edge has no outgoing edges then a directed cycle cannot be formed,
+regardless of whether there is a pre-existing undirected path between the two
+nodes. Similarly, if the source node of an edge has no incoming edges a
+directed cycle cannot be formed either, regardless of the pre-existence of an
+undirected path between the source and destination nodes.
+
+We can use the previous observations to decrease the number of edges that are
+incorrectly deleted by the MST algorithms. Although we don't completely
+eliminate the erroneous deletions, these rules give reasonable results while
+keeping the complexity the same as in the undirected case.
+
+Of the MST algorithms, Kruskal's algorithm can be used unchanged in directed
+graphs because it works directly on edges and doesn't care about their
+direction. It also works on disconnected graphs (it finds a maximum spanning
+forest). So this is the algorithm of choice.
+
+[Compare this to Prim's algorithm that by default finds the spanning
+tree for only one connected component of a disconnected graph (although this
+can be easily fixed) and needs modification to work on directed graphs.]
 

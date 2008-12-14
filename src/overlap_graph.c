@@ -31,7 +31,9 @@ struct vertex {
 	segment_t *segment; /**< the segment the vertex represents */
 	off_t mapping; /**< the mapping of the segment the vertex represents */
 	off_t self_loop_weight; /**< the weight of the self-loop (0: no loop) */
-	size_t n_incoming_edges; /**< the number of incoming edges except self-loop */
+	size_t in_degree; /**< the number of incoming edges except self-loop */
+	size_t out_degree; /**< the number of outgoing edges except self-loop */
+
 	struct edge *head; /**< the head of the linked list holding the outgoing
 						 edges of the vertex. */
 };
@@ -98,6 +100,8 @@ static off_t calculate_overlap(off_t start1, off_t size1, off_t start2,
 static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_id,
 		off_t weight)
 {
+	g->vertices[src_id].out_degree += 1;
+
 	/* Search src edges for dst */
 	struct edge *e = g->vertices[src_id].head;
 	while (e->next != &g->tail) {
@@ -112,7 +116,7 @@ static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_
 		if (edst == NULL)
 			return ENOMEM;
 
-		g->vertices[dst_id].n_incoming_edges += 1;
+		g->vertices[dst_id].in_degree += 1;
 
 		edst->src_id = src_id;
 		edst->dst_id = dst_id;
@@ -209,6 +213,9 @@ int overlap_graph_free(overlap_graph_t *g)
 int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 		off_t mapping)
 {
+	if (g == NULL || seg == NULL || mapping < 0)
+		return EINVAL;
+
 	/* Check if we have enough memory */
 	if (g->size >= g->capacity) {
 		size_t new_capacity = ((5 * g->capacity) / 4) + 1;
@@ -226,7 +233,8 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	v->segment = seg;
 	v->mapping = mapping;
 	v->self_loop_weight = 0;
-	v->n_incoming_edges = 0;
+	v->in_degree = 0;
+	v->out_degree = 0;
 	v->head = malloc(sizeof *v->head);
 	if (v->head == NULL)
 		return ENOMEM;
@@ -284,6 +292,9 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
  */
 int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 {
+	if (g == NULL)
+		return EINVAL;
+
 	/* 
 	 * Create a disjoint-set to hold the vertices of the graph. This is used
 	 * below to efficiently check whether two nodes are connected. Initially
@@ -297,15 +308,18 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 	/* Create a max priority queue and add all the edges. */
 	priority_queue_t *pq;
 	err = priority_queue_new(&pq, g->size);
-	if (err)
+	if (err) {
+		disjoint_set_free(ds);
 		return err;
+	}
 
 	/* For every vertex... */ 
 	int i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
-		/* ...reset the number of incoming edges */
-		v->n_incoming_edges = 0;
+		/* Reset degree values */
+		v->in_degree = 0;
+		v->out_degree = 0;
 		/* ...add all its outgoing edges to the priority queue */
 		struct edge *e = v->head->next;
 		while (e != &g->tail) {
@@ -313,7 +327,7 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 			e->in_spanning_tree = 0;
 			err = priority_queue_add(pq, e, e->weight, NULL);
 			if (err)
-				return err;
+				goto out;
 			e = e->next;
 		}
 	}
@@ -327,37 +341,61 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 		struct edge *e;
 		err = priority_queue_remove_max(pq, (void **)&e);
 		if (err)
-			return err;
+			goto out;
 
-		/* Check if the vertexes are already connected through a path */
 		size_t set1;
 		size_t set2;
 		err = disjoint_set_find(ds, &set1, e->src_id);
 		if (err)
-			return err;
+			goto out;
 		err = disjoint_set_find(ds, &set2, e->dst_id);
 		if (err)
-			return err;
+			goto out;
 
-		/* If they are not connected, add the edge */
-		if (set1 != set2) {
+		/* 
+		 * If the edge cannot form a *directed cycle* add it. At this point we
+		 * deviate from the classic Kruskal's algorithm. Kruskal's algorithm
+		 * removes edges if they form undirected cycles but this is too
+		 * aggresive for us because we only want to remove directed cycles. So
+		 * we add some extra rules to keep some of the edges (but unfortunately
+		 * not all) that would be unnecessarily removed by the classic
+		 * algorithm. Note that the problem we are trying to solve (feedback
+		 * arc set) is NP-Hard and this simple algorithm gives a reasonable
+		 * approximation of the solution.
+		 * 
+		 * We add an edge when either:
+		 * 1. The vertices are not previously connected (undirected cycle rule)
+		 * 2. They are connected but the out-degree of the destination is 0
+		 *    (if the destination has no outgoing edges it can not be part of
+		 *    a directed cycle)
+		 * 3. They are connected but the in-degree of the source is 0
+		 *    (if the source has no incoming edges it can not be part of
+		 *    a directed cycle)
+		 */
+		if (set1 != set2 || g->vertices[e->dst_id].out_degree == 0
+				|| g->vertices[e->src_id].in_degree == 0) {
 			/* Mark the edge as used in the spanning tree */
 			e->in_spanning_tree = 1;
 			/* Mark the nodes as connected */
 			err = disjoint_set_union(ds, e->src_id, e->dst_id);
 			if (err)
-				return err;
+				goto out;
 			/* Increase the number of incoming edges of the destination */
-			g->vertices[e->dst_id].n_incoming_edges += 1;
+			g->vertices[e->dst_id].in_degree += 1;
+			/* Increase the number of outgoing edges of the source */
+			g->vertices[e->src_id].out_degree += 1;
 
 		}
 	}
 
+	err = 0;
+
+out:
 	priority_queue_free(pq);
 
 	disjoint_set_free(ds);
 
-	return 0;
+	return err;
 }
 
 /**
@@ -386,7 +424,7 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 		struct vertex *v = &g->vertices[i];
 
 		/* ...print it along with number of incoming edges */
-		fprintf(fp, "%d [label = %d]\n", i, v->n_incoming_edges);
+		fprintf(fp, "%d [label = %d/%d]\n", i, v->in_degree, v->out_degree);
 
 		/* ...print its self-loop if it has one */
 		if (v->self_loop_weight != 0) {
