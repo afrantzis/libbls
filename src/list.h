@@ -84,7 +84,7 @@
  * @return a list_node pointer to the tail node of the list
  */
 #define list_tail(list, type, member) \
-	_list_node(list->tail, (size_t)&((type *)0)->member)
+	_list_node((list)->tail, (size_t)&((type *)0)->member)
 	
 /**
  * Gets the head node of a list
@@ -96,7 +96,7 @@
  * @return a list_node pointer to the head node of the list
  */
 #define list_head(list, type, member) \
-	_list_node(list->head, (size_t)&((type *)0)->member)
+	_list_node((list)->head, (size_t)&((type *)0)->member)
 
 /**
  * Gets the list node of a list entry
