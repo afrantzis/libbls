@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "buffer_util.h"
 #include "data_object.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
@@ -20,81 +21,6 @@
 /********************/
 /* Helper functions */
 /********************/
-
-/**
- * Get from an iterator the data object and read limits.
- *
- * @param iter the iterator to get data from
- * @param nata_obj the data object related to the segment in the iterator
- * @param read_start the offset in the data object to start reading from
- * @param read_length the length of the data we should read
- * @param offset the offset in the segcol we want to read from
- * @param length the length of the data we want to read
- *
- * @return the operation error code
- */
-static int get_data_from_iter(segcol_iter_t *iter, data_object_t **data_obj,
-		off_t *read_start, size_t *read_length, off_t offset, size_t length)
-{
-	segment_t *seg;
-	int err = segcol_iter_get_segment(iter, &seg);
-	if (err)
-		return err;
-
-	off_t mapping;
-	err = segcol_iter_get_mapping(iter, &mapping);
-	if (err)
-		return err;
-
-	off_t seg_start;
-	err = segment_get_start(seg, &seg_start);
-	if (err)
-		return err;
-
-	off_t seg_size;
-	err = segment_get_size(seg, &seg_size);
-	if (err)
-		return err;
-
-	err = segment_get_data(seg, (void **)data_obj);
-	if (err)
-		return err;
-
-	if (length == 0 || seg_size == 0) {
-		*read_length = 0;
-		return 0;
-	}
-
-	/* The index of the start of the logical range in the segment range */
-	off_t start_index = offset - mapping;
-
-	/* Check overflow */
-	if (__MAX(off_t) - offset < length - 1 * (length != 0))
-		return EOVERFLOW;
-
-	/* The index of the end of the logical range in the segment range */
-	off_t end_index = (offset + length - 1 * (length != 0)) - mapping;
-
-	/* 
-	 * If the end of the logical range is outside the segment range,
-	 * clip the logical range to the end of the segment range.
-	 */
-	if (end_index >= seg_size)
-		end_index = seg_size - 1;
-
-	if (__MAX(off_t) - seg_start < start_index)
-		return EOVERFLOW;
-
-	/* Calculate the read range for the data object */
-	*read_start = seg_start + start_index;
-	/* 
-	 * read_length cannot overflow because 
-	 * end_index - start_index <= length - 1 <= MAX_SIZE_T - 1
-	 */
-	*read_length = (size_t) (end_index - start_index + 1);
-
-	return 0;
-}
 
 /**
  * Create a segment from a bless_buffer_source_t.
@@ -136,6 +62,37 @@ fail:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(*seg);
 	return err;
+}
+
+/**
+ * A segcol_foreach_func that reads data from a segment_t into memory.
+ *
+ * @param segcol the segcol_t containing the segment
+ * @param seg the segment to read from
+ * @param mapping the mapping of the segment in segcol
+ * @param read_start the offset in the data of the segment to start reading
+ * @param read_length the length of the data to read
+ * @param user_data a void ** pointer containing the pointer to write to
+ *
+ * @return the operation error code
+ */
+static int read_foreach_func(segcol_t *segcol, segment_t *seg,
+		off_t mapping, off_t read_start, off_t read_length, void *user_data)
+{
+	data_object_t *dobj;
+	segment_get_data(seg, (void **)&dobj);
+
+	/* user_data is actually a void ** pointer */
+	void **dst = (void **)user_data;
+
+	int err = read_data_object(dobj, read_start, *dst, read_length);
+	if (err)
+		return err;
+
+	/* Move the pointer forwards */
+	*dst += read_length;
+
+	return 0;
 }
 
 /*****************/
@@ -268,104 +225,24 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 	if (buf == NULL || src_offset < 0 || dst == NULL) 
 		return EINVAL;
 
-	/* Check for overflow */
-	if (__MAX(off_t) - src_offset < length - 1 * (length != 0))
-		return EOVERFLOW;
-
+	/* 
+	 * Check for dst overflow (src_offset overflow is checked in
+	 * segcol_foreach()).
+	 */
 	if (__MAX(size_t) - (size_t)dst < dst_offset)
 		return EOVERFLOW;
 
 	if (__MAX(size_t) - (size_t)dst - dst_offset < length - 1 * (length != 0))
 		return EOVERFLOW;
 
-	/* Make sure that the range is valid */
-	off_t buf_size;
-	int err = segcol_get_size(buf->segcol, &buf_size);
+	void *cur_dst = (unsigned char *)dst + dst_offset;
+
+	int err = segcol_foreach(buf->segcol, src_offset, length,
+			read_foreach_func, &cur_dst);
 	if (err)
 		return err;
 
-	if (src_offset + length - 1 * (length != 0) >= buf_size)
-		return EINVAL;
-
-	/* Get iterator to src_offset */
-	segcol_iter_t *iter;
-	err = segcol_find(buf->segcol, &iter, src_offset);
-	if (err)
-		return err;
-
-	off_t cur_offset = src_offset;
-	unsigned char *cur_dst = (unsigned char *)dst + dst_offset;
-
-	/* How many bytes we still have to read */
-	size_t bytes_left = length;
-
-	int iter_valid;
-
-	/* 
-	 * Read the data by using the iterator to get all the segments
-	 * (and related data objects) that correspond to the given range.
-	 */
-	while (!(err = segcol_iter_is_valid(iter, &iter_valid)) && iter_valid) {
-		/* 
-		 * Get the data object pointed to by the segment in the iterator
-		 * and find out the range of the data object that we have to read.
-		 */
-		data_object_t *data_obj;
-		off_t read_start;
-		size_t read_length;
-		err = get_data_from_iter(iter, &data_obj, &read_start, &read_length,
-				cur_offset, bytes_left);
-		if (err)
-			goto fail;
-
-		/* 
-		 * Read data from data object. The data object may need to be
-		 * queried multiple times to get the whole data.
-		 */
-		while (read_length > 0) {
-			void *data;
-			size_t nbytes = read_length;
-			err = data_object_get_data(data_obj, &data, read_start, &nbytes,
-					DATA_OBJECT_READ);
-			if (err)
-				goto fail;
-
-			/* Copy data to user-provided buffer */
-			memcpy(cur_dst, data, nbytes);
-
-			/* 
-			 * cur_dst, read_start and cur_offset may overflow here in the last
-			 * iteration. This doesn't affect the algorithm because their
-			 * values won't be used (because it's the last iteration). The
-			 * problem is that signed overflow leads to undefined behaviour
-			 * according to the C standard, so we must not allow read_start 
-			 * and cur_offset to overflow. Unsigned overflow just wraps around
-			 * so there is no problem for cur_dst.
-			 */
-			cur_dst += nbytes;
-			read_length -= nbytes;
-			bytes_left -= nbytes;
-
-			if (__MAX(off_t) - read_start >= nbytes)
-				read_start += nbytes;
-			if (__MAX(off_t) - cur_offset >= nbytes)
-				cur_offset += nbytes;
-		}
-
-		if (bytes_left == 0)
-			break;
-
-		/* Move to next segment */
-		err = segcol_iter_next(iter);
-		if (err)
-			goto fail;
-	}
-
-	err = 0;
-
-fail:
-	segcol_iter_free(iter);
-	return err;
+	return 0;
 }
 
 /**
