@@ -34,6 +34,7 @@ struct vertex {
 	off_t self_loop_weight; /**< the weight of the self-loop (0: no loop) */
 	size_t in_degree; /**< the number of incoming edges except self-loop */
 	size_t out_degree; /**< the number of outgoing edges except self-loop */
+	int visited; /**< Marker used during graph traversals */
 	struct edge *head; /**< the head of the linked list holding the outgoing
 						 edges of the vertex. */
 };
@@ -131,6 +132,58 @@ static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_
 
 	/* Update weight */
 	e->next->weight = weight;
+
+	return 0;
+}
+
+/** 
+ * Visit depth-first the vertices of an overlap graph prepending
+ * them to the list as they finish.
+ *
+ * @param g the overlap graph
+ * @param n the vertex id of the vertex to visit
+ * @param list the list to add the vertices
+ *
+ * @return the operation error code
+ */
+static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
+{
+	int err;
+
+	struct vertex *v = &g->vertices[n];
+
+	/* Mark the node as visited */
+	v->visited = 1;
+
+	/* Visit all adjacent vertices in a depth-first fashion */
+	struct edge *e = v->head->next;
+	while (e != &g->tail) {
+		struct vertex *vtmp = &g->vertices[e->dst_id];
+		if (e->removed == 0 && vtmp->visited == 0) {
+			err = topo_visit(g, e->dst_id, list);
+			if (err)
+				return err;
+		}
+			
+		e = e->next;
+	}
+
+	/* Create a vertex entry */
+	struct vertex_entry *entry;
+	err = list_new_entry(&entry, struct vertex_entry, ln);
+	if (err)
+		return err;
+
+	/* Fill in entry */
+	entry->segment = v->segment;
+	entry->mapping = v->mapping;
+	entry->self_loop_weight = v->self_loop_weight;
+
+	/* Prepend the entry to the list */
+	struct list_node *head = 
+		list_head(list, struct vertex_entry, ln);
+
+	list_insert_after(head, &entry->ln);
 
 	return 0;
 }
@@ -242,6 +295,7 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	v->self_loop_weight = 0;
 	v->in_degree = 0;
 	v->out_degree = 0;
+	v->visited = 0;
 	v->head = malloc(sizeof *v->head);
 	if (v->head == NULL)
 		return ENOMEM;
@@ -517,6 +571,53 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 
 fail:
 	list_free(*edges, struct edge_entry, ln);
+	return err;
+}
+
+/**
+ * Gets the vertices in topological order.
+ *
+ * The overlap graph must have no cycles for this to work. You can
+ * use overlap_graph_remove_cycles() to remove them.
+ *
+ * @param g the overlap graph to get the vertices from
+ * @param[out] topo a list of struct vertex_entry topologically sorted
+ *
+ * @return the operation error code
+ */
+int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices)
+{
+	if (g == NULL || vertices == NULL)
+		return EINVAL;
+
+	/* Create the list to hold the vertex entries */
+	int err = list_new(vertices, struct vertex_entry, ln);
+	if (err)
+		return err;
+
+	/* Mark all the vertices as non visited */
+	size_t i;
+	for (i = 0; i < g->size; i++) {
+		struct vertex *v = &g->vertices[i];
+		v->visited = 0;
+	}
+
+	/* 
+	 * Visit all the vertices in a depth-first fashion.
+	 */
+	for (i = 0; i < g->size; i++) {
+		struct vertex *v = &g->vertices[i];
+		if (v->visited == 0) {
+			err = topo_visit(g, i, *vertices);
+			if (err)
+				goto fail;
+		}
+	}
+
+	return 0;
+
+fail:
+	list_free(*vertices, struct vertex_entry, ln);
 	return err;
 }
 

@@ -1,5 +1,6 @@
 import unittest
 import os
+from StringIO import StringIO
 from libbless import *
 
 class OverlapGraphTests(unittest.TestCase):
@@ -25,7 +26,7 @@ class OverlapGraphTests(unittest.TestCase):
 		self.assertEqual(dot_str, "")
 
 	def check_removed_edges(self, g, expected_lines):
-		"""Check that the dot file of graph g contains exactly the
+		"""Check that the removed edges of graph g contain exactly the
 		lines provided"""
 
 		# Open a pipe to read the produced dot data
@@ -42,6 +43,23 @@ class OverlapGraphTests(unittest.TestCase):
 
 		# Check if anything remains (it should not)
 		self.assertEqual(edge_str, "")
+
+	def check_vertices_topo(self, g, expected_lines):
+		"""Check that the topologically sorted vertices of graph g 
+		are exactly the lines provided"""
+
+		# Open a pipe to read the produced dot data
+		(rfd, wfd) = os.pipe()
+		(err, vertices) = overlap_graph_get_vertices_topo(g)
+		self.assertEqual(err, 0)
+		print_vertex_list(vertices, wfd)
+		vertices_str = os.read(rfd, 1000)
+
+		i = 0
+		for line in StringIO(vertices_str):
+			self.assertEqual(i < len(expected_lines), True)
+			self.assertEqual(line, expected_lines[i])
+			i = i + 1
 
 	def setUp(self):
 		(err, self.g) = overlap_graph_new(1)
@@ -170,7 +188,31 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_removed_edges(self.g, expected_edges)
 
+	def testTopo(self):
+		"Get the vertices of the graph in topological order"
 
+		(err, seg1) = segment_new("A1", 5, 10, None)
+		self.assertEqual(err, 0)
+		(err, seg2) = segment_new("B2", 20, 5, None)
+		self.assertEqual(err, 0)
+		(err, seg3) = segment_new("C3", 30, 5, None)
+		self.assertEqual(err, 0)
+
+		err = overlap_graph_add_segment(self.g, seg1, 12)
+		self.assertEqual(err, 0)
+		err = overlap_graph_add_segment(self.g, seg2, 28)
+		self.assertEqual(err, 0)
+		err = overlap_graph_add_segment(self.g, seg3, 3)
+		self.assertEqual(err, 0)
+
+		overlap_graph_remove_cycles(self.g)
+
+		# Check vertices  
+		expected_vertices = ["%s\n" % segment_get_data(seg1)[1],
+				"%s\n" % segment_get_data(seg3)[1],
+				"%s\n" % segment_get_data(seg2)[1]]
+
+		self.check_vertices_topo(self.g, expected_vertices)
 
 
 if __name__ == '__main__':

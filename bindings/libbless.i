@@ -301,7 +301,10 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
     return segcol_delete(segcol, NULL, offset, length);
 }
 
-/* Print a list of edges assuming that the segment data is a PyString value */
+/* 
+ * Prints a list of segment edges assuming that the segment data 
+ * is a PyString value.
+ */
 void print_edge_list(struct list *edges, int fd)
 {
     FILE *fp = fdopen(fd, "w");
@@ -316,6 +319,26 @@ void print_edge_list(struct list *edges, int fd)
 
         fprintf(fp, "%s -> %s\n", PyString_AsString(str1),
             PyString_AsString(str2));
+    }
+
+    fclose(fp);
+}
+
+/* 
+ * Prints a list of segment vertices assuming that the segment data 
+ * is a PyString value.
+ */
+void print_vertex_list(struct list *vertices, int fd)
+{
+    FILE *fp = fdopen(fd, "w");
+    struct list_node *node;
+
+    list_for_each(list_head(vertices, struct vertex_entry, ln)->next, node) {
+        struct vertex_entry *e = list_entry(node, struct vertex_entry, ln);
+        PyObject *str1;
+        segment_get_data(e->segment, (void **)&str1);
+
+        fprintf(fp, "%s\n", PyString_AsString(str1));
     }
 
     fclose(fp);
