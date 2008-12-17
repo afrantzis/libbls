@@ -239,7 +239,7 @@ int overlap_graph_new(overlap_graph_t **g, size_t capacity)
 int overlap_graph_free(overlap_graph_t *g)
 {
 	/* For every vertex... */
-	int i;
+	size_t i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
 		segment_free(v->segment);
@@ -297,8 +297,10 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	v->out_degree = 0;
 	v->visited = 0;
 	v->head = malloc(sizeof *v->head);
-	if (v->head == NULL)
+	if (v->head == NULL) {
+		segment_free(v->segment);
 		return ENOMEM;
+	}
 	v->head->next = &g->tail;
 
 	off_t seg_size;
@@ -312,7 +314,7 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	 * self-overlaps separately later because they are marked differently
 	 * in the graph (as information at the node, not as a separate edge).
 	 */
-	int i;
+	size_t i;
 	for (i = 0; i < g->size - 1; i++) {
 		struct vertex *vtmp = &g->vertices[i];
 		off_t vstart;
@@ -375,7 +377,7 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 	}
 
 	/* For every vertex... */ 
-	int i;
+	size_t i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
 		/* Reset degree values */
@@ -480,17 +482,17 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 	fprintf(fp, "digraph overlap_graph {\n");
 
 	/* For every vertex... */ 
-	int i;
+	size_t i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
 
 		/* ...print it along with number of incoming/outgoing edges */
-		fprintf(fp, "%d [label = \"%d-%d/%d\"]\n", i, i, v->in_degree,
+		fprintf(fp, "%zu [label = \"%zu-%zu/%zu\"]\n", i, i, v->in_degree,
 				v->out_degree);
 
 		/* ...print its self-loop if it has one */
 		if (v->self_loop_weight != 0) {
-			fprintf(fp, "%d -> %d [label = %jd]\n", i, i,
+			fprintf(fp, "%zu -> %zu [label = %jd]\n", i, i,
 					(intmax_t)v->self_loop_weight);
 		}
 
@@ -500,7 +502,7 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 		 */
 		struct edge *e = v->head->next;
 		while (e != &g->tail) {
-			fprintf(fp, "%d -> %d [label = %jd%s]\n", e->src_id, e->dst_id,
+			fprintf(fp, "%zu -> %zu [label = %jd%s]\n", e->src_id, e->dst_id,
 					(intmax_t)e->weight,
 					e->removed == 1 ? " style = dotted" : "");
 			e = e->next;
@@ -532,7 +534,7 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 		return err;
 
 	/* For every vertex... */ 
-	int i;
+	size_t i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
 

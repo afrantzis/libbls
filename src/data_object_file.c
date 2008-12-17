@@ -88,8 +88,10 @@ int data_object_file_new(data_object_t **obj, int fd)
 	/* Get file info */
 	struct stat st;
 	err = fstat(fd, &st);
-	if (err)
+	if (err) {
+		err = errno;
 		goto fail;
+	}
 
 	impl->dev = st.st_dev;
 	impl->inode = st.st_ino;
