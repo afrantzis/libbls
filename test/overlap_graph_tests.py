@@ -97,7 +97,7 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.testAddSegments2()
 
-		overlap_graph_max_spanning_tree(self.g)
+		overlap_graph_remove_cycles(self.g)
 
 		expected_lines = ("0 [label = \"0-0/1\"]\n", "1 [label = \"1-1/0\"]\n",
 				"2 [label = \"2-1/1\"]\n", 
@@ -132,7 +132,7 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_dot(self.g, expected_lines)
 
-		overlap_graph_max_spanning_tree(self.g)
+		overlap_graph_remove_cycles(self.g)
 
 		expected_lines = ("0 [label = \"0-0/2\"]\n", "1 [label = \"1-1/1\"]\n",
 				"2 [label = \"2-2/0\"]\n",
@@ -162,7 +162,7 @@ class OverlapGraphTests(unittest.TestCase):
 		# No removed edges so far
 		self.check_removed_edges(self.g, [])
 
-		overlap_graph_max_spanning_tree(self.g)
+		overlap_graph_remove_cycles(self.g)
 
 		# Check removed edges after removing cycles
 		expected_edges = ["%s -> %s\n" % (segment_get_data(seg2)[1],

@@ -288,16 +288,16 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 
 
 /**
- * Finds the maximum spanning tree of a graph.
+ * Removes cycles from the graph.
  *
  * This algorithm doesn't change the graph apart from
- * marking the edges as included or not in the spanning tree.
+ * marking the edges as included or not in the graph.
  *
- * @param g the graph to find the maximum spanning tree of
+ * @param g the graph to remove the cycles of 
  *
  * @return the operation error code
  */
-int overlap_graph_max_spanning_tree(overlap_graph_t *g)
+int overlap_graph_remove_cycles(overlap_graph_t *g)
 {
 	if (g == NULL)
 		return EINVAL;
@@ -330,7 +330,7 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 		/* ...add all its outgoing edges to the priority queue */
 		struct edge *e = v->head->next;
 		while (e != &g->tail) {
-			/* mark all edges as not in spanning tree */
+			/* mark all edges as not included in the graph */
 			e->removed = 1;
 			err = priority_queue_add(pq, e, e->weight, NULL);
 			if (err)
@@ -381,7 +381,7 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 		 */
 		if (set1 != set2 || g->vertices[e->dst_id].out_degree == 0
 				|| g->vertices[e->src_id].in_degree == 0) {
-			/* Mark the edge as used in the spanning tree */
+			/* Mark the edge as used in the graph */
 			e->removed = 0;
 			/* Mark the nodes as connected */
 			err = disjoint_set_union(ds, e->src_id, e->dst_id);
@@ -441,8 +441,8 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 		}
 
 		/* 
-		 * ...print all its outgoing edges along with their weight (bold if
-		 * they are in the spanning tree)
+		 * ...print all its outgoing edges along with their weight (dotted if
+		 * they are not included in the graph)
 		 */
 		struct edge *e = v->head->next;
 		while (e != &g->tail) {

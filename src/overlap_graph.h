@@ -32,7 +32,7 @@ int overlap_graph_free(overlap_graph_t *g);
 
 int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg, off_t mapping); 
 
-int overlap_graph_max_spanning_tree(overlap_graph_t *g);
+int overlap_graph_remove_cycles(overlap_graph_t *g);
 
 int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges);
 
