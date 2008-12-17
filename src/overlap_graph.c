@@ -6,6 +6,7 @@
 #include "overlap_graph.h"
 #include "disjoint_set.h"
 #include "priority_queue.h"
+#include "list.h"
 
 #include <errno.h>
 #include <sys/types.h>
@@ -20,7 +21,7 @@ struct edge {
 	off_t weight; /**< the weight of the edge */
 	size_t src_id; /**< the source vertex of the edge */
 	size_t dst_id; /**< the destination vertex of the edge */
-	int in_spanning_tree; /**< whether the edge is part of the spanning tree */
+	int removed; /**< whether the edge has been removed from the graph */
 	struct edge *next; /**< the next edge in the list */
 };
 
@@ -33,7 +34,6 @@ struct vertex {
 	off_t self_loop_weight; /**< the weight of the self-loop (0: no loop) */
 	size_t in_degree; /**< the number of incoming edges except self-loop */
 	size_t out_degree; /**< the number of outgoing edges except self-loop */
-
 	struct edge *head; /**< the head of the linked list holding the outgoing
 						 edges of the vertex. */
 };
@@ -84,6 +84,9 @@ static off_t calculate_overlap(off_t start1, off_t size1, off_t start2,
 			overlap -= end1 - end2;
 	}
 
+	if (start2 < start1 && end2 > end1)
+		overlap = size1;
+
 	return overlap;
 }
 
@@ -120,7 +123,7 @@ static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_
 
 		edst->src_id = src_id;
 		edst->dst_id = dst_id;
-		edst->in_spanning_tree = 0;
+		edst->removed = 0;
 
 		edst->next = e->next;
 		e->next = edst;
@@ -186,6 +189,7 @@ int overlap_graph_free(overlap_graph_t *g)
 	int i;
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
+		segment_free(v->segment);
 
 		/* ...Free its edges */
 		struct edge *e = v->head;
@@ -230,7 +234,10 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	/* Add the new segment */
 	struct vertex *v = &g->vertices[g->size++];
 
-	v->segment = seg;
+	int err = segment_copy(seg, &v->segment);
+	if (err)
+		return err;
+
 	v->mapping = mapping;
 	v->self_loop_weight = 0;
 	v->in_degree = 0;
@@ -324,7 +331,7 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 		struct edge *e = v->head->next;
 		while (e != &g->tail) {
 			/* mark all edges as not in spanning tree */
-			e->in_spanning_tree = 0;
+			e->removed = 1;
 			err = priority_queue_add(pq, e, e->weight, NULL);
 			if (err)
 				goto out;
@@ -375,7 +382,7 @@ int overlap_graph_max_spanning_tree(overlap_graph_t *g)
 		if (set1 != set2 || g->vertices[e->dst_id].out_degree == 0
 				|| g->vertices[e->src_id].in_degree == 0) {
 			/* Mark the edge as used in the spanning tree */
-			e->in_spanning_tree = 1;
+			e->removed = 0;
 			/* Mark the nodes as connected */
 			err = disjoint_set_union(ds, e->src_id, e->dst_id);
 			if (err)
@@ -423,8 +430,9 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 	for (i = 0; i < g->size; i++) {
 		struct vertex *v = &g->vertices[i];
 
-		/* ...print it along with number of incoming edges */
-		fprintf(fp, "%d [label = %d/%d]\n", i, v->in_degree, v->out_degree);
+		/* ...print it along with number of incoming/outgoing edges */
+		fprintf(fp, "%d [label = \"%d-%d/%d\"]\n", i, i, v->in_degree,
+				v->out_degree);
 
 		/* ...print its self-loop if it has one */
 		if (v->self_loop_weight != 0) {
@@ -440,7 +448,7 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 		while (e != &g->tail) {
 			fprintf(fp, "%d -> %d [label = %jd%s]\n", e->src_id, e->dst_id,
 					(intmax_t)e->weight,
-					e->in_spanning_tree == 1 ? " style = bold" : "");
+					e->removed == 1 ? " style = dotted" : "");
 			e = e->next;
 		}
 	}
@@ -450,3 +458,65 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 
 	return 0;
 }
+
+
+/**
+ * Gets the edges removed from the graph.
+ *
+ * @param g the overlap graph containing removed the edges
+ * @param[out] edges the list containing entries of type struct edge_entry
+ *
+ * @return the operation error code
+ */
+int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
+{
+	if (g == NULL || edges == NULL)
+		return EINVAL;
+
+	int err = list_new(edges, struct edge_entry, ln);
+	if (err)
+		return err;
+
+	/* For every vertex... */ 
+	int i;
+	for (i = 0; i < g->size; i++) {
+		struct vertex *v = &g->vertices[i];
+
+		/* ...search all its outgoing edges */
+		struct edge *e = v->head->next;
+		while (e != &g->tail) {
+			/* Skip edges that are part of the graph */
+			if (e->removed == 0) {
+				e = e->next;
+				continue;
+			}
+
+			/* Create a new edge_entry */
+			struct edge_entry *entry;
+			err = list_new_entry(&entry, struct edge_entry, ln);
+			if (err)
+				goto fail;
+			
+			/* Fill entry */
+			entry->src = v->segment;
+			entry->dst = g->vertices[e->dst_id].segment;
+			entry->dst_mapping = g->vertices[e->dst_id].mapping;
+			entry->weight = e->weight;
+
+			/* Append it to the list */
+			err = list_insert_before(list_tail(*edges, struct edge_entry, ln),
+					&entry->ln);
+			if (err)
+				goto fail;
+
+			e = e->next;
+		}
+	}
+
+	return 0;
+
+fail:
+	list_free(*edges, struct edge_entry, ln);
+	return err;
+}
+

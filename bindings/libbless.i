@@ -17,6 +17,7 @@
 #include "overlap_graph.h"
 #include "disjoint_set.h"
 #include "buffer_util.h"
+#include "list.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -66,6 +67,7 @@
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
 %apply segment_t ** { priority_queue_t **, overlap_graph_t **, disjoint_set_t ** }
+%apply segment_t ** { struct list ** }
 
 
 /* Exception for void **: Append void * to return list without conversion */
@@ -298,6 +300,26 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 {
     return segcol_delete(segcol, NULL, offset, length);
 }
+
+/* Print a list of edges assuming that the segment data is a PyString value */
+void print_edge_list(struct list *edges, int fd)
+{
+    FILE *fp = fdopen(fd, "w");
+    struct list_node *node;
+
+    list_for_each(list_head(edges, struct edge_entry, ln)->next, node) {
+        struct edge_entry *e = list_entry(node, struct edge_entry, ln);
+        PyObject *str1;
+        segment_get_data(e->src, (void **)&str1);
+        PyObject *str2;
+        segment_get_data(e->dst, (void **)&str2);
+
+        fprintf(fp, "%s -> %s\n", PyString_AsString(str1),
+            PyString_AsString(str2));
+    }
+
+    fclose(fp);
+}
 %}
 
 %include "../src/segment.h"
@@ -312,6 +334,7 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 %include "../src/overlap_graph.h"
 %include "../src/disjoint_set.h"
 %include "../src/buffer_util.h"
+%include "../src/list.h"
 
 
 
