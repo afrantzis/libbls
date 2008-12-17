@@ -16,6 +16,7 @@
 #include "priority_queue.h"
 #include "overlap_graph.h"
 #include "disjoint_set.h"
+#include "buffer_util.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -187,6 +188,23 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
         result = 666;
 }
 
+/* 
+ * Make the read_data_object() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception read_data_object
+{
+    ssize_t s;
+
+    arg3 = get_write_buf_pyobj(obj2, &s);
+
+    if (s != -1 && s >= arg4) {
+        $action
+    }
+    else
+        result = 666;
+}
+
 /*
  * Typemaps that handle output arguments.
  */
@@ -215,6 +233,20 @@ off_t get_max_off_t(void)
 size_t get_max_size_t(void)
 {
     return __MAX(size_t);
+}
+
+/* Create a segment with the data pointer as size_t */
+int segment_new_ptr(segment_t **seg, size_t ptr, off_t start, off_t size,
+segment_data_usage_func data_usage_func)
+{
+    return segment_new(seg, (void *)ptr, start, size, data_usage_func);
+}
+
+/* Set the segcol of a bless_buffer_t */
+void set_buffer_segcol(bless_buffer_t *buf, segcol_t *segcol)
+{
+    free(buf->segcol);
+    buf->segcol = segcol;
 }
 
 /* Call data_object_memory_new with the data pointer as size_t */
@@ -279,6 +311,7 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 %include "../src/priority_queue.h"
 %include "../src/overlap_graph.h"
 %include "../src/disjoint_set.h"
+%include "../src/buffer_util.h"
 
 
 

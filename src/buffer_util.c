@@ -3,11 +3,12 @@
  *
  * Implementation of utility function used by bless_buffer_t
  */
-#include "buffer_util.h"
 
 #include <sys/types.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
+#include "buffer_util.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -117,6 +118,7 @@ static int get_data_from_iter(segcol_iter_t *iter, segment_t **segment,
 
 	/* Calculate the read range for the data object */
 	*read_start = seg_start + start_index;
+
 	/* 
 	 * read_length cannot overflow because 
 	 * end_index - start_index <= length - 1 <= MAX_OFF_T - 1
@@ -127,10 +129,15 @@ static int get_data_from_iter(segcol_iter_t *iter, segment_t **segment,
 }
 
 /**
- * Calls a function for each segment in the specified range.
+ * Calls a function for each segment in the specified range of a segcol_t.
  *
- * @param segcol
+ * @param segcol the segcol_t to search in
+ * @param offset the offset in the segcol_t to start from
+ * @param length the length of the range
+ * @param func the function to call for each segment
+ * @param user_data user specified data to pass to func
  *
+ * @return the operation error code
  */
 int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		segcol_foreach_func *func, void *user_data)
@@ -144,16 +151,14 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 
 	/* Make sure that the range is valid */
 	off_t segcol_size;
-	int err = segcol_get_size(segcol, &segcol_size);
-	if (err)
-		return err;
+	segcol_get_size(segcol, &segcol_size);
 
 	if (offset + length - 1 * (length != 0) >= segcol_size)
 		return EINVAL;
 
 	/* Get iterator to offset */
 	segcol_iter_t *iter;
-	err = segcol_find(segcol, &iter, offset);
+	int err = segcol_find(segcol, &iter, offset);
 	if (err)
 		return err;
 
@@ -206,5 +211,107 @@ fail:
 	segcol_iter_free(iter);
 	return err;
 
+}
+
+
+/**
+ * A segcol_foreach_func that reads data from a segment_t into memory.
+ *
+ * @param segcol the segcol_t containing the segment
+ * @param seg the segment to read from
+ * @param mapping the mapping of the segment in segcol
+ * @param read_start the offset in the data of the segment to start reading
+ * @param read_length the length of the data to read
+ * @param user_data a void ** pointer containing the pointer to write to
+ *
+ * @return the operation error code
+ */
+static int read_segment_func(segcol_t *segcol, segment_t *seg,
+		off_t mapping, off_t read_start, off_t read_length, void *user_data)
+{
+	data_object_t *dobj;
+	segment_get_data(seg, (void **)&dobj);
+
+	/* user_data is actually a void ** pointer */
+	void **dst = (void **)user_data;
+
+	int err = read_data_object(dobj, read_start, *dst, read_length);
+	if (err)
+		return err;
+
+	/* Move the pointer forwards */
+	*dst += read_length;
+
+	return 0;
+}
+
+/**
+ * Stores a range from a segcol_t in memory data objects.
+ *
+ * @param segcol the segcol_t 
+ * @param offset the offset to starting storing from
+ * @param length the length of the data to store
+ *
+ * @return the operation error code 
+ */
+int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
+{
+	if (segcol == NULL || offset < 0 || length < 0)
+		return EINVAL;
+
+	/* Create data object to hold data */
+	void *new_data = malloc(length);
+	if (new_data == NULL)
+		return ENOMEM;
+
+	data_object_t *new_dobj;
+	int err = data_object_memory_new(&new_dobj, new_data, length);
+	if (err) {
+		free(new_data);
+		return err;
+	}
+
+	/* Put it in a segment */
+	segment_t *new_seg;
+	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
+	if (err) {
+		data_object_free(new_dobj);
+		free(new_data);
+		return err;
+	}
+
+	void *data_ptr = new_data;
+
+	/* Store data from range in memory pointed by new_data */
+	err = segcol_foreach(segcol, offset, length, read_segment_func, &data_ptr);
+	if (err) {
+		segment_free(new_seg);
+		return err;
+	}
+
+	/* Delete old range in segcol */
+	err = segcol_delete(segcol, NULL, offset, length);
+	if (err) {
+		segment_free(new_seg);
+		return err;
+	}
+
+	off_t segcol_size;
+	segcol_get_size(segcol, &segcol_size);
+
+	/* 
+	 * Add to segcol the new segment that hold the same data as the deleted
+	 * range (but keeps them in memory)
+	 */
+	if (offset < segcol_size)
+		err = segcol_insert(segcol, offset, new_seg);
+	else if (offset == segcol_size)
+		err = segcol_append(segcol, new_seg);
+
+	/* TODO: Handle this better because the segcol is going to be corrupted */
+	if (err)
+		return err;
+
+	return 0;
 }
 

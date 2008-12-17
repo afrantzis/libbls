@@ -19,4 +19,6 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		segcol_foreach_func *func, void *user_data);
 
+int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length);
+
 #endif 
