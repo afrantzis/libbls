@@ -16,7 +16,7 @@
 
 
 /**
- * Reads data from a data object.
+ * Reads data from a data object to memory.
  *
  * @param dobj the data object to read from
  * @param offset the offset in the data object to read from
@@ -51,6 +51,45 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 		if (__MAX(off_t) - offset >= nbytes)
 			offset += nbytes;
 		cur_dst += nbytes;
+		length -= nbytes;
+	}
+
+	return 0;
+}
+
+/**
+ * Writes data from a data object to a file.
+ *
+ * @param dobj the data object to read from
+ * @param offset the offset in the data object to read from
+ * @param length the number of bytes to read
+ * @param fd the file descriptor to write the data to
+ * @param file_offset the offset in the file to write the data
+ *
+ * @return the operation error code
+ */
+int write_data_object(data_object_t *dobj, off_t offset, off_t length,
+		int fd, off_t file_offset)
+{
+	off_t s = lseek(fd, file_offset);
+	if (s != file_offset)
+		return errno;
+
+	while (length > 0) {
+		void *data;
+		size_t nbytes = length;
+		int err = data_object_get_data(dobj, &data, offset, &nbytes,
+				DATA_OBJECT_READ);
+		if (err)
+			return err;
+
+		err = write(fd, data, nbytes);
+		if (err == -1)
+			return errno;
+
+		/* See read_data_object() about this check */
+		if (__MAX(off_t) - offset >= nbytes)
+			offset += nbytes;
 		length -= nbytes;
 	}
 
