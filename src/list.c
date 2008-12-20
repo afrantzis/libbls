@@ -6,6 +6,8 @@
  * Creates a new doubly linked list.
  *
  * @param[out] list the created list
+ * @param entry_size the size of each list entry
+ * @param ln_offset the offset of the struct list_node in the list entries
  *
  * @return the operation error code
  */
@@ -60,6 +62,7 @@ int _list_new(struct list **list, size_t entry_size, size_t ln_offset)
  * This function does not free the data stored in the list.
  * 
  * @param list the list to free 
+ * @param ln_offset the offset of the struct list_node in the list entries
  * 
  * @return the operation error code 
  */
@@ -161,9 +164,9 @@ int list_delete_chain(struct list_node *first, struct list_node *last)
 /**
  * Creates a new list entry.
  *
- * @param[out] node the new list entry
- * @param entry size the size of the entry in bytes
- * @param ln_offset the offset in bytes in the entry the list node is stored
+ * @param[out] entry the new list entry
+ * @param entry_size the size of each list entry
+ * @param ln_offset the offset of the struct list_node in the list entries
  *
  * @return the operation error code
  */

@@ -145,7 +145,8 @@ fail:
  *
  * @param buf the bless_buffer_t to insert data into
  * @param offset the offset in the bless_buffer_t to insert data into
- * @param data a pointer to the data to insert
+ * @param src the data source to insert data from
+ * @param src_offset the offset in the source to insert data from
  * @param length the length of the data to insert
  *
  * @return the operation error code

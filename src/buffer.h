@@ -12,8 +12,9 @@
 #include <unistd.h>
 
 #include "buffer_source.h"
+
 /**
- * @defgroup buffer Buffer Module
+ * @defgroup buffer Buffer
  *
  * @{
  */

@@ -12,7 +12,7 @@
 #include "segment.h"
 
 /**
- * @defgroup segcol Segment Collection ADT
+ * @defgroup segcol Segment Collection
  *
  * A Segment Collection manages a collection of segments virtually arranged
  * in a continuous linear space.

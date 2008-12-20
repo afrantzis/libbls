@@ -100,9 +100,11 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
  * Gets from an iterator the read limits.
  *
  * @param iter the iterator to get data from
- * @param nata_obj the data object related to the segment in the iterator
- * @param read_start the offset in the data object to start reading from
- * @param read_length the length of the data we should read
+ * @param[out] segment the segment_t pointed to by the iterator 
+ * @param[out] mapping the mapping of the segment in its segcol
+ * @param[out] read_start the offset in the segment's data object to start
+ *             reading from
+ * @param[out] read_length the length of the data we should read
  * @param offset the offset in the segcol we want to read from
  * @param length the length of the data we want to read
  *

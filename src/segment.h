@@ -9,7 +9,7 @@
 #include <sys/types.h>
 
 /**
- * @defgroup segment Segment ADT
+ * @defgroup segment Segment
  *
  * A segment holds information about a continuous part of a data object.
  *

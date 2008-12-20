@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 /**
- * Create a memory source for bless_buffer_t.
+ * Creates a memory source for bless_buffer_t.
  *
  * If the data_free function is NULL the data won't be freed
  * when this source object is freed.
@@ -58,14 +58,13 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 }
 
 /**
- * Create a file source for bless_buffer_t.
+ * Creates a file source for bless_buffer_t.
  *
  * If the data_free function is NULL the file won't be closed
  * when this source object is freed.
  *
  * @param[out] src the created bless_buffer_source_t.
  * @param fd the file descriptor associated with this source object 
- * @param length the length of the data
  * @param data_free the function to call to close the file
  *
  * @return the operation error code
@@ -106,7 +105,7 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 }
 
 /**
- * Decrease the usage count of a source object.
+ * Decreases the usage count of a source object.
  *
  * This function should be called when the user is done
  * using a source object. Failing to do so will lead to

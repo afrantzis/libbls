@@ -8,7 +8,20 @@
 
 #include "segcol.h"
 
+/**
+ * @addtogroup segcol
+ * @{
+ */
+
+/**
+ * @name Constructors
+ * @{
+ */
+
 int segcol_list_new(segcol_t **segcol);
+
+/** @} */
+/** @} */
 
 #endif /* _SEGCOL_LIST_H */
 

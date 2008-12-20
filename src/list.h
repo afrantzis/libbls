@@ -8,10 +8,32 @@
 
 #include <sys/types.h>
 
+/** 
+ * Iterate safely through the nodes in a list.
+ *
+ * This macro should be used when nodes are going to be altered or
+ * deleted during the iteration.
+ * 
+ * @param first the list node to start from
+ * @param node a struct list_node pointer that will hold the current node in
+ *             each iteration
+ * @param tmp a struct list_node pointer that will be used internally for safe
+ *            iteration
+ */
 #define list_for_each_safe(first, node, tmp) \
 	for ((node) = (first), (tmp) = (node)->next; (node) != (node)->next; \
 			(node) = (tmp), (tmp) = (tmp)->next)
 
+/** 
+ * Iterate through the nodes in a list.
+ *
+ * If nodes are going to be altered or deleted during the iteration use
+ * list_for_each_safe().
+ * 
+ * @param first the list node to start from
+ * @param node a struct list_node pointer that will hold the current node in
+ *             each iteration
+ */
 #define list_for_each(first, node) \
 	for ((node) = (first); (node) != (node)->next; (node) = (node)->next)
 
@@ -31,7 +53,7 @@
  * Gets the entry containing a list node.
  *
  * @param ptr pointer to a struct list_node
- * @param offset the offset in bytes in the entry the list node is stored at
+ * @param ln_offset the offset in bytes in the entry the list node is stored at
  *
  * @return a (type *) pointer to the entry
  */
@@ -102,7 +124,7 @@
  * Gets the list node of a list entry
  *
  * @param entry pointer to the entry
- * @param offset the offset in bytes in the entry the list node is stored at
+ * @param ln_offset the offset in bytes in the entry the list node is stored at
  *
  * @return a list_node pointer to the head node of the list
  */

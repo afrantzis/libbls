@@ -583,7 +583,7 @@ fail:
  * use overlap_graph_remove_cycles() to remove them.
  *
  * @param g the overlap graph to get the vertices from
- * @param[out] topo a list of struct vertex_entry topologically sorted
+ * @param[out] vertices a list of struct vertex_entry topologically sorted
  *
  * @return the operation error code
  */

@@ -11,6 +11,20 @@
 #include <sys/types.h>
 
 /**
+ * @defgroup data_object Data Object
+ *
+ * A data object is an abstraction for objects that can provide data.
+ * It provides a common API to transparently get the data 
+ * regardless of the particular source they come from.
+ *
+ * The two main data object types are the memory data object and the file
+ * data object. To create a data object one must use the provided constructor
+ * for the particular type.
+ *
+ * @{
+ */
+
+/**
  * Opaque type for data object ADT.
  */
 typedef struct data_object data_object_t;
@@ -43,5 +57,7 @@ int data_object_set_data_free_func(data_object_t *obj, data_free_func data_free)
 int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free);
 
 int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2);
+
+/** @} */
 
 #endif

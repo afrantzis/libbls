@@ -11,6 +11,16 @@
 #include <sys/types.h>
 
 /**
+ * @defgroup overlap_graph Overlap Graph
+ *
+ * Graph showing the overlap of segments.
+ *
+ * See doc/devel/buffer_save.txt for more information.
+ *
+ * @{
+ */
+
+/**
  * Opaque type for overlap graph.
  */
 typedef struct overlap_graph overlap_graph_t;
@@ -49,5 +59,7 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges);
 int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices);
 
 int overlap_graph_export_dot(overlap_graph_t *g, int fd);
+
+/** @} */
 
 #endif
