@@ -22,12 +22,15 @@ static int data_object_file_get_size(data_object_t *obj, off_t *size);
 static int data_object_file_free(data_object_t *obj);
 static int data_object_file_get_data(data_object_t *obj, void **buf, 
 		off_t offset, size_t *length, data_object_flags flags);
+static int data_object_file_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2);
 
 /* Function pointers for the file implementation of data_object_t */
 static struct data_object_funcs data_object_file_funcs = {
 	.get_data = data_object_file_get_data,
 	.free = data_object_file_free,
-	.get_size = data_object_file_get_size
+	.get_size = data_object_file_get_size,
+	.compare = data_object_file_compare
 };
 
 /* Private data for the file implementation of data_object_t */
@@ -38,14 +41,19 @@ struct data_object_file_impl {
 	void *page_data;
 	off_t page_offset;
 	long page_size;	
+
+	/* Device and inode of fd. Used in data object comparisons. */
+	dev_t dev;
+	ino_t inode;
 };
 
 /**
  * Creates a new file data object.
  *
- * If the data object is successfully created it gains ownership
- * of the file descriptor passed to it. When the data object is
- * freed it also closes the associated file descriptor.
+ * The data object by default doesn't own the file passed to it.
+ * That means that when the data object is freed the file will
+ * not be closed. To change data ownership by the data_object_t
+ * use data_object_set_data_ownership().
  *
  * @param[out] obj the created data object
  * @param fd the file descriptor of the file to use
@@ -76,6 +84,17 @@ int data_object_file_new(data_object_t **obj, int fd)
 	}
 
 	impl->fd = fd;
+
+	/* Get file info */
+	struct stat st;
+	err = fstat(fd, &st);
+	if (err) {
+		err = errno;
+		goto fail;
+	}
+
+	impl->dev = st.st_dev;
+	impl->inode = st.st_ino;
 
 	/* Get size of file */
 	impl->size = lseek(fd, 0, SEEK_END);
@@ -177,7 +196,17 @@ static int data_object_file_free(data_object_t *obj)
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
 
-	close(impl->fd);
+	/* Free the data (close the file) */
+	data_free_func data_free;
+	int err = data_object_get_data_free_func(obj, &data_free);
+	if (err)
+		return err;
+
+	if (data_free != NULL) {
+		err = data_free((void *)impl->fd);
+		if (err)
+			return err;
+	}
 
 	free(impl);
 
@@ -196,3 +225,21 @@ static int data_object_file_get_size(data_object_t *obj, off_t *size)
 
 	return 0;
 }
+
+static int data_object_file_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2)
+{
+	if (obj1 == NULL || obj2 == NULL || result == NULL)
+		return EINVAL;
+
+	struct data_object_file_impl *impl1 =
+		data_object_get_impl(obj1);
+
+	struct data_object_file_impl *impl2 =
+		data_object_get_impl(obj2);
+
+	*result = !((impl1->dev == impl2->dev) && (impl1->inode == impl2->inode));
+
+	return 0;
+}
+

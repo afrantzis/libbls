@@ -11,6 +11,7 @@
 
 #include <unistd.h>
 
+#include "buffer_source.h"
 /**
  * @defgroup buffer Buffer Module
  *
@@ -44,11 +45,9 @@ typedef int (*bless_progress_cb)(void *info);
 
 int bless_buffer_new(bless_buffer_t **buf);
 
-int bless_buffer_create(bless_buffer_t **buf, int fd);
-
 int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb);
 
-int bless_buffer_destroy(bless_buffer_t *buf);
+int bless_buffer_free(bless_buffer_t *buf);
 
 /** @} */
 /**
@@ -57,19 +56,22 @@ int bless_buffer_destroy(bless_buffer_t *buf);
  * @{
  */
 
-int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
-		void *data, size_t len);
+int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
+		off_t src_offset, off_t length);
 
-int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t len);
+int bless_buffer_insert(bless_buffer_t *buf, off_t offset, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length);
+
+int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length);
 
 int bless_buffer_read(bless_buffer_t *src, off_t src_offset, void *dst,
-		off_t dst_offset, size_t len);
+		size_t dst_offset, size_t length);
 
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
-		off_t dst_offset, off_t len);
+		off_t dst_offset, off_t length);
 
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
-		void *data, size_t len, bless_progress_cb cb);
+		void *data, size_t length, bless_progress_cb cb);
 
 /** @} */
 /**
@@ -97,8 +99,6 @@ int bless_buffer_end_multi_op(bless_buffer_t *buf);
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
 
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
-
-int bless_buffer_get_fd(bless_buffer_t *buf, int *fd);
 
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 

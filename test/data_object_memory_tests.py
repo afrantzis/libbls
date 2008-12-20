@@ -5,7 +5,7 @@ from libbless import *
 class DataObjectMemoryTests(unittest.TestCase):
 
 	def setUp(self):
-		(err, self.obj) = data_object_memory_new(10)
+		(err, self.obj) = data_object_memory_new_ptr(bless_malloc(10), 10)
 
 	def tearDown(self):
 		data_object_free(self.obj)
@@ -147,7 +147,7 @@ class DataObjectMemoryTests(unittest.TestCase):
 		self.assertNotEqual(err, 0, "#8")
 
 	def testNewDataOverflow(self):
-		"Test boundary cases for new_data overflow"
+		"Test boundary cases for new overflow"
 
 		(err, obj) = data_object_memory_new_ptr(0, get_max_size_t())
 		self.assertEqual(err, 0)
@@ -183,6 +183,33 @@ class DataObjectMemoryTests(unittest.TestCase):
 		(err, buf) = data_object_get_data(obj, get_max_off_t(), 2,
 				DATA_OBJECT_READ)
 		self.assertEqual(err, errno.EOVERFLOW)
+	
+	def testCompare(self):
+		"Compare two memory data objects"
+
+		(err, obj1) = data_object_memory_new_ptr(0, get_max_size_t())
+		self.assertEqual(err, 0)
+
+		(err, obj2) = data_object_memory_new_ptr(0, get_max_size_t())
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(obj1, obj2)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 0)
+
+		(err, obj2) = data_object_memory_new_ptr(0, get_max_size_t() - 1)
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(obj1, obj2)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 1)
+
+		(err, obj2) = data_object_memory_new_ptr(1, get_max_size_t())
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(obj1, obj2)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 1)
 
 if __name__ == '__main__':
 	unittest.main()

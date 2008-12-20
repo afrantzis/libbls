@@ -19,12 +19,15 @@ static int data_object_memory_get_size(data_object_t *obj, off_t *size);
 static int data_object_memory_free(data_object_t *obj);
 static int data_object_memory_get_data(data_object_t *obj, void **buf, off_t offset,
 		size_t *length, data_object_flags flags);
+static int data_object_memory_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2);
 
 /* Function pointers for the memory implementation of data_object_t */
 static struct data_object_funcs data_object_memory_funcs = {
 	.get_data = data_object_memory_get_data,
 	.free = data_object_memory_free,
-	.get_size = data_object_memory_get_size
+	.get_size = data_object_memory_get_size,
+	.compare = data_object_memory_compare
 };
 
 /* Private data for the memory implementation of data_object_t */
@@ -34,35 +37,12 @@ struct data_object_memory_impl {
 };
 
 /**
- * Creates a new empty memory data object.
- *
- * @param[out] obj the created data object
- * @param size the size of the data object
- *
- * @return the operation error code
- */
-int data_object_memory_new(data_object_t **obj, size_t size)
-{
-	void *data = malloc(size);
-
-	if (data == NULL)
-		return ENOMEM;
-
-	int err = data_object_memory_new_data(obj, data, size);
-
-	if (err) {
-		free(data);
-		return err;
-	}
-
-	return 0;
-}
-
-/**
  * Creates a new memory data object initialized with data.
  *
- * On success the data object will own the data (it is responsible for
- * further memory management).
+ * The data object by default doesn't own the data passed to it.
+ * That means that when the data object is freed the data will
+ * not be freed. To change data ownership by the data_object_t
+ * use data_object_set_data_ownership().
  *
  * @param[out] obj the created data object
  * @param data the data that this data object will contain
@@ -70,7 +50,7 @@ int data_object_memory_new(data_object_t **obj, size_t size)
  *
  * @return the operation error code
  */
-int data_object_memory_new_data(data_object_t **obj, void *data, size_t size)
+int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 {
 	if (obj == NULL)
 		return EINVAL;
@@ -135,7 +115,18 @@ static int data_object_memory_free(data_object_t *obj)
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
-	free(impl->data);
+	/* Free the data */
+	data_free_func data_free;
+	int err = data_object_get_data_free_func(obj, &data_free);
+	if (err)
+		return err;
+
+	if (data_free != NULL) {
+		err = data_free(impl->data);
+		if (err)
+			return err;
+	}
+
 	free(impl);
 
 	return 0;
@@ -150,6 +141,23 @@ static int data_object_memory_get_size(data_object_t *obj, off_t *size)
 		data_object_get_impl(obj);
 
 	*size = (off_t) impl->size;
+
+	return 0;
+}
+
+static int data_object_memory_compare(int *result, data_object_t *obj1,
+		data_object_t *obj2)
+{
+	if (obj1 == NULL || obj2 == NULL || result == NULL)
+		return EINVAL;
+
+	struct data_object_memory_impl *impl1 =
+		data_object_get_impl(obj1);
+
+	struct data_object_memory_impl *impl2 =
+		data_object_get_impl(obj2);
+
+	*result = !((impl1->data == impl2->data) && (impl1->size == impl2->size));
 
 	return 0;
 }

@@ -12,6 +12,8 @@
 struct data_object {
 	void *impl;
 	struct data_object_funcs *funcs;
+	int usage;
+	data_free_func data_free;
 };
 
 /**********************
@@ -42,6 +44,9 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 
 	(*obj)->impl = impl;
 	(*obj)->funcs = funcs;
+	(*obj)->usage = 0;
+	/* We don't own the data by default */
+	(*obj)->data_free = NULL;
 
 	return 0;
 	
@@ -107,6 +112,40 @@ int data_object_free(data_object_t *obj)
 }
 
 /**
+ * Updates the usage count of this data object.
+ *
+ * If the usage count falls to zero (or below) the data object
+ * is freed. This function is to be called by the memory management 
+ * system of segment_t.
+ *
+ * @param obj the data object
+ * @param change the change in the usage count or 0 to reset the count
+ *
+ * @return the operation error code
+ */
+int data_object_update_usage(void *obj, int change)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	data_object_t *data_obj = (data_object_t *) obj;
+
+	if (change == 0) {
+		data_obj->usage = 0;
+		return 0;
+	}
+
+	data_obj->usage += change;
+
+	if (data_obj->usage <= 0) {
+		int err = data_object_free(data_obj);
+		if (err)
+			return err;
+	}
+
+	return 0;
+}
+/**
  * Gets the size of the data object.
  *
  * @param obj the data object to get the size of
@@ -119,3 +158,64 @@ int data_object_get_size(data_object_t *obj, off_t *size)
 	return (*obj->funcs->get_size)(obj, size);
 }
 
+/**
+ * Sets the function used to free the data held by the data object.
+ *
+ * If the function is NULL, the data won't be freed when the data object is
+ * freed.
+ *
+ * @param obj the data object 
+ * @param data_free the function used to free the data held by the data object
+ *
+ * @return the operation error code
+ */
+int data_object_set_data_free_func(data_object_t *obj, data_free_func data_free)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	obj->data_free = data_free;
+
+	return 0;
+}
+
+/**
+ * Gets the function used to free the data held by the data object.
+ *
+ * @param obj the data object 
+ * @param[out] data_free the function used to free the data held by the data object
+ *
+ * @return the operation error code
+ */
+int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	*data_free = obj->data_free;
+
+	return 0;
+}
+
+/** 
+ * Compares the data held by two data objects.
+ * 
+ * @param[out] result 0 if they are equal, 1 otherwise
+ * @param obj1 one of the data objects to compare
+ * @param obj2 the other data object to compare
+ * 
+ * @return the operation error code 
+ */
+int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2)
+{
+	if (obj1 == NULL || obj2 == NULL || result == NULL)
+		return EINVAL;
+
+	/* Check if they are of the same type */
+	if (obj1->funcs != obj2->funcs) {
+		*result = 1;
+		return 0;
+	}
+
+	return (*obj1->funcs->compare)(result, obj1, obj2);
+}

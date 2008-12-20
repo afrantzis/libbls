@@ -130,5 +130,33 @@ class DataObjectFileTests(unittest.TestCase):
 				DATA_OBJECT_READ)
 		self.assertEqual(err, errno.EOVERFLOW)
 
+	def testCompare(self):
+		"Compare two data objects"
+
+		fd = get_file_fd("data_object_test_file.bin")
+		(err, obj1) = data_object_file_new(fd)
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(self.obj, obj1)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 0)
+
+		fd = get_file_fd("data_object_file_tests.py")
+		(err, obj1) = data_object_file_new(fd)
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(self.obj, obj1)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 1)
+
+		# Compare a file object with a memory object
+
+		(err, obj2) = data_object_memory_new_ptr(0, get_max_size_t() - 1)
+		self.assertEqual(err, 0)
+
+		(err, result) = data_object_compare(obj1, obj2)
+		self.assertEqual(err, 0)
+		self.assertEqual(result, 1)
+
 if __name__ == '__main__':
 	unittest.main()
