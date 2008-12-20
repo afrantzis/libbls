@@ -486,14 +486,20 @@ fail4:
 /**
  * Frees a bless_buffer_t.
  *
- * Freeing a bless_buffer_t frees all
- * related resources but does not close any related files.
- *
+ * Freeing a bless_buffer_t frees all related resources.
+ * 
  * @param buf the bless_buffer_t to close
  * @return the operation error code
  */
 int bless_buffer_free(bless_buffer_t *buf)
 {
-	return -1;
+	if (buf == NULL)
+		return EINVAL;
+
+	int err = segcol_free(buf->segcol);
+	if (err)
+		return err;
+
+	return 0;
 }
 

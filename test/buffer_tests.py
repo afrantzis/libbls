@@ -48,7 +48,7 @@ class BufferTests(unittest.TestCase):
 		self.assertNotEqual(self.buf, None)
 
 	def tearDown(self):
-		pass
+		bless_buffer_free(self.buf)
 
 	def testNew(self):
 		(err, size) = bless_buffer_get_size(self.buf)
