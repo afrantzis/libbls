@@ -100,8 +100,6 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
 
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
 
-int bless_buffer_get_fd(bless_buffer_t *buf, int *fd);
-
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 
 /** @} */
