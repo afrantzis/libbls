@@ -12,17 +12,16 @@
 #include "segcol_internal.h"
 #include "segcol_list.h"
 #include "type_limits.h"
+#include "list.h"
 
+/* Helper macros for list */
+#define seg_list_head(ptr) list_head((ptr), struct segment_entry, ln)
+#define seg_list_tail(ptr) list_tail((ptr), struct segment_entry, ln)
 
-/**
- * A node of a doubly linked list
- */
-struct list_node {
+struct segment_entry {
+	struct list_node ln;
 	segment_t *segment;
-	struct list_node *prev;
-	struct list_node *next;
 };
-
 
 struct segcol_list_iter_impl {
 	struct list_node *node;
@@ -30,23 +29,16 @@ struct segcol_list_iter_impl {
 };
 
 struct segcol_list_impl {
-	struct list_node *head;
-	struct list_node *tail;
+	struct list *list;
 	struct list_node *cached_node;
 	off_t cached_mapping;
 };
 
 /* Forward declarations */
 
-/* List functions */
-static int list_insert_before(struct list_node *p, struct list_node *q);
-static int list_insert_after(struct list_node *p, struct list_node *q);
-static int list_new_node(struct list_node **node);
-static int list_delete_chain(struct list_node *start, struct list_node *end);
-
 /* internal convenience functions */
-static int find_node(segcol_t *segcol, 
-		struct list_node **node, off_t *mapping, off_t offset);
+static int find_seg_entry(segcol_t *segcol, 
+		struct segment_entry **snode, off_t *mapping, off_t offset);
 static int segcol_list_clear_cache(struct segcol_list_impl *impl);
 static int segcol_list_set_cache(struct segcol_list_impl *impl,
 		struct list_node *node, off_t mapping);
@@ -81,114 +73,17 @@ static struct segcol_funcs segcol_list_funcs = {
 };
 
 /**
- * Inserts a node before another node in a list.
- *
- * @param p the node to which the new noded is inserted before
- * @param q the node to insert
- *
- * @return the operation error code
- */
-static int list_insert_before(struct list_node *p, struct list_node *q)
-{
-	if ((p == NULL)	|| (q == NULL))
-		return EINVAL;
-
-	q->next = p;
-	q->prev = p->prev;
-
-	p->prev->next = q;
-
-	p->prev = q;
-
-	return 0;
-}
-
-/**
- * Inserts a node after another node in a list.
- *
- * @param p the node to which the new noded is inserted after
- * @param q the node to insert
- *
- * @return the operation error code
- */
-static int list_insert_after(struct list_node *p, struct list_node *q)
-{
-	if ((p == NULL)	|| (q == NULL))
-		return EINVAL;
-
-	q->next = p->next;
-	q->prev = p;
-
-	p->next->prev = q;
-
-	p->next = q;
-
-	return 0;
-}
-
-
-/**
- * Deletes a chain of nodes from the list.
- *
- * This operation doesn't free the memory
- * occupied by the nodes.
- *
- * @param first the first node in the chain to delete
- * @param last the last node in the chain to delete
- *
- * @return the operation error code
- */
-static int list_delete_chain(struct list_node *first, struct list_node *last)
-{
-	if (first == NULL || last == NULL)
-		return EINVAL;
-
-	struct list_node *prev_node = first->prev;
-	struct list_node *next_node = last->next;
-
-	next_node->prev = prev_node;
-
-	prev_node->next = next_node;
-
-	first->prev = NULL;
-	last->next = NULL;
-
-	return 0;
-}
-
-/**
- * Creates a new list_node.
- *
- * @param[out] node the new list node
- *
- * @return the operation error code
- */
-static int list_new_node(struct list_node **node)
-{
-	*node = malloc(sizeof(struct list_node));
-
-	if (*node == NULL)
-		return ENOMEM;
-
-	(*node)->prev = NULL;
-	(*node)->next = NULL;
-	(*node)->segment = NULL;
-
-	return 0;
-}
-
-/**
- * Finds the node in the segcol_list that contains a logical offset.
+ * Finds the segment entry in the segcol_list that contains a logical offset.
  * 
  * @param segcol the segcol_t to search
- * @param[out] node the found node (or NULL if not found)
+ * @param[out] entry the found entry (or NULL if not found)
  * @param[out] mapping the mapping of the found node
  * @param offset the offset to look for
  *
  * @return the operation error code
  */
-static int find_node(segcol_t *segcol, 
-		struct list_node **node, off_t *mapping, off_t offset)
+static int find_seg_entry(segcol_t *segcol, 
+		struct segment_entry **entry, off_t *mapping, off_t offset)
 {
 	segcol_iter_t *iter = NULL;
 	int err = segcol_find(segcol, &iter, offset);
@@ -198,10 +93,10 @@ static int find_node(segcol_t *segcol,
 
 	int valid = 0;
 	if (segcol_iter_is_valid(iter, &valid) || !valid) {
-		*node = NULL;
+		*entry = NULL;
 	} else {
 		struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
-		*node = iter_impl->node;
+		*entry = list_entry(iter_impl->node, struct segment_entry, ln);
 		*mapping = iter_impl->mapping;
 	}
 
@@ -273,27 +168,10 @@ int segcol_list_new(segcol_t **segcol)
 		return EINVAL;
 
 	/* Create head and tail nodes */
-	int err = list_new_node(&impl->head);
-
+	int err = list_new(&impl->list, struct segment_entry, ln);
 	if (err) {
-		free(impl);
 		return err;
 	}
-
-	err = list_new_node(&impl->tail);
-
-	if (err) {
-		free(impl->head);
-		free(impl);
-		return err;
-	}
-	
-	/* Connect head and tail nodes */
-	impl->head->next = impl->tail;
-	impl->head->prev = impl->head;
-
-	impl->tail->next = impl->tail;
-	impl->tail->prev = impl->head;
 
 	segcol_list_clear_cache(impl);
 
@@ -301,8 +179,7 @@ int segcol_list_new(segcol_t **segcol)
 	err = segcol_create_impl(segcol, impl, &segcol_list_funcs);
 
 	if (err) {
-		free(impl->tail);
-		free(impl->head);
+		list_free(impl->list, struct segment_entry, ln);
 		free(impl);
 		return err;
 	}
@@ -318,20 +195,16 @@ static int segcol_list_free(segcol_t *segcol)
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
-	struct list_node *node = impl->head;
-	struct list_node *next;
-	struct list_node *cur;
+	struct list_node *node;
 
-	/* free list nodes */
-	do {
-		next = node->next;
-		cur = node;
+	/* free segments */
+	list_for_each(seg_list_head(impl->list)->next, node) {
+		struct segment_entry *snode = list_entry(node, struct segment_entry, ln);
+		if (snode->segment != NULL)
+			segment_free(snode->segment);
+	}
 
-		if (node->segment != NULL)
-			segment_free(node->segment);
-		free(node);
-		node = next;
-	} while (next != cur);
+	list_free(impl->list, struct segment_entry, ln);
 
 	free(impl);
 
@@ -349,7 +222,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	 */
 	off_t seg_size;
 	segment_get_size(seg, &seg_size);
-	if (seg_size == 0) {
+	if (seg_size = 0) {
 		segment_free(seg);
 		return 0;
 	}
@@ -357,15 +230,16 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 	
-	struct list_node *new_node;
-	int err = list_new_node(&new_node);
+	struct segment_entry *new_node;
+	int err = list_new_entry(&new_node, struct segment_entry, ln);
 	if (err)
 		return err;
 		
 	new_node->segment = seg;
 
 	/* Append at the end */
-	list_insert_before(impl->tail, new_node);
+	list_insert_before(list_tail(impl->list, struct segment_entry, ln),
+			&new_node->ln);
 	
 	return 0;
 }
@@ -387,7 +261,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	/* 
 	 * If the segment size is 0, return successfully without adding
 	 * anything. Free the segment as we will not be using it.
-	 * This check is placed after the first find_node() so that the
+	 * This check is placed after the first find_seg_entry() so that the
 	 * validity of offset (if it is in range) is checked first.
 	 */
 	off_t seg_size;
@@ -408,13 +282,14 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	struct segcol_list_iter_impl *iter_impl = 
 		(struct segcol_list_iter_impl *) segcol_iter_get_impl(iter);
 
-	struct list_node *pnode = iter_impl->node;
+	struct segment_entry *pnode =
+		list_entry(iter_impl->node, struct segment_entry, ln);
 
 	segcol_iter_free(iter);
 	
 	/* create a list node containing the new segment */
-	struct list_node *qnode;
-	err = list_new_node(&qnode);
+	struct segment_entry *qnode;
+	err = list_new_entry(&qnode, struct segment_entry, ln);
 	if (err)
 		return err;
 
@@ -430,15 +305,15 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	/* check if a split is actually needed or we just have to prepend 
 	 * the new segment */
 	if (split_index == 0) {
-		list_insert_before(pnode, qnode);
+		list_insert_before(&pnode->ln, &qnode->ln);
 	} else {
 		segment_t *rseg;
 		err = segment_split(pseg, &rseg, split_index);
 		if (err)
 			return err;
 		
-		struct list_node *rnode;
-		err = list_new_node(&rnode);
+		struct segment_entry *rnode;
+		err = list_new_entry(&rnode, struct segment_entry, ln);
 		if (err) {
 			segment_merge(pseg, rseg);
 			segment_free(rseg);
@@ -446,23 +321,23 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		}
 		rnode->segment = rseg;
 
-		list_insert_after(pnode, qnode);
-		list_insert_after(qnode, rnode);
+		list_insert_after(&pnode->ln, &qnode->ln);
+		list_insert_after(&qnode->ln, &rnode->ln);
 	}
 
 	return 0;
 }
 
 /*
- * The algorithm first deletes from the segcol list the node chain that is
- * defined by first_node and last_node (the nodes that contain the start and
+ * The algorithm first deletes from the segcol list the entry chain that is
+ * defined by first_entry and last_entry (the nodes that contain the start and
  * end of the range, respectively). This possibly deletes more than it should
  * because we completely delete the first and last segment, when perhaps only a
  * part of them should be deleted (F, L). We fix this later on by reinserting
  * a and b. Some of the comments below will refer to the following diagram:
  *
- *  P: first_node_prev a: node_a F: first_node
- *  N: last_node_next b: node_b L: last_node
+ *  P: first_entry_prev a: entry_a F: first_entry
+ *  N: last_entry_next b: entry_b L: last_entry
  *  
  *  -[P]-[a|F]-[]-[]-[L|b]-[N]-  => -[]-[P]-[N]-[]- => -[P]-[a]-[b]-[N]-
  *          ^           ^
@@ -481,96 +356,99 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
-	struct list_node *first_node = NULL;
-	struct list_node *last_node = NULL;
+	struct segment_entry *first_entry = NULL;
+	struct segment_entry *last_entry = NULL;
 	off_t first_mapping;
 	off_t last_mapping;
 
 	/* Find the first and last list nodes that contain the range */
-	int err = find_node(segcol, &first_node, &first_mapping, offset);
+	int err = find_seg_entry(segcol, &first_entry, &first_mapping, offset);
 	if (err)
 		return err;
 
 	/* 
 	 * If the length is 0 return successfully without doing anything.
-	 * This check is placed after the first find_node() so that the
+	 * This check is placed after the first find_seg_entry() so that the
 	 * validity of offset (if it is in range) is checked first.
 	 */
 	if (length == 0)
 		return 0;
 
-	err = find_node(segcol, &last_node, &last_mapping,
+	err = find_seg_entry(segcol, &last_entry, &last_mapping,
 			offset + length - 1 * (length != 0));
 
 	if (err)
 		return err;
 
-	if (first_node == NULL || last_node == NULL 
-		|| first_node->segment == NULL || last_node->segment == NULL)
+	if (first_entry == NULL || last_entry == NULL 
+		|| first_entry->segment == NULL || last_entry->segment == NULL)
 		return EINVAL;
 
 	segcol_list_clear_cache(impl);
 
 	/* 
-	 * node_a will hold the part of the first segment that we must
+	 * entry_a will hold the part of the first segment that we must
 	 * put back into the segcol.
-	 * node_b will hold the part of the last segment that we must
+	 * entry_b will hold the part of the last segment that we must
 	 * put back into the segcol.
 	 */
-	struct list_node *node_a;
-	struct list_node *node_b;
+	struct segment_entry *entry_a;
+	struct segment_entry *entry_b;
 
-	err = list_new_node(&node_a);
+	err = list_new_entry(&entry_a, struct segment_entry, ln);
 	if (err)
 		return err;
-	err = list_new_node(&node_b);
+	err = list_new_entry(&entry_b, struct segment_entry, ln);
 	if (err) {
-		free(node_a);
+		free(entry_a);
 		return err;
 	}
 
 	/* 
-	 * The nodes that should go before and after node_a and node_b, respectively 
+	 * The nodes that should go before and after entry_a and entry_b, respectively 
 	 * when and if we should insert them back in.
 	 */
-	struct list_node *node_a_prev = first_node->prev;
-	struct list_node *node_b_next = last_node->next;
+	struct segment_entry *entry_a_prev =
+		list_entry(first_entry->ln.prev, struct segment_entry, ln);
+
+	struct segment_entry *entry_b_next =
+		list_entry(last_entry->ln.next, struct segment_entry, ln);
 
     /* Delete the chain */
-	list_delete_chain(first_node, last_node);
+	list_delete_chain(&first_entry->ln, &last_entry->ln);
 
 	/* Calculate new size, after having deleted the chain */
 	off_t new_size;
 	segcol_get_size(segcol, &new_size);
 
 	off_t last_seg_size;
-	segment_get_size(last_node->segment, &last_seg_size);
+	segment_get_size(last_entry->segment, &last_seg_size);
 
 	new_size -= last_mapping + last_seg_size - first_mapping;
 
 	/* 
 	 * Handle first node: Split first segment so that the first node contains
-	 * only segment F (and store the remaining in node_a). We only have to do
+	 * only segment F (and store the remaining in entry_a). We only have to do
 	 * something if the range to delete starts after the beginning of the first
 	 * segment.  Otherwise the whole segment should be deleted which has
 	 * already been done by list_delete_chain.
 	 */
 	if (first_mapping < offset) {
 		segment_t *tmp_seg;
-		err = segment_split(first_node->segment, &tmp_seg, offset - first_mapping);
+		err = segment_split(first_entry->segment, &tmp_seg, offset - first_mapping);
 		if (err)
-			goto fail_first_node;
+			goto fail_first_entry;
 
-		node_a->segment = first_node->segment;
-		first_node->segment = tmp_seg;
+		entry_a->segment = first_entry->segment;
+		first_entry->segment = tmp_seg;
 	} else {
-		free(node_a);
-		node_a = NULL;
+		free(entry_a);
+		entry_a = NULL;
 	}
 
 	/* 
 	 * Handle last node: Split last segment so that the last node contains only
-	 * segment L (and store the remaining in node_b). We only have to do
+	 * segment L (and store the remaining in entry_b). We only have to do
 	 * something if the range to delete ends after the end of the last segment.
 	 * Otherwise the whole segment should be deleted which has already been
 	 * done by list_delete_chain.
@@ -584,30 +462,30 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		 */
 		int last_seg_dec = 0;
 		
-		if (first_node == last_node)
+		if (first_entry == last_entry)
 			last_seg_dec = offset - first_mapping;
 
 		segment_t *tmp_seg;
-		err = segment_split(last_node->segment, &tmp_seg,
+		err = segment_split(last_entry->segment, &tmp_seg,
 				offset + length - last_mapping - last_seg_dec);
 		if (err)
-			goto fail_last_node;
+			goto fail_last_entry;
 
-		node_b->segment = tmp_seg;
+		entry_b->segment = tmp_seg;
 	} else {
-		free(node_b);
-		node_b = NULL;
+		free(entry_b);
+		entry_b = NULL;
 	}
 
 	/* 
 	 * Insert incorrectly deleted parts of the segments back into segcol
 	 */
 
-	if (node_a != NULL)
-		list_insert_after(node_a_prev, node_a);
+	if (entry_a != NULL)
+		list_insert_after(&entry_a_prev->ln, &entry_a->ln);
 
-	if (node_b != NULL)
-		list_insert_before(node_b_next, node_b);
+	if (entry_b != NULL)
+		list_insert_before(&entry_b_next->ln, &entry_b->ln);
 
 	/* Create a new segcol_t and put in the deleted segments */
 	segcol_t *deleted_tmp;
@@ -618,9 +496,9 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segcol_list_impl *deleted_impl = 
 		(struct segcol_list_impl *) segcol_get_impl(deleted_tmp);
 
-	list_insert_after(deleted_impl->head, first_node);
-	if (first_node != last_node)
-		list_insert_before(deleted_impl->tail, last_node);
+	list_insert_after(seg_list_head(deleted_impl->list), &first_entry->ln);
+	if (first_entry != last_entry)
+		list_insert_before(seg_list_tail(deleted_impl->list), &last_entry->ln);
 
 	/* Either return the deleted segments or free them */
 	if (deleted != NULL) 
@@ -634,28 +512,28 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
  * after a failure and there are no memory leaks.
  */
 fail_segcol_new_deleted:
-	if (node_b != NULL)
-		list_delete_chain(node_b, node_b);
+	if (entry_b != NULL)
+		list_delete_chain(&entry_b->ln, &entry_b->ln);
 
-	if (node_a != NULL)
-		list_delete_chain(node_a, node_a);
+	if (entry_a != NULL)
+		list_delete_chain(&entry_a->ln, &entry_a->ln);
 
-	if (node_b != NULL) {
-		segment_merge(last_node->segment, node_b->segment);
-		free(node_b->segment);
+	if (entry_b != NULL) {
+		segment_merge(last_entry->segment, entry_b->segment);
+		free(entry_b->segment);
 	}
-fail_last_node:
-	if (node_a != NULL) {
-		segment_merge(node_a->segment, first_node->segment);
-		free(first_node->segment);
-		first_node->segment = node_a->segment; 
+fail_last_entry:
+	if (entry_a != NULL) {
+		segment_merge(entry_a->segment, first_entry->segment);
+		free(first_entry->segment);
+		first_entry->segment = entry_a->segment; 
 	}
-fail_first_node:
-	list_insert_before(node_b_next, last_node);
-	list_insert_after(node_a_prev, first_node);
+fail_first_entry:
+	list_insert_before(&entry_b_next->ln, &last_entry->ln);
+	list_insert_after(&entry_a_prev->ln, &first_entry->ln);
 
-	free(node_a);
-	free(node_b);
+	free(entry_a);
+	free(entry_b);
 
 	return err;
 }
@@ -681,7 +559,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	off_t cur_mapping = impl->cached_mapping;
 
 	if (cur_node == NULL) {
-		cur_node = impl->head->next;
+		cur_node = seg_list_head(impl->list)->next;
 		cur_mapping = 0;
 	}
 
@@ -689,7 +567,10 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 
 	/* linear search of list nodes */
 	while (cur_node != cur_node->next && cur_node != cur_node->prev) {
-		segment_t *seg = cur_node->segment;
+		struct segment_entry *snode =
+			list_entry(cur_node, struct segment_entry, ln);
+
+		segment_t *seg = snode->segment;
 		off_t seg_size;
 		err = segment_get_size(seg, &seg_size);
 
@@ -754,7 +635,7 @@ static int segcol_list_iter_new(segcol_t *segcol, void **iter_impl)
 
 	*iter_impl1 = malloc(sizeof(struct segcol_list_iter_impl));
 
-	(*iter_impl1)->node = impl->head->next;
+	(*iter_impl1)->node = seg_list_head(impl->list)->next;
 	(*iter_impl1)->mapping = 0;
 
 	return 0;
@@ -770,7 +651,11 @@ static int segcol_list_iter_next(segcol_iter_t *iter)
 
 	if (iter_impl->node != iter_impl->node->next) {
 		off_t node_size;
-		segment_get_size(iter_impl->node->segment, &node_size);
+		
+		struct segment_entry *snode =
+			list_entry(iter_impl->node, struct segment_entry, ln);
+
+		segment_get_size(snode->segment, &node_size);
 		iter_impl->node = iter_impl->node->next;
 		iter_impl->mapping = iter_impl->mapping + node_size;
 	} 
@@ -785,7 +670,7 @@ static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 	
-	*seg = iter_impl->node->segment;
+	*seg = list_entry(iter_impl->node, struct segment_entry, ln)->segment;
 
 	return 0;
 }

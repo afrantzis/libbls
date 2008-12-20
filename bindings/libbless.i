@@ -1,6 +1,7 @@
 %module libbless
 
 %include "typemaps.i"
+%include "cpointer.i"
 
 %{
 #include "type_limits.h"
@@ -12,7 +13,15 @@
 #include "data_object_file.h"
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "priority_queue.h"
+#include "overlap_graph.h"
+#include "disjoint_set.h"
+#include "buffer_util.h"
+#include "list.h"
 %}
+
+%pointer_class (size_t, size_tp)
+
 
 %apply long long { ssize_t };
 %apply unsigned long long { size_t };
@@ -57,6 +66,9 @@
 /* The same rules for segment_t ** apply to other ** types */
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
+%apply segment_t ** { priority_queue_t **, overlap_graph_t **, disjoint_set_t ** }
+%apply segment_t ** { struct list ** }
+
 
 /* Exception for void **: Append void * to return list without conversion */
 %typemap(argout) void ** 
@@ -75,13 +87,13 @@
 /* Decrease reference count of data stored in a segment_t when it is freed */
 %exception segment_free
 {
-    $action
     if (arg1 != NULL) {
         void *data = NULL;
         segment_get_data(arg1, &data);
         if (data != NULL)
             Py_DECREF((PyObject *)data);
     }
+    $action
 }
 
 /* handle 'length' in data_object_get_data() */
@@ -178,6 +190,23 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
         result = 666;
 }
 
+/* 
+ * Make the read_data_object() binding accept as data input objects that
+ * support the PyBuffer interface.
+ */
+%exception read_data_object
+{
+    ssize_t s;
+
+    arg3 = get_write_buf_pyobj(obj2, &s);
+
+    if (s != -1 && s >= arg4) {
+        $action
+    }
+    else
+        result = 666;
+}
+
 /*
  * Typemaps that handle output arguments.
  */
@@ -185,6 +214,9 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
 %apply int *OUTPUT { int * };
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long *OUTPUT { size_t * };
+
+/* in priority_queue_add size_t *pos is a normal pointer (not output) */
+%apply SWIGTYPE * { size_t *pos };
 
 /*
  * Helper functions available only in python code for testing purposes.
@@ -203,6 +235,20 @@ off_t get_max_off_t(void)
 size_t get_max_size_t(void)
 {
     return __MAX(size_t);
+}
+
+/* Create a segment with the data pointer as size_t */
+int segment_new_ptr(segment_t **seg, size_t ptr, off_t start, off_t size,
+segment_data_usage_func data_usage_func)
+{
+    return segment_new(seg, (void *)ptr, start, size, data_usage_func);
+}
+
+/* Set the segcol of a bless_buffer_t */
+void set_buffer_segcol(bless_buffer_t *buf, segcol_t *segcol)
+{
+    free(buf->segcol);
+    buf->segcol = segcol;
 }
 
 /* Call data_object_memory_new with the data pointer as size_t */
@@ -254,6 +300,49 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 {
     return segcol_delete(segcol, NULL, offset, length);
 }
+
+/* 
+ * Prints a list of segment edges assuming that the segment data 
+ * is a PyString value.
+ */
+void print_edge_list(struct list *edges, int fd)
+{
+    FILE *fp = fdopen(fd, "w");
+    struct list_node *node;
+
+    list_for_each(list_head(edges, struct edge_entry, ln)->next, node) {
+        struct edge_entry *e = list_entry(node, struct edge_entry, ln);
+        PyObject *str1;
+        segment_get_data(e->src, (void **)&str1);
+        PyObject *str2;
+        segment_get_data(e->dst, (void **)&str2);
+
+        fprintf(fp, "%s -> %s\n", PyString_AsString(str1),
+            PyString_AsString(str2));
+    }
+
+    fclose(fp);
+}
+
+/* 
+ * Prints a list of segment vertices assuming that the segment data 
+ * is a PyString value.
+ */
+void print_vertex_list(struct list *vertices, int fd)
+{
+    FILE *fp = fdopen(fd, "w");
+    struct list_node *node;
+
+    list_for_each(list_head(vertices, struct vertex_entry, ln)->next, node) {
+        struct vertex_entry *e = list_entry(node, struct vertex_entry, ln);
+        PyObject *str1;
+        segment_get_data(e->segment, (void **)&str1);
+
+        fprintf(fp, "%s\n", PyString_AsString(str1));
+    }
+
+    fclose(fp);
+}
 %}
 
 %include "../src/segment.h"
@@ -264,6 +353,11 @@ int segcol_delete_no_deleted(segcol_t *segcol, off_t offset, off_t length)
 %include "../src/data_object_file.h"
 %include "../src/buffer.h"
 %include "../src/buffer_source.h"
+%include "../src/priority_queue.h"
+%include "../src/overlap_graph.h"
+%include "../src/disjoint_set.h"
+%include "../src/buffer_util.h"
+%include "../src/list.h"
 
 
 

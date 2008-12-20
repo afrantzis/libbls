@@ -2,20 +2,43 @@ import unittest
 import errno
 from ctypes import create_string_buffer
 import os
+import shutil
+import tempfile
 from libbless import *
 
-def get_file_fd(name):
+def get_file_fd(name, flags = os.O_RDONLY):
 	"""Get the fd of a file.
 	   We need this so that the tests can be executed from within
 	   the test directory as well as from the source tree root"""
 	try:
-		fd = os.open("test/%s" % name, os.O_RDONLY)
+		fd = os.open("test/%s" % name, flags)
 		return fd
 	except:
 		pass
 	
-	fd = os.open("%s" % name, os.O_RDONLY)
+	fd = os.open("%s" % name, flags)
 	return fd
+
+def get_tmp_copy_file_fd(name, flags = os.O_RDONLY):
+	"""Get the fd of a temporary file which is a copy of the specified
+	file."""
+
+	(tmp_fd, tmp_path) = tempfile.mkstemp();
+	os.close(tmp_fd)
+
+	success = False
+	try:
+		shutil.copyfile("test/%s" % name, tmp_path)
+		success = True
+	except:
+		pass
+	
+	if not success:
+		shutil.copyfile(name, tmp_path)
+
+	fd = os.open(tmp_path, flags)
+
+	return (fd, tmp_path)
 
 class BufferTests(unittest.TestCase):
 
@@ -572,6 +595,198 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_delete(self.buf, buf_size, -1)
 		self.assertNotEqual(err, 0)
 
+	def check_save(self, save_fd, segments_desc, expected_data):
+		"""Helper function for checking buffer save.
+		save_fd: the fd of the file to save to.
+		segments_desc: a sequence of tuples (data_obj, offste, length)
+		describing the segments to put in the buffer.
+		expected_data: a string of data to expect in the buffer after
+		having inserted the segments."""
+
+		# Append segments to the buffer
+		for (data_obj, offset, length) in segments_desc:
+			err = bless_buffer_append(self.buf, data_obj, offset, length)
+			self.assertEqual(err, 0)
+
+		# Check file contents before save
+		data_len = len(expected_data)
+		self.assertEqual(data_len, bless_buffer_get_size(self.buf)[1])
+		read_data = create_string_buffer(data_len)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
+		self.assertEqual(err, 0)
+		
+		for i in range(len(read_data)):
+			self.assertEqual(read_data[i], expected_data[i])
+
+		# Save file
+		err = bless_buffer_save(self.buf, save_fd, None)
+		self.assertEqual(err, 0)
+
+		# Check file contents after save
+		self.assertEqual(data_len, bless_buffer_get_size(self.buf)[1])
+		read_data = create_string_buffer(data_len)
+		err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
+		self.assertEqual(err, 0)
+		
+		for i in range(len(read_data)):
+			self.assertEqual(read_data[i], expected_data[i])
+		
+	def testSaveSelfOverlapHigher(self):
+		"""Save a buffer that contains two self overlaps one unmoved and one 
+		moved to higher offsets"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		segment_desc = [(fd1_src, 0, 3), (fd2_src, 0, 3), (fd1_src, 3, 7)]
+
+		self.check_save(fd1, segment_desc, "123abc4567890")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveSelfOverlapLower(self):
+		"""Save a buffer that contains two self overlaps one unmoved and one 
+		moved to lower offsets"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		segment_desc = [(fd2_src, 0, 1), (fd1_src, 3, 4), (fd2_src, 1, 2), 
+				(fd1_src, 7, 3)]
+
+		self.check_save(fd1, segment_desc, "a4567bc890")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveRemoveLeftOverlap(self):
+		"""Save a buffer that contains two circular overlaps so that the
+		removed overlap is the one where the buffer segment is left of the
+		original file segment"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		segment_desc = [(fd1_src, 6, 3), (fd2_src, 0, 4), (fd1_src, 2, 3)]
+
+		self.check_save(fd1, segment_desc, "789abcd345")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveRemoveRightOverlap(self):
+		"""Save a buffer that contains two circular overlaps so that the
+		removed overlap is the one where the buffer segment is right of the
+		original file segment"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		segment_desc = [(fd1_src, 5, 3), (fd2_src, 3, 4), (fd1_src, 1, 3)]
+
+		self.check_save(fd1, segment_desc, "678defg234")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveRemoveBufferContainsFileOverlap(self):
+		"""Save a buffer that contains two circular overlaps so that the
+		removed overlap is the one where the buffer segment contains the 
+		original file segment"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		# Append data
+		segment_desc = [ (fd1_src, 5, 5), (fd2_src, 9, 1), (fd1_src, 1, 3),
+				(fd2_src, 0, 1)]
+
+		self.check_save(fd1, segment_desc, "67890j234a")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveRemoveFileContainsBufferOverlap(self):
+		"""Save a buffer that contains two circular overlaps so that the
+		removed overlap is the one where the buffer segment is contained
+		in the original file segment"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		# Append data
+		segment_desc = [ (fd2_src, 9, 1), (fd1_src, 6, 3), (fd2_src, 0, 1),
+				(fd1_src, 0, 4)]
+
+		self.check_save(fd1, segment_desc, "j789a1234")
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
+	def testSaveDoubleCircularSelfOverlap(self):
+		"""Save a buffer that contains two circular overlaps and the segments
+		also overlap with themselves"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+		
+		(err, fd1_src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		fd2 = get_file_fd("buffer_test_file2.bin")
+		
+		(err, fd2_src) = bless_buffer_source_file(fd2, None)
+		self.assertEqual(err, 0)
+
+		segment_desc = [(fd1_src, 1, 3), (fd1_src, 7, 3), (fd1_src, 2, 2),
+				(fd1_src, 7, 3)]
+
+		self.check_save(fd1, segment_desc, "23489034890")
+
+		# Remove temporary file
+		os.remove(fd1_path)
 
 if __name__ == '__main__':
 	unittest.main()
