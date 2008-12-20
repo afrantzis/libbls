@@ -1,0 +1,19 @@
+== Small Sized Tasks ==
+
+* Implement support for progress callback functions in bless_buffer_save().
+
+* Add support for also using files as temporary storage when saving and we 
+  don't have enough memory.
+  See src/buffer_file.c: break_edge() 
+  and src/buffer_util.c: segcol_store_in_memory()
+
+* Create programs to check performance scaling and memory leaks in the library.
+
+== Medium Sized Tasks ==
+
+* Implement bless_buffer_find(). Use Boyer-Moore algorithm for searching.
+
+== Large Sized Tasks ==
+
+* Implement undo/redo (and related functions) for buffers.
+
