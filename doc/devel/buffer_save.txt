@@ -181,17 +181,22 @@ described in the previous section.
 6. Implementation Details
 -------------------------
 
-Phase 1: To create the overlap graph we have to scan the buffer segment
+-Phase 1-
+
+To create the overlap graph we have to scan the buffer segment
 collection for segments that belong to the file we want to save to. Each new
 segment that is found must be checked against all previous found file segments
-for overlap.  This is an O(n*f(k)) algorithm where n is the number of segments
-in the segment collection and k the number of segments belonging to the file.
-If we check for overlap naively f(k) = O(k) and therefore the algorithm is
-O(n*k). We can use an interval tree so that f(k) = O(logk) and the algorithm
-becomes O(n*logk).  As we don't expect k growing too large, for the time being
-we are going to implement this phase using the naive approach for simplicity.
+for overlap.  This is an O(n + k*f(k)) algorithm where n is the number of
+segments in the segment collection and k the number of segments belonging to
+the file.  If we check for overlap naively f(k) = O(k) and therefore the
+algorithm is O(n + k*k). We can use an interval tree so that f(k) = O(logk) and
+the algorithm becomes O(n + k*logk).  As we don't expect k growing too large,
+for the time being we are going to implement this phase using the naive
+approach for simplicity.
 
-Phases 2: Oh, no! The problem we are trying to solve (feedback arc set) is
+-Phase 2-
+
+Oh, no! The problem we are trying to solve (feedback arc set) is
 NP-Hard! Don't despair though, we can get reasonable results with only little
 extra work.
 
@@ -226,4 +231,17 @@ forest). So this is the algorithm of choice.
 [Compare this to Prim's algorithm that by default finds the spanning
 tree for only one connected component of a disconnected graph (although this
 can be easily fixed) and needs modification to work on directed graphs.]
+
+-Phase 3-
+
+Breaking an unused edge has the unfortunate side effect of altering the graph
+as segments are removed, added or changed in the segment collection. This means
+that after breaking the edges we must re-calculate the overlap graph for the
+segment collection.  There may be some way to avoid re-calculating the whole
+graph, making only local changes to the existing graph as vertices are altered
+but we will use the simple (although costly) way for now.
+
+We use this new overlap graph (it is guaranteed not to have any cycles, we
+removed them in the previous phase) to get the vertices in topological order
+and save them to file.
 
