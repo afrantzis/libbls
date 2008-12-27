@@ -266,6 +266,8 @@ int segcol_iter_free(segcol_iter_t *iter)
 {
 	(*iter->segcol->funcs->iter_free)(iter);
 	free(iter);
+
+	return 0;
 }
 
 /**

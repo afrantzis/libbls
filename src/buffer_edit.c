@@ -82,8 +82,8 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
-	/* user_data is actually a void ** pointer */
-	void **dst = (void **)user_data;
+	/* user_data is actually a pointed to pointer */
+	unsigned char **dst = (unsigned char **)user_data;
 
 	int err = read_data_object(dobj, read_start, *dst, read_length);
 	if (err)

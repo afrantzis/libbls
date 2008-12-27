@@ -2,6 +2,9 @@ import os
 import commands
 
 env = Environment(ENV = os.environ) 
+
+# Add default CCFLAGS
+env.Append(CCFLAGS = '-std=c99 -D_POSIX_C_SOURCE=200112L -Wall -pedantic')
 	
 # TODO: Find better (automatic) way to get this path
 PYTHON_INCLUDE_PATH = '/usr/include/python2.5'

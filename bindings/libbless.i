@@ -90,8 +90,9 @@
     if (arg1 != NULL) {
         void *data = NULL;
         segment_get_data(arg1, &data);
-        if (data != NULL)
+        if (data != NULL) {
             Py_DECREF((PyObject *)data);
+        }
     }
     $action
 }

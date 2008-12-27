@@ -183,7 +183,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 	else
 		*length = loaded_length;
 
-	*buf = impl->page_data + offset - impl->page_offset;
+	*buf = (unsigned char *)impl->page_data + offset - impl->page_offset;
 
 	return 0;
 }

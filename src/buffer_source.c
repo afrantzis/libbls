@@ -5,6 +5,8 @@
  */
 #include "buffer_source.h"
 #include "data_object.h"
+#include "data_object_memory.h"
+#include "data_object_file.h"
 
 #include <errno.h>
 #include <stdlib.h>

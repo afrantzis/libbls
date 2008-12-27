@@ -180,7 +180,9 @@ int _list_new_entry(void **entry, size_t entry_size, size_t ln_offset)
 	if (*entry == NULL)
 		return ENOMEM;
 
-	struct list_node *ln = *entry + ln_offset;
+	struct list_node *ln =
+		(struct list_node *)((unsigned char *)*entry + ln_offset);
+
 	ln->prev = NULL;
 	ln->next = NULL;
 

@@ -102,7 +102,7 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 	if (offset + len - 1 * (len != 0) >= impl->size)
 		return EINVAL;
 
-	*buf = impl->data + offset;
+	*buf = (unsigned char *)impl->data + offset;
 
 	return 0;
 }

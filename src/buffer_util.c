@@ -8,10 +8,14 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 #include "buffer_util.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
+#include "data_object_memory.h"
+
 #include "type_limits.h"
 
 
@@ -71,7 +75,7 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 		int fd, off_t file_offset)
 {
-	off_t s = lseek(fd, file_offset);
+	off_t s = lseek(fd, file_offset, SEEK_SET);
 	if (s != file_offset)
 		return errno;
 
@@ -273,8 +277,8 @@ static int read_segment_func(segcol_t *segcol, segment_t *seg,
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
-	/* user_data is actually a void ** pointer */
-	void **dst = (void **)user_data;
+	/* user_data is actually a pointer to pointer*/
+	unsigned char **dst = (unsigned char **)user_data;
 
 	int err = read_data_object(dobj, read_start, *dst, read_length);
 	if (err)

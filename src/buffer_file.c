@@ -16,6 +16,7 @@
 #include "buffer_internal.h"
 #include "segcol_list.h"
 #include "data_object.h"
+#include "data_object_file.h"
 #include "overlap_graph.h"
 #include "list.h"
 #include "buffer_util.h"
