@@ -6,6 +6,10 @@
 #ifndef _BLESS_BUFFER_UTIL_H
 #define _BLESS_BUFFER_UTIL_H 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include "segcol.h"
 #include "segment.h"
@@ -23,5 +27,9 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		segcol_foreach_func *func, void *user_data);
 
 int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

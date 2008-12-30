@@ -3,9 +3,12 @@
  *
  * Definitions for internal use by the data_object_t implementations.
  */
-
 #ifndef _DATA_OBJECT_INTERNAL_H
 #define _DATA_OBJECT_INTERNAL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <sys/types.h>
 #include "data_object.h"
@@ -26,7 +29,9 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 
 void *data_object_get_impl(data_object_t *obj);
 
-
+#ifdef __cplusplus
+}
 #endif
 
+#endif
 

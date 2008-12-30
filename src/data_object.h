@@ -8,6 +8,10 @@
 #ifndef _DATA_OBJECT_H
 #define _DATA_OBJECT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 
 /**
@@ -59,5 +63,9 @@ int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free
 int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

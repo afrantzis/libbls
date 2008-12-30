@@ -9,6 +9,10 @@
 #ifndef _BLESS_BUFFER_H
 #define _BLESS_BUFFER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <unistd.h>
 
 #include "buffer_source.h"
@@ -106,5 +110,9 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 /** @} */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _BLESS_BUFFER_H */

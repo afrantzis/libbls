@@ -1,11 +1,15 @@
-#ifndef _BLESS_BUFFER_SOURCE_H
-#define _BLESS_BUFFER_SOURCE_H
-
 /**
  * @file buffer_source.h
  *
  * Buffer source API
  */
+#ifndef _BLESS_BUFFER_SOURCE_H
+#define _BLESS_BUFFER_SOURCE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 
 /**
@@ -39,5 +43,9 @@ int bless_buffer_source_unref(bless_buffer_source_t *src);
 /** @} */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

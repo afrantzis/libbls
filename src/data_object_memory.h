@@ -6,6 +6,10 @@
 #ifndef _DATA_OBJECT_MEMORY_H
 #define _DATA_OBJECT_MEMORY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "data_object.h"
 #include <sys/types.h>
 
@@ -24,7 +28,9 @@ int data_object_memory_new(data_object_t **obj, void *data, size_t size);
 /** @} */
 /** @} */
 
+#ifdef __cplusplus
+}
 #endif
 
-
+#endif
 
