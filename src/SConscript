@@ -1,7 +1,7 @@
-Import('env')
+Import('env libbless_name_no_lib')
 
 source = Glob('*.c')
 
-libbless = env.SharedLibrary('bless', source)
+libbless = env.SharedLibrary(libbless_name_no_lib, source)
 
 Return('libbless')

@@ -2,12 +2,6 @@ Import('env')
 
 env.Clone()
 
-env.Help("""
-Type 'scons test' to run libbless tests.
-Use the argument 'tests' to run only specific tests:
-    scons test tests=segment,buffer
-""")
-
 tests = " ".join(ARGUMENTS.get('tests', '').split(','))
 
 env['ENV']['LD_LIBRARY_PATH'] = 'build/src'

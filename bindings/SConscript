@@ -1,7 +1,7 @@
 import os
 import distutils
 
-Import('env PYTHON_INCLUDE_PATH')
+Import('env PYTHON_INCLUDE_PATH libbless_name_no_lib')
 
 env = env.Clone(SWIGFLAGS = ['-python'])
 
@@ -10,7 +10,7 @@ libs = []
 
 for f in source:
 	(fn, ext) = os.path.splitext(os.path.basename(f.get_path()))
-	l = env.SharedLibrary(fn, [f], LIBS = ['bless'], LIBPATH = '#build/src', 
+	l = env.SharedLibrary(fn, [f], LIBS = [libbless_name_no_lib], LIBPATH = '#build/src', 
 		CPPPATH=[PYTHON_INCLUDE_PATH, '../src'], SHLIBPREFIX='_')
 	libs.append(l)
 
