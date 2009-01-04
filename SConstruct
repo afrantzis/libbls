@@ -60,8 +60,9 @@ Export('PYTHON_INCLUDE_PATH')
 
 destdir = ARGUMENTS.get('destdir', '')
 prefix = ARGUMENTS.get('prefix', '/usr/local')
+exec_prefix = ARGUMENTS.get('exec_prefix', prefix)
 
-libdir = ARGUMENTS.get('libdir', os.path.join(prefix,'lib'))
+libdir = ARGUMENTS.get('libdir', os.path.join(exec_prefix, 'lib'))
 includedir = ARGUMENTS.get('includedir', os.path.join(prefix, 'include', libbless_name)) 
 
 datarootdir = ARGUMENTS.get('datarootdir', os.path.join(prefix, 'share'))
@@ -127,7 +128,8 @@ Option      Default Value
 ------      -------------
 destdir     
 prefix      /usr/local
-libdir      $$prefix/lib
+exec_prefix $$prefix
+libdir      $$exec_prefix/lib
 includedir  $$prefix/include/%(libbless_name)s
 datarootdir $$prefix/share
 datadir     $$datarootdir
