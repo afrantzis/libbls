@@ -1,19 +1,19 @@
 import os
 
-Import('env libbless_name_no_lib libbless_soname libbless_filename')
+Import('env')
 
 env_lib = env.Clone()
 
 # Set the soname and create the library using its full name
 if env_lib['SHLIBSUFFIX'] == '.so':
-	env_lib.Append(SHLINKFLAGS = '-Wl,-soname=%s' % libbless_soname)
-	so_index = libbless_filename.rfind('.so')
-	env_lib['SHLIBSUFFIX'] = libbless_filename[so_index:]
+	env_lib.Append(SHLINKFLAGS = '-Wl,-soname=%s' % env['libbless_soname'])
+	so_index = env['libbless_filename'].rfind('.so')
+	env_lib['SHLIBSUFFIX'] = env['libbless_filename'][so_index:]
 
 source = Glob('*.c')
 
 # Create shared library
-libbless = env_lib.SharedLibrary(libbless_name_no_lib, source)
+libbless = env_lib.SharedLibrary(env['libbless_name_no_lib'], source)
 
 # Dummy builders for links
 lnk1 = env_lib.Command(None, None, "")
@@ -23,15 +23,15 @@ lnk2 = env_lib.Command(None, None, "")
 if env['SHLIBSUFFIX'] == '.so':
 	build_dir = '#' + os.path.dirname(libbless[0].path)
 
-	lnk1_name = libbless_soname
+	lnk1_name = env['libbless_soname']
 	if lnk1_name != str(libbless[0]):
 		lnk1_path = os.path.join(build_dir, lnk1_name)
 		lnk1 = env_lib.Command(lnk1_name, str(libbless[0]),
 			"ln -sf ${SOURCE.file} $TARGET")
 		Depends(lnk1, libbless)
 
-	so_index = libbless_soname.rfind('.so')
-	lnk2_name = libbless_soname[:so_index + 3]
+	so_index = env['libbless_soname'].rfind('.so')
+	lnk2_name = env['libbless_soname'][:so_index + 3]
 	lnk2_path = os.path.join(build_dir, lnk2_name)
 	if lnk2_name != str(libbless[0]) and lnk2_name != lnk1_name:
 		lnk2 = env_lib.Command(lnk2_name, str(libbless[0]),

@@ -1,24 +1,33 @@
 import os
 import commands
+import scons_helpers
+
+##################################
+# Construction environment setup #
+##################################
 
 env = Environment(ENV = os.environ) 
+
+scons_helpers.register_template_builder(env)
+
+env['libbless_major'] = '0.1'
+env['libbless_minor'] = '0'
+env['libbless_patch'] = '0'
+
+env['libbless_name_no_lib'] = 'bless-%s' % env['libbless_major']
+env['libbless_name'] = 'lib%s' % env['libbless_name_no_lib']
+env['libbless_soname'] = '%s.so.0' % env['libbless_name']
+if env['SHLIBSUFFIX'] == '.so':
+	env['libbless_filename'] = env['libbless_soname']
+
+# TODO: Find better (automatic) way to get this path
+env['PYTHON_INCLUDE_PATH'] = '/usr/include/python2.5'
+
 Export('env')
 
-version = {'major':'0.1', 'minor':'1', 'patch':'0'}
-
-libbless_name_no_lib = 'bless-%s' % version['major'] 
-libbless_name = 'lib%s' % libbless_name_no_lib
-libbless_soname = '%s.so.0' % libbless_name
-if env['SHLIBSUFFIX'] == '.so':
-	libbless_filename = libbless_soname
-
-Export('libbless_name_no_lib')
-Export('libbless_soname')
-Export('libbless_filename')
-
-#################
-# Configuration #
-#################
+################
+# System check #
+################
 
 if not env.GetOption('clean') and not env.GetOption('help'):
 	conf = Configure(env)
@@ -43,36 +52,29 @@ if not env.GetOption('clean') and not env.GetOption('help'):
 
 	env = conf.Finish()
 
-#################
-# Build options #
-#################
-
-# Add default CCFLAGS and SHLINKFLAGS
-env.Append(CCFLAGS = '-std=c99 -D_XOPEN_SOURCE=600 -Wall -pedantic -O3')
-	
-# TODO: Find better (automatic) way to get this path
-PYTHON_INCLUDE_PATH = '/usr/include/python2.5'
-
-Export('PYTHON_INCLUDE_PATH')
-
 ####################################
 # Autotool like installation paths #
 ####################################
 
-destdir = ARGUMENTS.get('destdir', '')
-prefix = ARGUMENTS.get('prefix', '/usr/local')
-exec_prefix = ARGUMENTS.get('exec_prefix', prefix)
+env['destdir'] = ARGUMENTS.get('destdir', '')
+env['prefix'] = ARGUMENTS.get('prefix', '/usr/local')
+env['exec_prefix'] = ARGUMENTS.get('exec_prefix', '${prefix}')
 
-libdir = ARGUMENTS.get('libdir', os.path.join(exec_prefix, 'lib'))
-includedir = ARGUMENTS.get('includedir', os.path.join(prefix, 'include', libbless_name, 'libbless'))
+env['libdir'] = ARGUMENTS.get('libdir', '${exec_prefix}/lib')
+env['includedir'] = ARGUMENTS.get('includedir', 
+		'${prefix}/include/' + env['libbless_name'])
 
-datarootdir = ARGUMENTS.get('datarootdir', os.path.join(prefix, 'share'))
-datadir = ARGUMENTS.get('datadir', datarootdir)
-docdir = ARGUMENTS.get('docdir', os.path.join(datarootdir, 'doc', libbless_name))
+env['datarootdir'] = ARGUMENTS.get('datarootdir', '${prefix}/share')
+env['datadir'] = ARGUMENTS.get('datadir', '${datarootdir}')
+env['docdir'] = ARGUMENTS.get('docdir',
+		'%{datarootdir}/doc/' + env['libbless_name'])
 
 ################################
 # Various Command line options #
 ################################
+
+# Add default CCFLAGS
+env.Append(CCFLAGS = '-std=c99 -D_XOPEN_SOURCE=600 -Wall -pedantic -O3')
 
 debug = ARGUMENTS.get('debug', 0)
 if int(debug):
@@ -87,31 +89,41 @@ if int(lfs):
 # Whether to install symbolic links for the library
 install_links = ARGUMENTS.get('install-links', 'no')
 
-###########
-# Targets #
-###########
+#################
+# Build Targets #
+#################
 
 # The libbless target includes the libless library and symbolic links to it.
 # libbless[0] is the library, libbless[1] is the soname link, libbless[2] is
 # the plain '.so' link used for development
+
 libbless = env.SConscript('src/SConscript', build_dir='build/src/', duplicate=0)
 
-env.Default(libbless)
+bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings',
+		duplicate=0)
+
+pkgconf = env.Template('${libbless_name_no_lib}.pc', 'bless.pc.in') 
+
 env.Alias('libbless', libbless)
+Depends(bindings, libbless)
 
-bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings', duplicate=0)
+env.Default(libbless, pkgconf)
 
-tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=0)
+########################
+# Installation Targets #
+########################
 
-# Install targets
-install_lib = env.Install(destdir + libdir, libbless[0])
+install_lib = env.Install('${destdir}${libdir}', libbless[0])
 
-install_run_link = env.Install(destdir + libdir, libbless[1])
-install_dev_link = env.Install(destdir + libdir, libbless[2])
+install_run_link = env.Install('${destdir}${libdir}', libbless[1])
+install_dev_link = env.Install('${destdir}${libdir}', libbless[2])
 
-install_headers = env.Install(destdir + includedir, ['src/buffer.h','src/buffer_source.h'])
+install_headers = env.Install('${destdir}${includedir}/libbless',
+		['src/buffer.h','src/buffer_source.h'])
 
-install_targets = [install_lib, install_headers]
+install_pkgconf = env.Install('${destdir}${libdir}/pkgconfig', pkgconf)
+
+install_targets = [install_lib, install_headers, install_pkgconf]
 
 if install_links != 'no':
 	install_targets += install_run_link
@@ -120,12 +132,15 @@ if install_links == 'yes':
 
 env.Alias('install',install_targets)
 
-# Test target
+##################
+# Testing Target #
+##################
+
+tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=0)
+
 AlwaysBuild(tests)
 env.Alias('test', tests)
-
 Depends(tests, bindings)
-Depends(bindings, libbless)
 
 ########
 # Help #
@@ -179,4 +194,4 @@ tests = LIST
    Run tests for only the selected modules.for (by default all 
    tests are run).
        eg scons debug=1 test tests=segment,buffer
-""" % locals())
+""" % env)

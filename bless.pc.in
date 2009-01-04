@@ -1,0 +1,10 @@
+prefix=@prefix
+exec_prefix=@exec_prefix
+libdir=@libdir
+includedir=@includedir
+
+Name: libbless
+Description: Efficient editable data buffer
+Version: @libbless_major.@libbless_minor.@libbless_patch
+Libs: -L${libdir} -l@libbless_name_no_lib
+Cflags: -I${includedir}
