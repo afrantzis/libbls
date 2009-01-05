@@ -8,11 +8,12 @@ import scons_helpers
 
 env = Environment(ENV = os.environ) 
 
-scons_helpers.register_template_builder(env)
+scons_helpers.register_builders(env)
 
 env['libbless_major'] = '0.1'
 env['libbless_minor'] = '0'
 env['libbless_patch'] = '0'
+env['libbless_version'] = '${libbless_major}.${libbless_minor}'
 
 env['libbless_name_no_lib'] = 'bless-%s' % env['libbless_major']
 env['libbless_name'] = 'lib%s' % env['libbless_name_no_lib']
@@ -107,7 +108,7 @@ pkgconf = env.Template('${libbless_name_no_lib}.pc', 'bless.pc.in')
 env.Alias('libbless', libbless)
 Depends(bindings, libbless)
 
-env.Default(libbless, pkgconf)
+env.Default([libbless, pkgconf])
 
 ########################
 # Installation Targets #
@@ -136,11 +137,20 @@ env.Alias('install',install_targets)
 # Testing Target #
 ##################
 
-tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=0)
+tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=1)
 
 AlwaysBuild(tests)
 env.Alias('test', tests)
 Depends(tests, bindings)
+
+###############
+# Dist Target #
+###############
+
+dist_files = scons_helpers.get_files('.', exclude = ['build', '.*', '*~', '*.pyc', '*.gz'])
+archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
+
+env.Alias('dist', archive)
 
 ########
 # Help #
@@ -154,6 +164,7 @@ Usage: scons [target] [options].
 libbless: Builds libbless (default).
 install: Installs libbless.
 test: Runs libbless tests.
+dist: Creates a source distribution archive.
 
 === Installation path configuration options ===
 
