@@ -6,6 +6,7 @@ import tarfile, zipfile
 def register_builders(env):
 	register_template_builder(env)
 	register_archive_builder(env)
+	register_localsymlink_builder(env)
 
 class AtTemplate(Template):
 	delimiter = '@';
@@ -95,4 +96,89 @@ def archive_action (target, source, env):
 def archive_string (target, source, env):
 	""" Information string for Archive """
 	return 'Making archive %s' % os.path.basename (str (target[0]))
+
+# A symbolic link builder that creates a symlink to a file in the 
+# same directory as that source file
+def register_localsymlink_builder(env):
+	action = env.Action(localsymlink_action, localsymlink_string)
+	env['BUILDERS']['LocalSymlink'] = env.Builder(action=action,
+			emitter = localsymlink_emitter)
+
+def localsymlink_emitter(target, source, env):
+	t_base = os.path.basename(str(target[0]))
+	s_dir = os.path.dirname(str(source[0]))
+
+	return ([os.path.join(s_dir, t_base)], source)
+
+def localsymlink_action (target, source, env):
+	""" Make an symlink target pointing to source"""
+	t = str(target[0])
+	if os.path.lexists(t):
+		if os.path.islink(t):
+			os.unlink(t)
+	
+	os.symlink(os.path.basename(str(source[0])), str(target[0]))
+	return 0
+
+def localsymlink_string (target, source, env):
+	""" Information string for symlink """
+	return 'Creating symlink %s -> %s' % (str(target[0]), str(source[0]))
+
+def create_library_links(lib, soname, env):
+	# Dummy builders for links
+	lnk1 = env.Command(None, None, "")
+	lnk2 = env.Command(None, None, "")
+
+	if env['SHLIBSUFFIX'] == '.so':
+	
+		lib_base = os.path.basename(lib)
+		lnk1_name = soname
+		lnk1_base = os.path.basename(lnk1_name)
+
+		if lnk1_base != lib_base:
+			lnk1 = env.LocalSymlink(lnk1_name, lib)
+			env.Depends(lnk1, lib)
+	
+		so_index = soname.rfind('.so')
+		lnk2_name = soname[:so_index + 3]
+		lnk2_base = os.path.basename(lnk2_name)
+
+		if lnk2_base != lib_base and lnk2_base != lnk1_base:
+			lnk2 = env.LocalSymlink(lnk2_name, lib)
+			env.Depends(lnk2, lib)
+
+	return lnk2, lnk2
+
+# Helper function to create a versioned library and related symlinks
+def versioned_library(target, source, soname, env):
+	"""Creates the shared library named 'target' from Nodes 'source'
+	using the specified 'soname' and the scons 'env'"""
+
+	env_lib = env.Clone()
+
+	if env.subst('$SHLIBSUFFIX') == '.so':
+		env_lib.Append(SHLINKFLAGS = '-Wl,-soname=%s' % soname)
+		so_index = target.rfind('.so')
+		env_lib['SHLIBSUFFIX'] = target[so_index:]
+		env_lib.Append(LIBSUFFIXES=['$SHLIBSUFFIX'])
+	
+	suffix_index = target.rfind(env_lib.subst('$SHLIBSUFFIX'))
+	prefix_length = len(env_lib.subst('$SHLIBPREFIX'))
+
+	lib_name = target[prefix_length:suffix_index]
+	
+	lib = env_lib.SharedLibrary(lib_name, source)
+
+	lnk1, lnk2 = create_library_links(str(lib[0]), soname, env)
+	
+	return [lib, lnk1, lnk2]
+
+def install_versioned_library(target_dir, source, soname, env):
+	
+	lib = env.Install(target_dir, source)
+
+	lnk1, lnk2 = create_library_links(str(lib[0]), soname, env)
+	
+	return [lib, lnk1, lnk2]
+
 

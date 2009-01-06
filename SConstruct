@@ -30,7 +30,10 @@ Export('env')
 # System check #
 ################
 
-if not env.GetOption('clean') and not env.GetOption('help'):
+run_conf = not env.GetOption('clean') and not env.GetOption('help')
+run_conf = run_conf and not 'dist' in BUILD_TARGETS
+
+if run_conf == True:
 	conf = Configure(env)
 
 	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h', 'sys/types.h']
@@ -114,10 +117,12 @@ env.Default([libbless, pkgconf])
 # Installation Targets #
 ########################
 
-install_lib = env.Install('${destdir}${libdir}', libbless[0])
+lib_targets = scons_helpers.install_versioned_library('${destdir}${libdir}', 
+		libbless[0], env.subst('$libbless_soname'), env)
 
-install_run_link = env.Install('${destdir}${libdir}', libbless[1])
-install_dev_link = env.Install('${destdir}${libdir}', libbless[2])
+install_lib = lib_targets[0]
+install_run_link = lib_targets[1]
+install_dev_link = lib_targets[2]
 
 install_headers = env.Install('${destdir}${includedir}/libbless',
 		['src/buffer.h','src/buffer_source.h'])
@@ -147,7 +152,9 @@ Depends(tests, bindings)
 # Dist Target #
 ###############
 
-dist_files = scons_helpers.get_files('.', exclude = ['build', '.*', '*~', '*.pyc', '*.gz'])
+dist_files = scons_helpers.get_files('.',
+	exclude = ['build', '*.log', '.*', '*~', '*.pyc', '*.gz'])
+
 archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
 
 env.Alias('dist', archive)
@@ -174,7 +181,7 @@ destdir
 prefix      /usr/local
 exec_prefix $$prefix
 libdir      $$exec_prefix/lib
-includedir  $$prefix/include/%(libbless_name)s/libbless
+includedir  $$prefix/include/%(libbless_name)s/
 datarootdir $$prefix/share
 datadir     $$datarootdir
 docdir      $$datarootdir/doc/%(libbless_name)s
