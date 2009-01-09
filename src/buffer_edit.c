@@ -17,6 +17,7 @@
 #include "data_object_memory.h"
 #include "type_limits.h"
 
+#pragma GCC visibility push(default)
 
 /********************/
 /* Helper functions */
@@ -282,3 +283,6 @@ int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset,
 {
 	return -1;
 }
+
+#pragma GCC visibility pop
+

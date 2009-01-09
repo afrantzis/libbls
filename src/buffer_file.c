@@ -22,6 +22,8 @@
 #include "buffer_util.h"
 
 
+#pragma GCC visibility push(default)
+
 /********************/
 /* Helper functions */
 /********************/
@@ -503,4 +505,6 @@ int bless_buffer_free(bless_buffer_t *buf)
 
 	return 0;
 }
+
+#pragma GCC visibility pop
 

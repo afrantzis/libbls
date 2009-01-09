@@ -1,3 +1,4 @@
+import SCons
 import os
 import commands
 import scons_helpers
@@ -23,8 +24,6 @@ if env['SHLIBSUFFIX'] == '.so':
 
 # TODO: Find better (automatic) way to get this path
 env['PYTHON_INCLUDE_PATH'] = '/usr/include/python2.5'
-
-Export('env')
 
 ################
 # System check #
@@ -97,28 +96,34 @@ install_links = ARGUMENTS.get('install-links', 'no')
 # Build Targets #
 #################
 
-# The libbless target includes the libless library and symbolic links to it.
+# The libbless targetr include the libless library and symbolic links to it.
 # libbless[0] is the library, libbless[1] is the soname link, libbless[2] is
 # the plain '.so' link used for development
 
-libbless = env.SConscript('src/SConscript', build_dir='build/src/', duplicate=0)
+libbless = env.SConscript('src/SConscript', build_dir='build/src/', duplicate=0, exports=['env'])
+
+# This environment produces a library suitable for release
+env_release = env.Clone()
+env_release.Append(CCFLAGS='-fvisibility=hidden')
+libbless_release = env_release.SConscript('src/SConscript', build_dir='build/src-release/',
+	duplicate=0, exports={'env':env_release})
 
 bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings',
-		duplicate=0)
+		duplicate=0, exports=['env'])
 
 pkgconf = env.Template('${libbless_name_no_lib}.pc', 'bless.pc.in') 
 
-env.Alias('libbless', libbless)
+env.Alias('libbless', libbless_release)
 Depends(bindings, libbless)
 
-env.Default([libbless, pkgconf])
+env.Default([libbless_release, pkgconf])
 
 ########################
 # Installation Targets #
 ########################
 
 lib_targets = scons_helpers.install_versioned_library('${destdir}${libdir}', 
-		libbless[0], env.subst('$libbless_soname'), env)
+		libbless_release[0], env.subst('$libbless_soname'), env)
 
 install_lib = lib_targets[0]
 install_run_link = lib_targets[1]
@@ -136,13 +141,13 @@ if install_links != 'no':
 if install_links == 'yes':
 	install_targets += install_dev_link
 
-env.Alias('install',install_targets)
+env.Alias('install', install_targets)
 
 ##################
 # Testing Target #
 ##################
 
-tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=1)
+tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=1, exports=['env'])
 
 AlwaysBuild(tests)
 env.Alias('test', tests)

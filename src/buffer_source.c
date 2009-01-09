@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#pragma GCC visibility push(default)
+
 /**
  * Creates a memory source for bless_buffer_t.
  *
@@ -130,4 +132,6 @@ int bless_buffer_source_unref(bless_buffer_source_t *src)
 
 	return 0;
 }
+
+#pragma GCC visibility pop
 

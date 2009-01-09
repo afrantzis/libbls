@@ -2,6 +2,7 @@ from string import Template
 import os
 import fnmatch
 import tarfile, zipfile
+import re
 
 def register_builders(env):
 	register_template_builder(env)
@@ -16,8 +17,22 @@ class AtTemplate(Template):
 def register_template_builder(env):
 	action = env.Action(template_action, template_string)
 	env['BUILDERS']['Template'] = env.Builder(action=action, src_suffix='.in',
-			single_source=True)
+			emitter=template_emitter, single_source=True)
 
+def template_emitter(target, source, env):
+	"""this emitter adds all the variables referenced in the target file as
+	dependencies for this target"""
+	text = open(str(source[0]), 'r').read()
+	i = 0
+	r = re.compile('@\{?(\w*)\}?')
+	dep_str = ''
+	for match in re.findall(r, text):
+		dep_str += '${' + match + '}'
+	
+	env.Depends(target[0], env.Value(env.subst(dep_str)))
+	
+	return (target, source)
+	
 def template_action(target, source, env):
 	fin = open(str(source[0]), 'r')
 	fout = open(str(target[0]), 'w')
