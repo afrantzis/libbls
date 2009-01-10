@@ -1,0 +1,5 @@
+Import('env')
+
+user_doc = env.Command('user_guide.html', ['user_guide.xsl', 'user_guide.xml'], 'xsltproc -o $TARGET $SOURCES')
+
+Return('user_doc')

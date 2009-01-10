@@ -95,7 +95,8 @@ INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = buffer*.c \
                          buffer*.h
 RECURSIVE              = YES
-EXCLUDE                = ./src/buffer_internal.h
+EXCLUDE                = ./src/buffer_internal.h ./src/buffer_util.c \
+                         ./src/buffer_util.h
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       = 
 EXCLUDE_SYMBOLS        = 

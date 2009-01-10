@@ -153,6 +153,21 @@ AlwaysBuild(tests)
 env.Alias('test', tests)
 Depends(tests, bindings)
 
+#########################
+# Documentation targets #
+#########################
+
+user_api_doc = env.Command('doc/user/html', 'Doxyfile.user', 'doxygen $SOURCE')
+env.Depends(user_api_doc, scons_helpers.get_files('src', include = ['buffer*'], exclude = ['buffer_util*', '.*', '*~']))
+
+dev_api_doc = env.Command('doc/devel/html', 'Doxyfile.devel', 'doxygen $SOURCE')
+env.Depends(user_api_doc, scons_helpers.get_files('src', exclude = ['.*', '*~']))
+
+user_doc = env.SConscript('doc/user/SConscript', exports=['env'])
+
+all_doc = [user_api_doc, dev_api_doc, user_doc]
+env.Alias('doc', all_doc)
+
 ###############
 # Dist Target #
 ###############
@@ -160,9 +175,10 @@ Depends(tests, bindings)
 dist_files = scons_helpers.get_files('.',
 	exclude = ['build', '*.log', '.*', '*~', '*.pyc', '*.gz'])
 
-archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
+dist_archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
 
-env.Alias('dist', archive)
+env.Alias('dist', dist_archive)
+env.Depends(dist_archive, all_doc)
 
 ########
 # Help #
@@ -176,6 +192,7 @@ Usage: scons [target] [options].
 libbless: Builds libbless (default).
 install: Installs libbless.
 test: Runs libbless tests.
+doc: Creates libbless documentation.
 dist: Creates a source distribution archive.
 
 === Installation path configuration options ===
