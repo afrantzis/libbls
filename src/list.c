@@ -81,6 +81,7 @@ int _list_free(struct list *list, size_t ln_offset)
 
 	free(list->head);
 	free(list->tail);
+	free(list);
 
 	return 0;
 }

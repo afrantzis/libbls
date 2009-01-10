@@ -509,6 +509,8 @@ int bless_buffer_free(bless_buffer_t *buf)
 	if (err)
 		return err;
 
+	free(buf);
+
 	return 0;
 }
 
