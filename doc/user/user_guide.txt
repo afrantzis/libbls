@@ -1,0 +1,303 @@
+=Introduction
+
+The libbless library provides an editable data buffer that can contain data
+from various sources (memory, files) and provide efficient editing operations. 
+
+The purpose of this text is to describe how to use the libbless library in your
+application. It's not supposed to be a complete API reference but rather a
+high level overview of the API.
+
+=Creating and freeing a buffer
+
+A bless_buffer_t is created by using the function bless_buffer_new():
+
+int bless_buffer_new(bless_buffer_t **buf)
+
+and freed by using the function bless_buffer_free():
+
+int bless_buffer_free(bless_buffer_t *buf)
+
+For example:
+<
+int err;
+bless_buffer_t *buf;
+
+err = bless_buffer_new(&buf);
+if (err)
+    ...
+
+/* Use the buffer */
+    ...
+
+/* Free the buffer */
+err = bless_buffer_free(buf);
+if (err)
+    ...
+>
+
+=Editing a buffer
+
+==Buffer sources
+===Types of buffer sources
+
+All data added to the buffer must come from some source.  Libbless abstracts
+these sources using the bless_buffer_source_t opaque type.
+
+There are currently two kinds of sources: memory sources and file sources. A
+memory source represents data from a memory region. A file source represents
+data from a file. 
+
+A file source consumes a small constant amount of memory regardless of the size
+of the file or how it is used in buffers. This means that one can add large
+amounts of file data into a buffer even if that data would not normally fit
+into main memory. This is one of the great advantages of using libbless.
+
+The small price to pay for this feature is that the associated file must not
+change externally while the buffer containing the added file source has not
+been saved.
+
+===Creating a buffer source
+
+Memory and file sources are created using functions
+bless_buffer_source_memory() and bless_buffer_source_file(), respectively:
+
+int bless_buffer_source_memory(bless_buffer_source_t **src, void *data, 
+          size_t length, bless_data_free_func *data_free)
+
+int bless_buffer_source_file(bless_buffer_source_t **src, int fd, 
+          bless_data_free_func *data_free)
+
+When a source is created it may assume ownership of the related resources. That
+means that it takes responsibility for all aspects of the resources' memory
+management. For a memory source this means freeing the data when it is not
+needed by the buffer, for a file it means closing the file. 
+
+The source cannot magically know how to perform the cleanup actions mentioned
+above. The "data_free" parameter in the sources' creation functions is used to
+define the function that should be called to cleanup the resource. It is
+typically one of "free" or "close" depending on the source type. It can
+additionally be a NULL value to denote that no cleanup should take place when
+the resource is no longer needed.
+
+The above entails that when some resource is used to create a
+bless_buffer_source_t and a cleanup function is given, the user must not use or
+even assume the validity of any reference to that resource. This means, for
+example, that if you create a memory source and you want to be able to access
+the original data at all times you must either keep another copy of them or use
+NULL as the "data_free" function.
+
+The code snippet below shows how to create a buffer source from various
+resources:
+
+<
+int fd = open("myfile", O_RDONLY);
+void *smem = "LIBBLESS ROCKS"
+void *mem = malloc(10);
+
+bless_buffer_source_t *mem_source;
+bless_buffer_source_t *smem_source;
+bless_buffer_source_t *file_source;
+int err;
+
+/*
+ * Memory source with data from "mem". These data must
+ * not be used from now on by the user.
+ */
+err = bless_buffer_source_memory(&mem_source, mem, 10, free);
+if (err)
+    ....
+
+/*
+ * Memory source with data from "smem". These data
+ * can be used by the user because they are not freed.
+ * (Actually, we cannot free them anyway because they point to
+ *  a static string)
+ */
+err = bless_buffer_source_memory(&smem_source, smem, 14, NULL);
+if (err)
+    ....
+
+/*
+ * File source using file descriptor "fd". The file descriptor must not be 
+ * used from now on by the user.
+ */
+err = bless_buffer_source_file(&file_source, fd, close);
+if (err)
+    ....
+
+
+>
+
+===Unreferencing a buffer source
+
+After you are done using a bless_buffer_source_t you must explicitly tell it
+that you, as the user, is not planning to use it anymore. This is accomplished
+using the function bless_buffer_source_unref():
+
+int bless_buffer_source_unref(bless_buffer_source_t *src)
+
+For example:
+<
+int fd = open("myfile", O_RDONLY);
+
+bless_buffer_source_t *file_source;
+
+/* Create the buffer source */
+err = bless_buffer_source_file(&file_source, fd, close);
+if (err)
+    ....
+
+/* Use buffer source here */
+
+/* 
+ * We are done using the buffer source. Must not use it
+ * from now on.
+ */
+err = bless_buffer_source_unref(file_source);
+if (err)
+    ....
+
+>
+
+The function bless_buffer_source_unref, as its name suggests, does not directly
+free a bless_buffer_source_t object. It just says we are not, as users, using
+it anymore. The buffer source and its resources are only freed when it is not
+used by neither the user nor internally in the buffers.
+
+If the call to bless_buffer_source_unref() is forgotten, then the buffer source
+will not be freed even when no buffer is using it, probably resulting in a
+memory leak.
+
+
+==Adding data to a buffer
+
+Data can be either appended to the end of a buffer or inserted in some internal
+position in the buffer. These are accomplished by using the functions
+bless_buffer_append() and bless_buffer_insert(), respectively:
+
+int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
+		off_t src_offset, off_t length)
+
+int bless_buffer_insert(bless_buffer_t *buf, off_t offset, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length)
+
+As noted in the previous section data can be added only in the form of buffer
+sources. 
+
+Note that it is an error to try to insert data beyond the end of the buffer.
+This means that the only way to initially add to an empty buffer is to append it.
+
+For example:
+<
+bless_buffer_t *buf;
+int err;
+
+err = bless_buffer_new(&buf);
+if (err)
+    ....
+
+int fd = open("myfile", O_RDONLY);
+
+bless_buffer_source_t *file_source;
+
+/* Create the buffer source */
+err = bless_buffer_source_file(&file_source, fd, close);
+if (err)
+    ....
+
+/* Use buffer source */
+err = bless_buffer_append(buf, file_source, 0, 10);
+if (err)
+    ....
+
+err = bless_buffer_insert(buf, 5, file_source, 10, 20);
+if (err)
+    ....
+
+/* 
+ * We are done using the buffer source. Must not use it
+ * from now on.
+ */
+err = bless_buffer_source_unref(file_source);
+if (err)
+    ....
+>
+
+== Deleting data from a buffer
+
+A data range can be deleted from a buffer by using the bless_buffer_delete()
+function:
+
+int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
+
+The "offset" and "length" arguments must represent a valid range in the buffer.
+
+For example:
+<
+/* Assume "buf" is initialized and contains some data */
+bless_buffer_t *buf;
+int err;
+
+/* Delete 10 bytes starting at offset 5 */
+err = bless_buffer_delete(buf, 5, 10);
+if (err)
+    ...
+>
+
+== Reading data from the buffer
+
+Data from the buffer is read by copying it to user-provided memory area.
+This is accomplished by using the function bless_buffer_read():
+
+int bless_buffer_read(bless_buffer_t *src, off_t src_offset, void *dst,
+		size_t dst_offset, size_t length)
+
+For example:
+<
+/* Assume "buf" is initialized and contains some data */
+bless_buffer_t *buf;
+int err;
+
+void *mem = malloc(13);
+
+/* 
+ * Read 10 bytes starting at offset 5 in the buffer and store them in memory
+ * area starting at "mem" + 3.
+ */
+err = bless_buffer_read(buf, 5, mem, 3, 10);
+if (err)
+    ...
+>
+
+== Saving the buffer contents to a file
+
+The whole buffer contents can be saved to a user-provided file by using the
+bless_buffer_save() function:
+
+int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb)
+
+The file descriptor "fd" must be opened with write permission.
+
+[Progress callback not implemented yet, details may change]
+The "cb" function, if it is not NULL, is periodically called from within the
+save function to report the progress of the save operation. Its return value is
+checked by the save function to determine if the save should continue or not.
+Note, that the save function is free to ignore the cancel request if that would
+leave the saved file in an incosistent state.
+
+For example:
+<
+/* Assume "buf" is initialized and contains some data */
+bless_buffer_t *buf;
+int err;
+
+int wfd = open("target", O_WRONLY);
+
+/* 
+ * Save buffer contents to a file
+ */
+err = bless_buffer_save(buf, wfd, NULL);
+if (err)
+    ...
+>
+
