@@ -259,7 +259,7 @@ int data_object_memory_new_ptr(data_object_t **o, size_t ptr, size_t len)
 }
 
 /* Call bless_buffer_source_memory with the data pointer as size_t */
-int bless_buffer_source_memory_ptr(bless_buffer_source_t **src, size_t ptr, size_t len, bless_data_free_func *func)
+int bless_buffer_source_memory_ptr(bless_buffer_source_t **src, size_t ptr, size_t len, bless_mem_free_func *func)
 {
     return bless_buffer_source_memory(src, (void *)ptr, len, func);
 }

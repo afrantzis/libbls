@@ -16,18 +16,18 @@
 /**
  * Creates a memory source for bless_buffer_t.
  *
- * If the data_free function is NULL the data won't be freed
+ * If the mem_free function is NULL the data won't be freed
  * when this source object is freed.
  *
  * @param[out] src the created bless_buffer_source_t.
  * @param data the data related to the source
  * @param length the length of the data
- * @param data_free the function to call to free the data
+ * @param mem_free the function to call to free the data
  *
  * @return the operation error code
  */
 int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
-		size_t length, bless_data_free_func *data_free)
+		size_t length, bless_mem_free_func *mem_free)
 {
 	if (src == NULL || data == NULL || length < 0)
 		return EINVAL;
@@ -38,7 +38,7 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 	if (err)
 		return err;
 
-	err = data_object_set_data_free_func(obj, data_free);
+	err = data_object_memory_set_free_func(obj, mem_free);
 	if (err) {
 		data_object_free(obj);
 		return err;
@@ -69,12 +69,12 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
  *
  * @param[out] src the created bless_buffer_source_t.
  * @param fd the file descriptor associated with this source object 
- * @param data_free the function to call to close the file
+ * @param file_close the function to call to close the file
  *
  * @return the operation error code
  */
 int bless_buffer_source_file(bless_buffer_source_t **src, int fd, 
-		bless_data_free_func *data_free)
+		bless_file_close_func *file_close)
 {
 	if (src == NULL)
 		return EINVAL;
@@ -85,7 +85,7 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 	if (err)
 		return err;
 
-	err = data_object_set_data_free_func(obj, data_free);
+	err = data_object_file_set_close_func(obj, file_close);
 	if (err) {
 		data_object_free(obj);
 		return err;

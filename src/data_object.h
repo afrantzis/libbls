@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <sys/types.h>
+#include <stdint.h>
 
 /**
  * @defgroup data_object Data Object
@@ -33,10 +34,6 @@ extern "C" {
  */
 typedef struct data_object data_object_t;
 
-/**
- * Pointer to a function used to free the data owned by a data_object_t.
- */
-typedef int (*data_free_func)(void *);
 
 /** 
  * Flags for the usage of data returned by data_object_get_data().
@@ -55,10 +52,6 @@ int data_object_free(data_object_t *obj);
 int data_object_update_usage(void *obj, int change);
 
 int data_object_get_size(data_object_t *obj, off_t *size);
-
-int data_object_set_data_free_func(data_object_t *obj, data_free_func data_free);
-
-int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free);
 
 int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2);
 
