@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "segcol_list.h"
@@ -38,6 +39,9 @@
  */
 static int reserve_disk_space(int fd, off_t size)
 {
+#ifdef HAVE_POSIX_FALLOCATE
+	return posix_fallocate(fd, 0, size);
+#else
 	off_t cur_size = lseek(fd, 0, SEEK_END);
 
 	if (cur_size == -1)
@@ -60,6 +64,7 @@ static int reserve_disk_space(int fd, off_t size)
 	}
 
 	return 0;
+#endif
 }
 
 /** 

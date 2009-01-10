@@ -35,7 +35,8 @@ run_conf = run_conf and not 'dist' in BUILD_TARGETS
 if run_conf == True:
 	conf = Configure(env)
 
-	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h', 'sys/types.h']
+	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h',
+		'sys/types.h', 'fcntl.h']
 	for header in req_headers:
 		if not conf.CheckCHeader(header):
 			print "Missing C header file '%s'" % header
@@ -53,6 +54,11 @@ if run_conf == True:
 			print "Missing C function '%s'" % func
 			Exit(1)
 
+	opt_funcs = ['posix_fallocate']
+	for func in opt_funcs:
+		if conf.CheckFunc(func):
+			env.Append(CCFLAGS='-DHAVE_%s' % func.upper())
+	
 	env = conf.Finish()
 
 ####################################
@@ -161,7 +167,8 @@ user_api_doc = env.Command('doc/user/html', 'Doxyfile.user', 'doxygen $SOURCE')
 env.Depends(user_api_doc, scons_helpers.get_files('src', include = ['buffer*'], exclude = ['buffer_util*', '.*', '*~']))
 
 dev_api_doc = env.Command('doc/devel/html', 'Doxyfile.devel', 'doxygen $SOURCE')
-env.Depends(user_api_doc, scons_helpers.get_files('src', exclude = ['.*', '*~']))
+
+env.Depends(dev_api_doc, scons_helpers.get_files('src', exclude = ['.*', '*~']))
 
 user_doc = env.SConscript('doc/user/SConscript', exports=['env'])
 
