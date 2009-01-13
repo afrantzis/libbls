@@ -12,14 +12,18 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "segcol_list.h"
 #include "data_object.h"
+#include "data_object_file.h"
 #include "overlap_graph.h"
 #include "list.h"
 #include "buffer_util.h"
 
+
+#pragma GCC visibility push(default)
 
 /********************/
 /* Helper functions */
@@ -35,6 +39,9 @@
  */
 static int reserve_disk_space(int fd, off_t size)
 {
+#ifdef HAVE_POSIX_FALLOCATE
+	return posix_fallocate(fd, 0, size);
+#else
 	off_t cur_size = lseek(fd, 0, SEEK_END);
 
 	if (cur_size == -1)
@@ -57,6 +64,7 @@ static int reserve_disk_space(int fd, off_t size)
 	}
 
 	return 0;
+#endif
 }
 
 /** 
@@ -340,12 +348,13 @@ int bless_buffer_new(bless_buffer_t **buf)
  *
  * @param buf the bless_buffer_t whose contents to save
  * @param fd the file descriptor of the file to save the contents to
- * @param cb the bless_progress_cb to call to report the progress of the
- *           operation or NULL to disable reporting
+ * @param progress_func the bless_progress_func to call to report the 
+ *                      progress of the operation or NULL to disable reporting
  *
  * @return the operation error code
  */
-int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb)
+int bless_buffer_save(bless_buffer_t *buf, int fd,
+		bless_progress_func *progress_func)
 {
 	if (buf == NULL)
 		return EINVAL;
@@ -500,6 +509,10 @@ int bless_buffer_free(bless_buffer_t *buf)
 	if (err)
 		return err;
 
+	free(buf);
+
 	return 0;
 }
+
+#pragma GCC visibility pop
 

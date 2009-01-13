@@ -6,6 +6,10 @@
 #ifndef _BLESS_LIST_H
 #define _BLESS_LIST_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 
 /** 
@@ -154,5 +158,9 @@ int list_insert_after(struct list_node *p, struct list_node *q);
 int _list_new_entry(void **entry, size_t entry_size, size_t ln_offset);
 int list_delete_chain(struct list_node *start, struct list_node *end);
 int _list_free(struct list *list, size_t ln_offset);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

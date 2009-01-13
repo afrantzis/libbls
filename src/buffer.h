@@ -9,6 +9,10 @@
 #ifndef _BLESS_BUFFER_H
 #define _BLESS_BUFFER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <unistd.h>
 
 #include "buffer_source.h"
@@ -25,7 +29,7 @@
 typedef struct bless_buffer bless_buffer_t;
 
 /** 
- * Callback called to report the progress of long operations.
+ * Callback function called to report the progress of long operations.
  *
  * This callback is used by operations that may take a long time to finish.
  * These operations call the callback periodically and pass progress info using
@@ -36,7 +40,7 @@ typedef struct bless_buffer bless_buffer_t;
  *
  * @return 1 if the operation must be cancelled, 0 otherwise
  */
-typedef int (*bless_progress_cb)(void *info);
+typedef int (bless_progress_func)(void *info);
 
 /**
  * @name File Operations
@@ -46,7 +50,8 @@ typedef int (*bless_progress_cb)(void *info);
 
 int bless_buffer_new(bless_buffer_t **buf);
 
-int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_cb cb);
+int bless_buffer_save(bless_buffer_t *buf, int fd,
+		bless_progress_func *progress_func);
 
 int bless_buffer_free(bless_buffer_t *buf);
 
@@ -72,7 +77,7 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
 		off_t dst_offset, off_t length);
 
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
-		void *data, size_t length, bless_progress_cb cb);
+		void *data, size_t length, bless_progress_func *progress_func);
 
 /** @} */
 /**
@@ -106,5 +111,9 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 /** @} */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _BLESS_BUFFER_H */

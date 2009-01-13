@@ -13,7 +13,6 @@ struct data_object {
 	void *impl;
 	struct data_object_funcs *funcs;
 	int usage;
-	data_free_func data_free;
 };
 
 /**********************
@@ -45,8 +44,6 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 	(*obj)->impl = impl;
 	(*obj)->funcs = funcs;
 	(*obj)->usage = 0;
-	/* We don't own the data by default */
-	(*obj)->data_free = NULL;
 
 	return 0;
 	
@@ -158,48 +155,14 @@ int data_object_get_size(data_object_t *obj, off_t *size)
 	return (*obj->funcs->get_size)(obj, size);
 }
 
-/**
- * Sets the function used to free the data held by the data object.
- *
- * If the function is NULL, the data won't be freed when the data object is
- * freed.
- *
- * @param obj the data object 
- * @param data_free the function used to free the data held by the data object
- *
- * @return the operation error code
- */
-int data_object_set_data_free_func(data_object_t *obj, data_free_func data_free)
-{
-	if (obj == NULL)
-		return EINVAL;
-
-	obj->data_free = data_free;
-
-	return 0;
-}
-
-/**
- * Gets the function used to free the data held by the data object.
- *
- * @param obj the data object 
- * @param[out] data_free the function used to free the data held by the data object
- *
- * @return the operation error code
- */
-int data_object_get_data_free_func(data_object_t *obj, data_free_func *data_free)
-{
-	if (obj == NULL)
-		return EINVAL;
-
-	*data_free = obj->data_free;
-
-	return 0;
-}
-
 /** 
  * Compares the data held by two data objects.
  * 
+ * Note that the compare is based on reference equality (eg for memory
+ * data objects if their data is located at the same memory area, for file
+ * objects if they are associated with the same file) not byte by byte
+ * comparison. 
+ *
  * @param[out] result 0 if they are equal, 1 otherwise
  * @param obj1 one of the data objects to compare
  * @param obj2 the other data object to compare

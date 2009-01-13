@@ -17,6 +17,7 @@
 #include "data_object_memory.h"
 #include "type_limits.h"
 
+#pragma GCC visibility push(default)
 
 /********************/
 /* Helper functions */
@@ -82,8 +83,8 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
-	/* user_data is actually a void ** pointer */
-	void **dst = (void **)user_data;
+	/* user_data is actually a pointed to pointer */
+	unsigned char **dst = (unsigned char **)user_data;
 
 	int err = read_data_object(dobj, read_start, *dst, read_length);
 	if (err)
@@ -271,14 +272,17 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
  * @param start_offset the offset in the bless_buffer_t to start searching from
  * @param data a pointer to the data to search for
  * @param length the length of the data to search for
- * @param cb the bless_progress_cb to call to report the progress of the
+ * @param progress_func the bless_progress_cb to call to report the progress of the
  *           operation or NULL to disable reporting
  *
  * @return the offset in the bless_buffer_t where a match was found or
  *         an operation error code
  */
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
-		void *data, size_t length, bless_progress_cb cb)
+		void *data, size_t length, bless_progress_func *progress_func)
 {
 	return -1;
 }
+
+#pragma GCC visibility pop
+

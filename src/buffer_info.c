@@ -11,6 +11,8 @@
 #include "buffer.h"
 #include "buffer_internal.h"
 
+#pragma GCC visibility push(default)
+
 /**
  * Checks whether the last operation in a bless_buffer_t can be undone.
  *
@@ -52,4 +54,6 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 
 	return segcol_get_size(buf->segcol, size);
 }
+
+#pragma GCC visibility pop
 

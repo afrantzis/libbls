@@ -10,6 +10,8 @@
 #include "buffer.h"
 #include "buffer_internal.h"
 
+#pragma GCC visibility push(default)
+
 /**
  * Undoes the last operation in a bless_buffer_t.
  *
@@ -67,4 +69,6 @@ int bless_buffer_end_multi_op(bless_buffer_t *buf)
 {
 	return -1;
 }
+
+#pragma GCC visibility pop
 

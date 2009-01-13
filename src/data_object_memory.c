@@ -34,6 +34,7 @@ static struct data_object_funcs data_object_memory_funcs = {
 struct data_object_memory_impl {
 	void *data;
 	size_t size;
+	data_object_memory_free_func *mem_free;
 };
 
 /**
@@ -78,10 +79,37 @@ int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 
 	impl->size = size;
 
+	/* We don't own the data by default */
+    impl->mem_free = NULL;
+
 	return 0;
 
 }
 
+/**
+ * Sets the function used to free the data held by the data object.
+ *
+ * If the function is NULL, the data won't be freed when the data object is
+ * freed.
+ *
+ * @param obj the data object 
+ * @param mem_free the function used to free the data held by the data object
+ *
+ * @return the operation error code
+ */
+int data_object_memory_set_free_func(data_object_t *obj,
+        data_object_memory_free_func *mem_free)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	struct data_object_memory_impl *impl =
+		data_object_get_impl(obj);
+
+	impl->mem_free = mem_free;
+
+	return 0;
+}
 
 static int data_object_memory_get_data(data_object_t *obj, void **buf, 
 		off_t offset, size_t *length, data_object_flags flags)
@@ -102,7 +130,7 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 	if (offset + len - 1 * (len != 0) >= impl->size)
 		return EINVAL;
 
-	*buf = impl->data + offset;
+	*buf = (unsigned char *)impl->data + offset;
 
 	return 0;
 }
@@ -116,16 +144,10 @@ static int data_object_memory_free(data_object_t *obj)
 		data_object_get_impl(obj);
 
 	/* Free the data */
-	data_free_func data_free;
-	int err = data_object_get_data_free_func(obj, &data_free);
-	if (err)
-		return err;
+    data_object_memory_free_func *mem_free = impl->mem_free;
 
-	if (data_free != NULL) {
-		err = data_free(impl->data);
-		if (err)
-			return err;
-	}
+	if (mem_free != NULL)
+		mem_free(impl->data);
 
 	free(impl);
 

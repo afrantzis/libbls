@@ -1,7 +1,12 @@
+import os
+import scons_helpers
+
 Import('env')
 
 source = Glob('*.c')
 
-libbless = env.SharedLibrary('bless', source)
+# Create shared library
+libbless = scons_helpers.versioned_library(env.subst('$libbless_filename'), 
+	source, env.subst('$libbless_soname'), env)
 
 Return('libbless')

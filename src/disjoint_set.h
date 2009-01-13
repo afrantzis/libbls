@@ -6,6 +6,10 @@
 #ifndef _BLESS_DISJOINT_SET_H
 #define _BLESS_DISJOINT_SET_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 
 /**
@@ -29,5 +33,9 @@ int disjoint_set_union(disjoint_set_t *ds, size_t id1, size_t id2);
 int disjoint_set_find(disjoint_set_t *ds, size_t *set_id, size_t id);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

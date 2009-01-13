@@ -45,6 +45,8 @@ struct data_object_file_impl {
 	/* Device and inode of fd. Used in data object comparisons. */
 	dev_t dev;
 	ino_t inode;
+
+    data_object_file_close_func *file_close;
 };
 
 /**
@@ -111,11 +113,40 @@ int data_object_file_new(data_object_t **obj, int fd)
 
 	impl->page_data = NULL;
 
+	/* We don't own the file by default */
+    impl->file_close = NULL;
+
 	return 0;
 
 fail:
 	free(impl);
 	return err;
+}
+
+/**
+ * Sets the function used to close the file associated with the data object.
+ *
+ * If the function is NULL, the file wont be closed when the data object is
+ * freed.
+ *
+ * @param obj the data object 
+ * @param file_close the function used to close the file associated with the 
+ *                   data object
+ *
+ * @return the operation error code
+ */
+int data_object_file_set_close_func(data_object_t *obj,
+        data_object_file_close_func *file_close)
+{
+	if (obj == NULL)
+		return EINVAL;
+
+	struct data_object_file_impl *impl =
+		data_object_get_impl(obj);
+
+	impl->file_close = file_close;
+
+	return 0;
 }
 
 /*
@@ -183,7 +214,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 	else
 		*length = loaded_length;
 
-	*buf = impl->page_data + offset - impl->page_offset;
+	*buf = (unsigned char *)impl->page_data + offset - impl->page_offset;
 
 	return 0;
 }
@@ -197,13 +228,10 @@ static int data_object_file_free(data_object_t *obj)
 		data_object_get_impl(obj);
 
 	/* Free the data (close the file) */
-	data_free_func data_free;
-	int err = data_object_get_data_free_func(obj, &data_free);
-	if (err)
-		return err;
+    data_object_file_close_func *file_close = impl->file_close;
 
-	if (data_free != NULL) {
-		err = data_free((void *)impl->fd);
+	if (file_close != NULL) {
+		int err = file_close(impl->fd);
 		if (err)
 			return err;
 	}

@@ -222,7 +222,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	 */
 	off_t seg_size;
 	segment_get_size(seg, &seg_size);
-	if (seg_size = 0) {
+	if (seg_size == 0) {
 		segment_free(seg);
 		return 0;
 	}

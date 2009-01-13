@@ -254,6 +254,7 @@ int overlap_graph_free(overlap_graph_t *g)
 	}
 
 	free(g->vertices);
+	free(g);
 
 	return 0;
 }
