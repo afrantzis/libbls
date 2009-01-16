@@ -7,7 +7,8 @@
   See src/buffer_file.c: break_edge() 
   and src/buffer_util.c: segcol_store_in_memory()
 
-* Create programs to check performance scaling and memory leaks in the library.
+* [In-progress] Create programs to check performance scaling and memory leaks
+  in the library.
 
 == Medium Sized Tasks ==
 
@@ -16,4 +17,7 @@
 == Large Sized Tasks ==
 
 * Implement undo/redo (and related functions) for buffers.
+
+* Use a more efficient data structure to implement the Segment Collection.
+  See doc/devel/segcol_data_structure.txt for some ideas.
 

@@ -1,6 +1,7 @@
 Segment Collection data structure alternatives
 ===================================================
 Alexandros Frantzis, 20 Oct 2008
+Last Update: 16 Jan 2009
 
 1. Introduction
 ---------------
@@ -115,10 +116,14 @@ deemed more fitting.
 3.3 How to keep the tree balanced?
 ----------------------------------
 
-AVL, red-black, B(+)-tree
+AVL, red-black, B(+)-tree, Treap*
 
 Note that for the B(+)-tree case we must take into account the information in
 the previous section and try to keep the branching factor very low.
+
+The idea of using a treap seems particularly promising because it is simple
+to implement and its performance is comparable to that of the other strictly
+balanced trees.
 
 4. Counted skip-list
 --------------------
@@ -126,6 +131,6 @@ the previous section and try to keep the branching factor very low.
 This is a variation of the classic skip-list using counts along with the skip
 pointers. It essentially acts like the counted trees mentioned above.
 
-[More to come on skip-lists]
-
+It is a simpler probabilistic alternative to the balanced trees although the
+Treap data structure may be even simpler and more efficient in comparison.
 
