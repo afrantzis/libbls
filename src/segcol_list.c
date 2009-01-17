@@ -144,6 +144,74 @@ static int segcol_list_set_cache(struct segcol_list_impl *impl,
 	return 0;
 }
 
+/*
+ * Gets the closest known node/mapping pair to an offset.
+ *
+ * @param impl the segcol_list_impl
+ * @param node the closest known list node
+ * @param mapping the mapping of the closest known node in the segcol_list
+ * @param offset the offset to look for
+ *
+ * @return the operation error code
+ */
+static int segcol_list_get_closest_node(segcol_t *segcol,
+		struct list_node **node, off_t *mapping, off_t offset)
+{
+	off_t segcol_size;
+	segcol_get_size(segcol, &segcol_size);
+
+	struct segcol_list_impl *impl =
+		(struct segcol_list_impl *) segcol_get_impl(segcol);
+
+	/* 
+	 * Calculate the distance of the head, tail and cached nodes to the offset.
+	 * The distance metric is the byte distance of the offset to the
+	 * afforementioned nodes' mappings. However, our search algorithm is
+	 * O(#segments) not O(#byte_diff), so this metric may not lead to good
+	 * results in some cases.
+	 *
+	 * Eg if the distance metric from the head is 10000 with 1000 intervening
+	 * segment nodes and the metric from the tail is 100000 with 1 intervening
+	 * segment node we will incorrectly choose head as the closest node.
+	 */
+	off_t dist_from_cache = __MAX(off_t);
+	if (impl->cached_node != NULL) {
+		*node = impl->cached_node;
+		*mapping = impl->cached_mapping;
+		if (offset > *mapping)
+			dist_from_cache = offset - *mapping; 
+		else
+			dist_from_cache = *mapping - offset;
+	}
+
+	off_t dist_from_head = offset;
+	off_t dist_from_tail = segcol_size - offset;
+
+	/*
+	 * Decide which is the closest node to the offset:
+	 * head, cached or tail.
+	 */
+	off_t cur_min = dist_from_cache;
+
+	if (dist_from_head < cur_min) {
+		*node = seg_list_head(impl->list)->next;
+		*mapping = 0;
+		cur_min = dist_from_head;
+	}
+
+	if (dist_from_tail < cur_min) {
+		*node = seg_list_tail(impl->list)->prev;
+
+		struct segment_entry *snode =
+			list_entry(*node, struct segment_entry, ln);
+		off_t seg_size;
+		segment_get_size(snode->segment, &seg_size);
+
+		*mapping = segcol_size - seg_size;
+	}
+
+	return 0;
+}
 
 /*****************
  * API functions *
@@ -241,6 +309,11 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	list_insert_before(list_tail(impl->list, struct segment_entry, ln),
 			&new_node->ln);
 	
+	/* Set the cache at the appended node */
+	off_t segcol_size;
+	segcol_get_size(segcol, &segcol_size);
+	segcol_list_set_cache(impl, &new_node->ln, segcol_size);
+
 	return 0;
 }
 
@@ -325,6 +398,9 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		list_insert_after(&qnode->ln, &rnode->ln);
 	}
 
+	/* Set the cache at the inserted node */
+	segcol_list_set_cache(impl, &qnode->ln, offset);
+
 	return 0;
 }
 
@@ -358,8 +434,8 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 
 	struct segment_entry *first_entry = NULL;
 	struct segment_entry *last_entry = NULL;
-	off_t first_mapping;
-	off_t last_mapping;
+	off_t first_mapping = -1;
+	off_t last_mapping = -1;
 
 	/* Find the first and last list nodes that contain the range */
 	int err = find_seg_entry(segcol, &first_entry, &first_mapping, offset);
@@ -506,6 +582,12 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	else
 		segcol_free(deleted_tmp);
 
+	/* Set the cache at the node after the deleted range */
+	if (entry_b != NULL)
+		segcol_list_set_cache(impl, &entry_b->ln, offset);
+	else if (entry_b_next->ln.next != &entry_b_next->ln)
+		segcol_list_set_cache(impl, &entry_b_next->ln, offset);
+
 	return 0;
 /* 
  * Handle failures so that the segcol is in its expected state
@@ -555,14 +637,15 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
-	struct list_node *cur_node = impl->cached_node;
-	off_t cur_mapping = impl->cached_mapping;
+	/* 
+	 * Find the closest known node/mapping pair to the offset
+	 * and start the search from there.
+	 */
+	struct list_node *cur_node = NULL;
+	off_t cur_mapping = -1;
 
-	if (cur_node == NULL) {
-		cur_node = seg_list_head(impl->list)->next;
-		cur_mapping = 0;
-	}
-
+	segcol_list_get_closest_node(segcol, &cur_node, &cur_mapping, offset);
+	
 	int fix_mapping = 0;
 
 	/* linear search of list nodes */

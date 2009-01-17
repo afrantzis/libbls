@@ -187,6 +187,16 @@ dist_archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
 env.Alias('dist', dist_archive)
 env.Depends(dist_archive, all_doc)
 
+########################
+# Benchmarking targets #
+########################
+
+benchmarks = env.SConscript('benchmarks/SConscript', build_dir='build/benchmarks/', duplicate=0, exports=['env'])
+env.Depends(benchmarks, libbless_release)
+
+run_benchmarks = env.Alias('benchmark', benchmarks, benchmarks)
+env.AlwaysBuild(run_benchmarks)
+
 ########
 # Help #
 ########
@@ -200,6 +210,7 @@ libbless: Builds libbless (default).
 install: Installs libbless.
 test: Runs libbless tests.
 doc: Creates libbless documentation.
+benchmark: Run some benchmarks.
 dist: Creates a source distribution archive.
 
 === Installation path configuration options ===
@@ -241,4 +252,10 @@ tests = LIST
    Run tests for only the selected modules.for (by default all 
    tests are run).
        eg scons debug=1 test tests=segment,buffer
+
+=== Benchmark options ===
+
+valgrind = 0|1 [default = 0]
+    Run benchmarks under valgrind.
 """ % env)
+
