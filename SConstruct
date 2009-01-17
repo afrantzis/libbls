@@ -92,8 +92,15 @@ if int(debug):
 # Large File Support
 lfs = ARGUMENTS.get('lfs', 1)
 if int(lfs):
-	env.Append(CCFLAGS = commands.getoutput("getconf LFS_CFLAGS"))
-	env.Append(LINKFLAGS = commands.getoutput("getconf LFS_LDFLAGS"))
+	# Save flags in their own construction environment variables so they can be
+	# use in creating the pkg-config file
+	env['lfs_cflags'] = commands.getoutput("getconf LFS_CFLAGS")
+	env['lfs_ldflags'] = commands.getoutput("getconf LFS_LDFLAGS")
+	env.Append(CCFLAGS = '$lfs_cflags') 
+	env.Append(LINKFLAGS = '$lfs_ldflags') 
+else:
+	env['lfs_cflags'] = ''
+	env['lfs_ldflags'] = ''
 
 # Whether to install symbolic links for the library
 install_links = ARGUMENTS.get('install-links', 'no')
