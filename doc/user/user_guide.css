@@ -1,4 +1,4 @@
-pre.programlisting {
+pre.literal-block {
 	font-size: 100%;
 	display: block;
 	padding: 10px;
@@ -6,9 +6,16 @@ pre.programlisting {
 	border-radius: 2.5px;
 	-moz-border-radius: 2.5px;
 	margin: 0.5em 2em;
-	/*background: #e8f0f8;*/
 	background: aliceblue;
 	color: #000000;
 	border: 1px solid #708890;
+}
 
+table.docinfo {
+	text-align: left;
+}
+
+a.toc-backref {
+	text-decoration: none ;
+	color: black;
 }

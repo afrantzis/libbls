@@ -1,10 +1,17 @@
+========================================
 Data Object Memory Managment in libbless
 ========================================
-Alexandros Frantzis, 20 Oct 2008
 
+:Author: Alexandros Frantzis
+:Date: 20 Oct 2008
 
-1. Introduction
----------------
+.. sectnum::
+    :suffix: .
+
+.. contents:: **Table of Contents**
+
+Introduction
+============
 
 Buffers in the libbless library may contain data from various data objects like
 files, memory regions or devices. In many cases only a part of a data object is
@@ -18,8 +25,8 @@ byte in the file). Therefore, a segment can be complete described using three
 properties:
 
     1. The data object the segment is part of
-	2. The start of the continuous range within the data object.
-	3. The length of the continuous range.
+    2. The start of the continuous range within the data object.
+    3. The length of the continuous range.
 
 Ofcourse, this not the only way to describe a segment. For example, instead of
 using a (start, length) notation for the range, one could use a (start, end)
@@ -34,15 +41,15 @@ The purpose of this treatise is to explore the implications of managing data
 objects using segments and to try to offer some insights and solutions to the
 issues that will arise.
 
-2. Design options
-------------------
+Design options
+==============
 
 Before we begin it is crucial to mention a couple of design options regarding
 segments and data objects. These design options are ownership, sharing and
 immutability.
 
-2.1 Ownership
--------------
+Ownership
+---------
 
 The notion of ownership of data is strongly connected to memory management. In
 essence an entity owns some data if it is responsible for managing its memory
@@ -53,8 +60,8 @@ owner. The segcol can do whatever it wants with it, so the user who provided
 the data must not rely on any reference (eg pointers) to that data as being
 valid.
 
-2.1 Data object sharing
------------------------
+Data object sharing
+-------------------
 
 It is sometimes efficient and some other times necessary to be able to point
 multiple segments to the same data object. This allows, for example, the
@@ -62,11 +69,11 @@ copying of data in a buffer without copying the actual data in memory.
 
 The neccesity of sharing can be demonstrated by the following example. Assume
 that we have a segcol that contains a segment that is associated with a data
-object that corresponds to a file:
+object that corresponds to a file::
 
-(notation: segment[data_object,offset,size])
+    (notation: segment[data_object,offset,size])
 
-	s1[d1, 0, 1GB]
+        s1[d1, 0, 1GB]
 
 Let's say that we want to insert one byte at offset 100. We create a new data
 object d2 size 1 that contains that byte and we associate it with segment s2.
@@ -75,22 +82,22 @@ we allow sharing we proceed as follows:
 
 1. Without sharing
 
-We create a data object d3 size 1GB that contains a copy of the contents of d1
-and associate it with segment s3. Then we change the ranges of s1 and s3 and we
-finally get:
+   We create a data object d3 size 1GB that contains a copy of the contents of d1
+   and associate it with segment s3. Then we change the ranges of s1 and s3 and we
+   finally get::
 
-    s1[d1, 0, 100] - s2[d2, 0, 1] - s3[d3, 100, 1GB-100+1]
+       s1[d1, 0, 100] - s2[d2, 0, 1] - s3[d3, 100, 1GB-100+1]
 
-We need 1GB + 1 byte of data memory!
+   We need 1GB + 1 byte of data memory!
 
 2. With sharing
 
-We proceed as above but we don't create a copy of the contents of d1. Segment
-s3 just shares d1 with s1.
+   We proceed as above but we don't create a copy of the contents of d1. Segment
+   s3 just shares d1 with s1::
 
-    s1[d1, 0, 100] - s2[d2, 0, 1] - s3[d1, 100, 1GB-100+1]
+       s1[d1, 0, 100] - s2[d2, 0, 1] - s3[d1, 100, 1GB-100+1]
 
-We need just 1 byte of data memory!
+   We need just 1 byte of data memory!
 
 All this sharing business sounds great until we try to free a data object. Now
 we must take into account that other segments are possibly associated with that
@@ -100,8 +107,8 @@ unpleasant situation.
 Fortunately, the solution is straightforward. We associate a usage count with
 each data object and free an object only when its usage count reaches zero.
 
-2.2 Immutability
-----------------
+Immutability
+------------
 
 Immutability refers to the design decision that the data contained in various
 data objects may not change. We are not allowed to directly change the data,
@@ -129,8 +136,8 @@ data object memory and move all used data towards the front. Then we can just
 resize the data object (eg realloc). In this way we don't need any extra
 memory. Ofcourse, we still have to update the ranges of the related segments.
 
-3. Concurrency issues
----------------------
+Concurrency issues
+==================
 
 When dealing with shared data objects we must take care to ensure correct
 functioning under concurrent access. This effectively means that in the general
@@ -149,12 +156,13 @@ within a single segcol. If a data object is shared between two or more segcols
 the user must additionally ensure that access to these segcols does not happen
 concurrently. 
 
-4. What libbless implements
----------------------------
+What libbless implements
+========================
 
 Libbless currently uses immutable data objects and allows object sharing within
 a single segcol. The segcol takes ownership of the data objects and usage
 counting to know when to free them.
 
-The memory optimization described in (2.2) may be implemented at a later time.
+The memory optimization described in section `Immutability`_ may be implemented
+at a later time.
 

@@ -1,9 +1,17 @@
+===============
 Saving a buffer
 ===============
-Alexandros Frantzis, 08 Dec 2008
 
-1. Introduction
----------------
+:Author: Alexandros Frantzis
+:Date: 08 Dec 2008
+
+.. sectnum::
+    :suffix: .
+
+.. contents:: **Table of Contents**
+
+Introduction
+------------
 
 Buffers in libbless can contain data from both memory and file sources.  In
 order to save memory (and sometimes to make the editing feasible) the data from
@@ -19,19 +27,19 @@ the buffer.
 In this text we are going to recognize the issues that can arise in such cases
 and propose an elegant way to resolve them.
 
-2. Illustrating the problem
----------------------------
+Illustrating the problem
+------------------------
 
 Consider a buffer B containing segment [0-9] of file F at range [10-19] of the
-buffer:
+buffer::
 
-     S
-F:  | 00-09 | ..... |
-		  
-             S
-B:  | ..... |F:00-09| ..... |
-    ^       ^       ^
-    0       10      20
+         S
+    F:  | 00-09 | ..... |
+              
+                 S
+    B:  | ..... |F:00-09| ..... |
+        ^       ^       ^
+        0       10      20
 
 To save the buffer to a file we read each segment and write it out to the file.
 However, if the target file is F then when we try to read the data of segment S
@@ -44,15 +52,15 @@ segments.
 The problem can become even more complicated when we have we have more segments
 from the target file. A particulary interesting case arises when a segment from
 the buffer which belongs to the target file happens to overlap with another
-segment of F which is also present in the buffer:
+segment of F which is also present in the buffer::
 
-     S               T
-F:  | 00-09 | ..... | 20-29 |
-    |       |
-        T                    S 
-B:  |..|F:20-29| .......... |F:00-09|
-    ^  ^       ^            ^
-    0  5       15           30
+         S               T
+    F:  | 00-09 | ..... | 20-29 |
+        |       |
+            T                    S 
+    B:  |..|F:20-29| .......... |F:00-09|
+        ^  ^       ^            ^
+        0  5       15           30
 
 In this case segment S in F overlaps with segment T in B. We can simply try to
 adapt the strategy used in the previous case and first write out the two target
@@ -62,15 +70,15 @@ read wrong data (offsets 5-9 will contain data from segment T). If we do it the
 other way around everything works wonderfully. 
 
 Taking the last example one step further consider what happens if we have a
-cyclic overlap:
+cyclic overlap::
 
-     S               T
-F:  | 00-09 | ..... | 20-29 |
-    |       |       |       |
-        T               S    
-B:  |..|F:20-29| ..... |F:00-09|
-    ^  ^       ^       ^
-    0  5       15       25
+         S               T
+    F:  | 00-09 | ..... | 20-29 |
+        |       |       |       |
+            T               S    
+    B:  |..|F:20-29| ..... |F:00-09|
+        ^  ^       ^       ^
+        0  5       15       25
 
 Now segment S in F overlaps with segment T in B and segment T in F overlaps
 with segment S in B. In this case there is no way to order the writes of
@@ -85,21 +93,21 @@ removing at least one overlap. In the previous case we can replace segment T in
 B with two segments M and T1 so that no overlap occurs. Segment M will contain
 a part of T's data but will actually store them in memory (or a temporary
 file if necessary) and the T1 segment will just be a T minus the range stored
-in M.  Using this scheme we have:
+in M.  Using this scheme we have::
 
-     S                       T1
-F:  | 00-09 | ............. |25-29|
-    |       |               |     |
-         M   T1              S     
-B:  |...|...|F:25-29| ..... | F:00-09 |
-    ^   ^           ^       ^
-    0   5           15      25
+         S                       T1
+    F:  | 00-09 | ............. |25-29|
+        |       |               |     |
+             M   T1              S     
+    B:  |...|...|F:25-29| ..... | F:00-09 |
+        ^   ^           ^       ^
+        0   5           15      25
 
 We have managed to eliminate the first overlap and now we can safely save the
 buffer by first writing T1 then S and then the remaining semgments of B.
 
-3. Modeling the problem
------------------------
+Modeling the problem
+--------------------
 
 The examples presented in the previous section show representative but simple
 cases of the problems we can run into. In order to be able to handle cases
@@ -114,31 +122,31 @@ segment P in the target file overlaps with segment Q in the buffer. Every edge
 carries with it the size of the overlapping range.
 
 To enhance understanding we present some buffers and their respective overlap
-graphs (P* denotes a self-loop on P):
+graphs (P* denotes a self-loop on P)::
 
               P                    Q               R
-F:  |........|05-14       |.......|20-24  |.......|30-34  |
+ F:  |........|05-14       |.......|20-24  |.......|30-34  |
 
-             |            |       |       |       |       |
+              |            |       |       |       |       |
                            P
-B1: |.....................|F:05-14        |...............|    P
+ B1: |.....................|F:05-14        |...............|    P
 
-             |            |       |       |       |       |
+              |            |       |       |       |       |
                            Q           P
-B2: |.....................|F:20-24|...|F:05-14        |...|    Q --> P
+ B2: |.....................|F:20-24|...|F:05-14        |...|    Q --> P
 
-             |            |       |       |       |       |
+              |            |       |       |       |       |
                  P              Q
-B3: |...........|F:05-14       |F:20-24|..................|    P* Q*
+ B3: |...........|F:05-14       |F:20-24|..................|    P* Q*
 
-             |            |       |       |       |       |
+              |            |       |       |       |       |
          R            P                        Q
-B4: |...|F:30-34|....|F:05-14         |.......|F:20-24|...|    R <-- P* <-- Q
-                                                                \___________^
+ B4: |...|F:30-34|....|F:05-14         |.......|F:20-24|...|    R <-- P* <-- Q
+                                                                 \___________^
 
 
-4. Solving the problem
-----------------------
+Solving the problem
+-------------------
 
 Using the overlap graph we can now answer the question: in what order should
 the vertices (segments) be written to the file so that the correct data is
@@ -167,8 +175,8 @@ extra memory we are going to need.
 Once we have an acyclic graph (self-loops allowed) we can process it as
 described previously.
 
-5. Algorithm outline
---------------------
+Algorithm outline
+-----------------
 
 Phase 1: Create the overlap graph.
 
@@ -178,10 +186,10 @@ removed edges in order to minimize extra memory usage.
 Phase 3: First break all unused edges and then process all vertices as
 described in the previous section.
 
-6. Implementation Details
--------------------------
+Implementation Details
+----------------------
 
--Phase 1-
+**Phase 1**
 
 To create the overlap graph we have to scan the buffer segment
 collection for segments that belong to the file we want to save to. Each new
@@ -194,7 +202,7 @@ the algorithm becomes O(n + k*logk).  As we don't expect k growing too large,
 for the time being we are going to implement this phase using the naive
 approach for simplicity.
 
--Phase 2-
+**Phase 2**
 
 Oh, no! The problem we are trying to solve (feedback arc set) is
 NP-Hard! Don't despair though, we can get reasonable results with only little
@@ -232,7 +240,7 @@ forest). So this is the algorithm of choice.
 tree for only one connected component of a disconnected graph (although this
 can be easily fixed) and needs modification to work on directed graphs.]
 
--Phase 3-
+**Phase 3**
 
 Breaking an unused edge has the unfortunate side effect of altering the graph
 as segments are removed, added or changed in the segment collection. This means

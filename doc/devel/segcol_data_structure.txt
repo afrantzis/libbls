@@ -1,10 +1,18 @@
+==============================================
 Segment Collection data structure alternatives
-===================================================
-Alexandros Frantzis, 20 Oct 2008
-Last Update: 16 Jan 2009
+==============================================
 
-1. Introduction
----------------
+:Author: Alexandros Frantzis
+:Date: 20 Oct 2008
+:Last Update: 16 Jan 2009
+
+.. sectnum::
+    :suffix: .
+
+.. contents:: **Table of Contents**
+
+Introduction
+============
 
 Deep inside the libbless library resides the mystical abstract data structure
 known as Segment Collection (from now on, segcol). Its role is to provide
@@ -14,8 +22,8 @@ on that see segcol_memory_management.txt).
 The segcol can be implemented in a number of ways. This treatise explores
 these alternatives.
 
-2. Linked List
---------------
+Linked List
+===========
 
 The simplest and most intuitive way to implement a logically ordered collection
 of segments is a linked list. Each node in the list is a segment which is linked
@@ -27,18 +35,20 @@ situation can be greatly improved for the most common access patterns by using
 caching. We just store information about the last visited node/segment and
 initiate any searches from there, instead of the beginning of the list.
 
-3. Counted Tree
----------------
+Counted Tree
+============
 
 A very versatile scheme for handling data in an editor is the so-called counted
 tree. In a counted tree each edge carries a value which represents the 'count'
 of the subtree the edge leads to. This value is usually stored in the parent
 node along with a pointer to the child node.
 
+::
+
         ---------
         | 5 | 3 |
         ---------
-    	 /     \
+         /     \
     -------
     |     | ...
     -------
@@ -49,24 +59,24 @@ subtree is just the number of elements stored in the subtree.
 
 For libbless, where each element is a segment of data the count can be more
 usefully defined to be the length of each segment. This makes the counted tree
-behave as an editing-efficient array:
+behave as an editing-efficient array::
 
-              | Array | List | Counted tree
-Edit Operat.  |   N   |  1   | logN
-Random Access |   1   |  N   | logN
-Traversal     |   N   |  N   | *Depends on Impl.
+                  | Array | List | Counted tree
+    Edit Operat.  |   N   |  1   | logN
+    Random Access |   1   |  N   | logN
+    Traversal     |   N   |  N   | *Depends on Impl.
 
 
-3.1 Where do the elements reside?
----------------------------------
+Where do the elements reside?
+-----------------------------
 
 As in many tree based index structures there is a choice of where to put data
-elements. One choice is to place elements in all nodes:
+elements. One choice is to place elements in all nodes::
 
         ----------------
         | 5 | data | 3 |
         ----------------
-    	 /            \
+         /            \
     -------
     |     | ...
     -------
@@ -96,8 +106,8 @@ in-order tree traversal.
 Concluding, the choice of where to put the elements is not trivial and needs
 some practical investigation.
 
-3.2 How many elements per node?
--------------------------------
+How many elements per node?
+---------------------------
 
 Using a multiway tree instead of a binary tree has the advantage of decreasing
 the height of the tree. This is usually thought to have a positive impact on
@@ -113,8 +123,8 @@ log_m(N) * m has a low point at m=3 for most expected values of N. But the gain
 is so small compared to m=1 that a binary tree can be used instead if it is
 deemed more fitting.
 
-3.3 How to keep the tree balanced?
-----------------------------------
+How to keep the tree balanced?
+------------------------------
 
 AVL, red-black, B(+)-tree, Treap*
 
@@ -125,8 +135,8 @@ The idea of using a treap seems particularly promising because it is simple
 to implement and its performance is comparable to that of the other strictly
 balanced trees.
 
-4. Counted skip-list
---------------------
+Counted skip-list
+=================
 
 This is a variation of the classic skip-list using counts along with the skip
 pointers. It essentially acts like the counted trees mentioned above.
