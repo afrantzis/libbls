@@ -15,6 +15,7 @@ extern "C" {
 
 #include <unistd.h>
 
+#include "error.h"
 #include "buffer_source.h"
 
 /**

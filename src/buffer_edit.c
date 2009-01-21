@@ -16,6 +16,7 @@
 #include "data_object.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
+#include "error.h"
 
 #pragma GCC visibility push(default)
 
@@ -261,7 +262,7 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
 		off_t dst_offset, off_t length)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
@@ -281,7 +282,7 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
 		void *data, size_t length, bless_progress_func *progress_func)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 #pragma GCC visibility pop
