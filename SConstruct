@@ -21,6 +21,8 @@ env['libbless_name'] = 'lib%s' % env['libbless_name_no_lib']
 env['libbless_soname'] = '%s.so.0' % env['libbless_name']
 if env['SHLIBSUFFIX'] == '.so':
 	env['libbless_filename'] = env['libbless_soname']
+else:
+	env['libbless_filename'] = '${libbless_name}${SHLIBSUFFIX}'
 
 # TODO: Find better (automatic) way to get this path
 env['PYTHON_INCLUDE_PATH'] = '/usr/include/python2.5'
