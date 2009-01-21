@@ -9,6 +9,7 @@
 
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "error.h"
 
 #pragma GCC visibility push(default)
 
@@ -21,7 +22,7 @@
  */
 int bless_buffer_undo(bless_buffer_t *buf)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
@@ -33,7 +34,7 @@ int bless_buffer_undo(bless_buffer_t *buf)
  */
 int bless_buffer_redo(bless_buffer_t *buf)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
@@ -50,7 +51,7 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_op(bless_buffer_t *buf)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
@@ -67,7 +68,7 @@ int bless_buffer_begin_multi_op(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_op(bless_buffer_t *buf)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 #pragma GCC visibility pop

@@ -31,7 +31,7 @@ double uniform_deviate(int seed)
 
 void fail(int err)
 {
-	fputs(strerror(err), stderr);
+	fputs(bless_strerror(err), stderr);
 	exit(1);
 }
 

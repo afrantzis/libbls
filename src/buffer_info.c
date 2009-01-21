@@ -10,6 +10,7 @@
 #include <errno.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "error.h"
 
 #pragma GCC visibility push(default)
 
@@ -23,7 +24,7 @@
  */
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
@@ -36,7 +37,7 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
  */
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 {
-	return -1;
+	return BLESS_ENOTIMPL;
 }
 
 /**
