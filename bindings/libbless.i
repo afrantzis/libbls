@@ -18,6 +18,7 @@
 #include "disjoint_set.h"
 #include "buffer_util.h"
 #include "list.h"
+#include "error.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -359,6 +360,7 @@ void print_vertex_list(struct list *vertices, int fd)
 %include "../src/disjoint_set.h"
 %include "../src/buffer_util.h"
 %include "../src/list.h"
+%include "../src/error.h"
 
 
 
