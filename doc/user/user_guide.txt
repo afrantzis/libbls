@@ -31,6 +31,102 @@ The purpose of this text is to describe how to use the libbless library in your
 application. It's not supposed to be a complete API reference but rather a
 high level overview of the API.
 
+Building and installing libbless
+================================
+
+Libbless uses the scons build system. To build libbless change into the
+libbless directory and type::
+
+    $ scons
+
+To install libbless under ``/usr`` use (as root)::
+
+    # scons install prefix=/usr install-links=yes
+    # ldconfig
+
+To see all available options use::
+
+    $ scons -h
+
+If there are packages for your distribution or operating system it is
+preferable to just use them (remember to install -dev packages!).
+
+Using libbless in your programs 
+===============================
+
+To use libbless in your application you must include the header::
+
+    /* Typical libbless installation */
+    #include <libbless/buffer.h>
+               or
+    /* Custom installation */
+    #include "buffer.h"
+
+Additionally you must make sure that you build your application with the
+correct flags so that:
+
+1. The header files can be found (for compilation).
+2. The library can be found (for linking).
+3. You use the same LFS (Large File Support) settings as libbless.
+
+In case of a typical libbless installation all three can be automated using
+pkg-config::
+
+    pkg-config bless-0.1 --cflags
+    pkg-config bless-0.1 --libs
+
+Note that libbless versions are parallel installable. To build against another
+installed version of libbless just change the version in the pkg-config command.
+
+General API considerations
+==========================
+
+Error handling
+--------------
+
+Every function in the API returns an integer that represents the error code of
+the operation that was performed. An error code of ``0`` means that the
+operation completed succesfully. Any other value (either positive or negative)
+means that the operation failed. To get the string representation of an error
+code use the function ``bless_strerror()``::
+
+    char *bless_strerror(int err)
+
+A typical API call with error checking will look like::
+
+    int err;
+    err = api_func();
+
+    if (err) 
+        printf("%s\n", bless_strerror(err));
+
+Object creation
+---------------
+
+The API is based around objects using opaque data types (usually ending in _t eg
+bless_buffer_t) to increase encapsulation.
+
+To create an object use its associated constructor functions. The constructor
+functions create the object (including memory allocation) and return it to the
+user by means of value-return argument (usually using a double pointer). It
+is the user's responsibility to pass the address of valid pointer for the
+function to store the result::
+
+    /* prototype: int bless_buffer_new(bless_buffer_t **buf) */
+
+    /* Correct creation. Use the address of the buf variable. */
+    bless_buffer_t *buf;
+
+    err = bless_buffer_new(&buf);
+
+    /* 
+     * Incorrect creation. dbuf doesn't point to a valid 
+     * bless_buffer_t * variable.
+     */
+    bless_buffer_t **dbuf;
+
+    err = bless_buffer_new(dbuf);
+
 Creating and freeing a buffer
 =============================
 
@@ -94,10 +190,10 @@ Memory and file sources are created using functions
 respectively::
                 
     int bless_buffer_source_memory(bless_buffer_source_t **src, void *data, 
-            size_t length, bless_data_free_func *data_free)
+            size_t length, bless_mem_free_func *mem_free);
     
     int bless_buffer_source_file(bless_buffer_source_t **src, int fd, 
-            bless_data_free_func *data_free)
+            bless_file_close_func *file_close);
 
 When a source is created it may assume ownership of the related resources. That
 means that it takes responsibility for all aspects of the resources' memory
@@ -105,11 +201,11 @@ management. For a memory source this means freeing the data when it is not
 needed by the buffer, for a file it means closing the file. 
 
 The source cannot magically know how to perform the cleanup actions mentioned
-above. The ``data_free`` parameter in the sources' creation functions is used
-to define the function that should be called to cleanup the resource. It is
-typically one of ``free`` or ``close`` depending on the source type. It can
-additionally be a NULL value to denote that no cleanup should take place when
-the resource is no longer needed.
+above. The ``mem_free`` and ``file_close`` parameters in the sources' creation
+functions are used to define the function that should be called to cleanup the
+resource. The cleanup function is typically one of ``free`` or ``close``
+depending on the source type. It can additionally be a ``NULL`` value to denote
+that no cleanup should take place when the resource is no longer needed.
 
 The above entails that when some resource is used to create a
 ``bless_buffer_source_t`` and a cleanup function is given, the user must not
@@ -160,10 +256,10 @@ Unreferencing a buffer source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After you are done using a ``bless_buffer_source_t`` you must explicitly tell
-it that you, as the user, is not planning to use it anymore. This is
+it that you, as the user, are not planning to use it anymore. This is
 accomplished using the function ``bless_buffer_source_unref()``::
 
-    int bless_buffer_source_unref(bless_buffer_source_t *src)</programlisting>
+    int bless_buffer_source_unref(bless_buffer_source_t *src)
 
 For example::
 
