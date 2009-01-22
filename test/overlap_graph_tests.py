@@ -1,7 +1,7 @@
 import unittest
 import os
 from StringIO import StringIO
-from libbless import *
+from libbls import *
 
 class OverlapGraphTests(unittest.TestCase):
 

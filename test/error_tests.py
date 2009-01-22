@@ -1,7 +1,7 @@
 import unittest
 import errno
 import os
-from libbless import *
+from libbls import *
 
 class ErrorTests(unittest.TestCase):
 

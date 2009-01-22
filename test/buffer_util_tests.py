@@ -2,7 +2,7 @@ import unittest
 from ctypes import create_string_buffer
 from ctypes import c_char_p
 import os
-from libbless import *
+from libbls import *
 
 def get_file_fd(name):
 	"""Get the fd of a file.

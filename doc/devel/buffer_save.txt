@@ -13,7 +13,7 @@ Saving a buffer
 Introduction
 ------------
 
-Buffers in libbless can contain data from both memory and file sources.  In
+Buffers in libbls can contain data from both memory and file sources.  In
 order to save memory (and sometimes to make the editing feasible) the data from
 file sources is not loaded into main memory. The buffer keeps information about
 the contained files and ranges and reads the data in page-sized chunks when

@@ -2,7 +2,7 @@ import unittest
 import os
 import hashlib
 import errno
-from libbless import *
+from libbls import *
 
 def get_file_fd(name):
 	"""Get the fd of a file.

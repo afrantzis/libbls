@@ -4,7 +4,7 @@ from ctypes import create_string_buffer
 import os
 import shutil
 import tempfile
-from libbless import *
+from libbls import *
 
 def get_file_fd(name, flags = os.O_RDONLY):
 	"""Get the fd of a file.

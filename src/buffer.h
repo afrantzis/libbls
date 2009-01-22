@@ -1,7 +1,7 @@
 /**
  * @file buffer.h
  *
- * Public libbless buffer API.
+ * Public buffer API.
  *
  * @author Alexandros Frantzis
  * @author Michael Iatrou

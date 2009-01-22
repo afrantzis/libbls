@@ -1,5 +1,5 @@
 import unittest
-from libbless import *
+from libbls import *
 
 class PriorityQueueTests(unittest.TestCase):
 

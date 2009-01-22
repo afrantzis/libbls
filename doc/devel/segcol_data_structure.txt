@@ -14,7 +14,7 @@ Segment Collection data structure alternatives
 Introduction
 ============
 
-Deep inside the libbless library resides the mystical abstract data structure
+Deep inside the libbls library resides the mystical abstract data structure
 known as Segment Collection (from now on, segcol). Its role is to provide
 efficient storage and access to the segments that comprise a buffer (for more
 on that see segcol_memory_management.txt).
@@ -57,7 +57,7 @@ The notion of 'count' is defined by what a 'count' means for the stored data.
 For example, if each stored element has a 'count' of 1 then the count of a
 subtree is just the number of elements stored in the subtree.
 
-For libbless, where each element is a segment of data the count can be more
+For libbls, where each element is a segment of data the count can be more
 usefully defined to be the length of each segment. This makes the counted tree
 behave as an editing-efficient array::
 

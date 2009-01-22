@@ -1,6 +1,6 @@
 import unittest
 import errno
-from libbless import *
+from libbls import *
 
 class DataObjectMemoryTests(unittest.TestCase):
 

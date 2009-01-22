@@ -11,18 +11,18 @@ env = Environment(ENV = os.environ)
 
 scons_helpers.register_builders(env)
 
-env['libbless_major'] = '0.1'
-env['libbless_minor'] = '0'
-env['libbless_patch'] = '0'
-env['libbless_version'] = '${libbless_major}.${libbless_minor}'
+env['lib_major'] = '0'
+env['lib_minor'] = '1'
+env['lib_patch'] = '0'
+env['lib_version'] = '${lib_major}.${lib_minor}.${lib_patch}'
 
-env['libbless_name_no_lib'] = 'bless-%s' % env['libbless_major']
-env['libbless_name'] = 'lib%s' % env['libbless_name_no_lib']
-env['libbless_soname'] = '%s.so.0' % env['libbless_name']
+env['lib_name_no_lib'] = 'bls-%s' % env.subst('${lib_major}.${lib_minor}')
+env['lib_name'] = 'lib%s' % env['lib_name_no_lib']
+env['lib_soname'] = '%s.so.0' % env['lib_name']
 if env['SHLIBSUFFIX'] == '.so':
-	env['libbless_filename'] = env['libbless_soname']
+	env['lib_filename'] = env['lib_soname']
 else:
-	env['libbless_filename'] = '${libbless_name}${SHLIBSUFFIX}'
+	env['lib_filename'] = '${lib_name}${SHLIBSUFFIX}'
 
 # TODO: Find better (automatic) way to get this path
 env['PYTHON_INCLUDE_PATH'] = '/usr/include/python2.5'
@@ -73,12 +73,12 @@ env['exec_prefix'] = ARGUMENTS.get('exec_prefix', '${prefix}')
 
 env['libdir'] = ARGUMENTS.get('libdir', '${exec_prefix}/lib')
 env['includedir'] = ARGUMENTS.get('includedir', 
-		'${prefix}/include/' + env['libbless_name'])
+		'${prefix}/include/' + env['lib_name_no_lib'])
 
 env['datarootdir'] = ARGUMENTS.get('datarootdir', '${prefix}/share')
 env['datadir'] = ARGUMENTS.get('datadir', '${datarootdir}')
 env['docdir'] = ARGUMENTS.get('docdir',
-		'%{datarootdir}/doc/' + env['libbless_name'])
+		'%{datarootdir}/doc/' + env['lib_name'])
 
 ################################
 # Various Command line options #
@@ -111,40 +111,40 @@ install_links = ARGUMENTS.get('install-links', 'no')
 # Build Targets #
 #################
 
-# The libbless targetr include the libless library and symbolic links to it.
-# libbless[0] is the library, libbless[1] is the soname link, libbless[2] is
+# The lib target include the library and symbolic links to it.
+# lib[0] is the library, lib[1] is the soname link, lib[2] is
 # the plain '.so' link used for development
 
-libbless = env.SConscript('src/SConscript', build_dir='build/src/', duplicate=0, exports=['env'])
+lib = env.SConscript('src/SConscript', build_dir='build/src/', duplicate=0, exports=['env'])
 
 # This environment produces a library suitable for release
 env_release = env.Clone()
 env_release.Append(CCFLAGS='-fvisibility=hidden')
-libbless_release = env_release.SConscript('src/SConscript', build_dir='build/src-release/',
+lib_release = env_release.SConscript('src/SConscript', build_dir='build/src-release/',
 	duplicate=0, exports={'env':env_release})
 
 bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings',
 		duplicate=0, exports=['env'])
 
-pkgconf = env.Template('${libbless_name_no_lib}.pc', 'bless.pc.in') 
+pkgconf = env.Template('${lib_name_no_lib}.pc', 'bls.pc.in') 
 
-env.Alias('libbless', libbless_release)
-Depends(bindings, libbless)
+env.Alias('lib', lib_release)
+Depends(bindings, lib)
 
-env.Default([libbless_release, pkgconf])
+env.Default([lib_release, pkgconf])
 
 ########################
 # Installation Targets #
 ########################
 
 lib_targets = scons_helpers.install_versioned_library('${destdir}${libdir}', 
-		libbless_release[0], env.subst('$libbless_soname'), env)
+		lib_release[0], env.subst('$lib_soname'), env)
 
 install_lib = lib_targets[0]
 install_run_link = lib_targets[1]
 install_dev_link = lib_targets[2]
 
-install_headers = env.Install('${destdir}${includedir}/libbless',
+install_headers = env.Install('${destdir}${includedir}/bls',
 		['src/buffer.h','src/buffer_source.h', 'src/error.h'])
 
 install_pkgconf = env.Install('${destdir}${libdir}/pkgconfig', pkgconf)
@@ -191,7 +191,7 @@ env.Alias('doc', all_doc)
 dist_files = scons_helpers.get_files('.',
 	exclude = ['build', '*.log', '.*', '*~', '*.pyc', '*.gz'])
 
-dist_archive = env.Archive('libbless-${libbless_version}.tar.gz', dist_files)
+dist_archive = env.Archive('libbls-${lib_version}.tar.gz', dist_files)
 
 env.Alias('dist', dist_archive)
 env.Depends(dist_archive, all_doc)
@@ -201,7 +201,7 @@ env.Depends(dist_archive, all_doc)
 ########################
 
 benchmarks = env.SConscript('benchmarks/SConscript', build_dir='build/benchmarks/', duplicate=0, exports=['env'])
-env.Depends(benchmarks, libbless_release)
+env.Depends(benchmarks, lib_release)
 
 run_benchmarks = env.Alias('benchmark', benchmarks, benchmarks)
 env.AlwaysBuild(run_benchmarks)
@@ -215,10 +215,10 @@ Usage: scons [target] [options].
 
 === Targets ===
 
-libbless: Builds libbless (default).
-install: Installs libbless.
-test: Runs libbless tests.
-doc: Creates libbless documentation.
+lib: Builds library (default).
+install: Installs library
+test: Runs library tests.
+doc: Creates library documentation.
 benchmark: Run some benchmarks.
 dist: Creates a source distribution archive.
 
@@ -230,10 +230,10 @@ destdir
 prefix      /usr/local
 exec_prefix $$prefix
 libdir      $$exec_prefix/lib
-includedir  $$prefix/include/%(libbless_name)s/
+includedir  $$prefix/include/%(lib_name)s/
 datarootdir $$prefix/share
 datadir     $$datarootdir
-docdir      $$datarootdir/doc/%(libbless_name)s
+docdir      $$datarootdir/doc/%(lib_name)s
 
 === Installation options ===
 

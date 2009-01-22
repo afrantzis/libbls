@@ -1,5 +1,5 @@
 =======================
-Libbless 0.1 user guide
+Libbls 0.1 user guide
 =======================
 
 :Author: Alexandros Frantzis
@@ -24,22 +24,22 @@ no Front-Cover Texts, and no Back-Cover Texts.
 Introduction
 ============
 
-The libbless library provides an editable data buffer that can contain data
+The libbls library provides an editable data buffer that can contain data
 from various sources (memory, files) and provide efficient editing operations. 
 
-The purpose of this text is to describe how to use the libbless library in your
+The purpose of this text is to describe how to use the libbls library in your
 application. It's not supposed to be a complete API reference but rather a
 high level overview of the API.
 
-Building and installing libbless
+Building and installing libbls
 ================================
 
-Libbless uses the scons build system. To build libbless change into the
-libbless directory and type::
+Libbls uses the scons build system. To build libbls change into the
+libbls directory and type::
 
     $ scons
 
-To install libbless under ``/usr`` use (as root)::
+To install libbls under ``/usr`` use (as root)::
 
     # scons install prefix=/usr install-links=yes
     # ldconfig
@@ -51,13 +51,13 @@ To see all available options use::
 If there are packages for your distribution or operating system it is
 preferable to just use them (remember to install -dev packages!).
 
-Using libbless in your programs 
+Using libbls in your programs 
 ===============================
 
-To use libbless in your application you must include the header::
+To use libbls in your application you must include the header::
 
-    /* Typical libbless installation */
-    #include <libbless/buffer.h>
+    /* Typical libbls installation */
+    #include <bls/buffer.h>
                or
     /* Custom installation */
     #include "buffer.h"
@@ -67,16 +67,16 @@ correct flags so that:
 
 1. The header files can be found (for compilation).
 2. The library can be found (for linking).
-3. You use the same LFS (Large File Support) settings as libbless.
+3. You use the same LFS (Large File Support) settings as libbls.
 
-In case of a typical libbless installation all three can be automated using
+In case of a typical libbls installation all three can be automated using
 pkg-config::
 
-    pkg-config bless-0.1 --cflags
-    pkg-config bless-0.1 --libs
+    pkg-config bls-0.1 --cflags
+    pkg-config bls-0.1 --libs
 
-Note that libbless versions are parallel installable. To build against another
-installed version of libbless just change the version in the pkg-config command.
+Note that libbls versions are parallel installable. To build against another
+installed version of libbls just change the version in the pkg-config command.
 
 General API considerations
 ==========================
@@ -166,7 +166,7 @@ Buffer sources
 Types of buffer sources
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-All data added to the buffer must come from some source.  Libbless abstracts
+All data added to the buffer must come from some source.  Libbls abstracts
 these sources using the ``bless_buffer_source_t`` opaque type.
 
 There are currently two kinds of sources: memory sources and file sources. A
@@ -176,7 +176,7 @@ data from a file.
 A file source consumes a small constant amount of memory regardless of the size
 of the file or how it is used in buffers. This means that one can add large
 amounts of file data into a buffer even if that data would not normally fit
-into main memory. This is one of the great advantages of using libbless.
+into main memory. This is one of the great advantages of using libbls.
 
 The small price to pay for this feature is that the associated file must not
 change externally while the file source is still in use.
@@ -218,7 +218,7 @@ The code snippet below shows how to create a buffer source from various
 resources::
 
     int fd = open("myfile", O_RDONLY);
-    void *smem = "LIBBLESS ROCKS"
+    void *smem = "LIBBLS ROCKS"
     void *mem = malloc(10);
     
     bless_buffer_source_t *mem_source;

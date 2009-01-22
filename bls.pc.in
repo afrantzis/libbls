@@ -6,8 +6,8 @@ includedir=@includedir
 lfs_cflags=@lfs_cflags
 lfs_ldflags=@lfs_ldflags
 
-Name: libbless
+Name: libbls
 Description: Efficient editable data buffer
-Version: @libbless_major.@libbless_minor.@libbless_patch
-Libs: -L${libdir} -l@libbless_name_no_lib ${lfs_ldflags}
+Version: @lib_major.@lib_minor.@lib_patch
+Libs: -L${libdir} -l@lib_name_no_lib ${lfs_ldflags}
 Cflags: -I${includedir} ${lfs_cflags}

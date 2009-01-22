@@ -1,4 +1,4 @@
-%module libbless
+%module libbls
 
 %include "typemaps.i"
 %include "cpointer.i"

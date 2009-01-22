@@ -1,11 +1,11 @@
-Size data types in libbless
+Size data types in libbls
 ================================
 Alexandros Frantzis, 31 Oct 2008
 
 1. Data types for sizes
 -----------------------
 
-Libbless uses the two standard data types for representing sizes: off_t and
+Libbls uses the two standard data types for representing sizes: off_t and
 size_t. The off_t type is used for the sizes of (bless_)buffers and objects that
 represent files. The size_t type is used for in-memory objects.
 
@@ -37,7 +37,7 @@ Whenever there is danger of overflow (or underflow) a suitable check
 is performed. In the case that an overflow is predicted the EOVERFLOW
 error value is returned.
 
-Although off_t is a signed integer, libbless enforces use of only its 
+Although off_t is a signed integer, libbls enforces use of only its 
 positive range (an error of EINVAL is raised if an off_t typed argument is
 negative). This makes it easier to check for overflow, because off_t becomes
 practically unsigned. So all overflow checks for (a + b) can be of the form 

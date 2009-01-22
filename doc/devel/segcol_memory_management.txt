@@ -1,5 +1,5 @@
 ========================================
-Data Object Memory Managment in libbless
+Data Object Memory Managment in libbls
 ========================================
 
 :Author: Alexandros Frantzis
@@ -13,7 +13,7 @@ Data Object Memory Managment in libbless
 Introduction
 ============
 
-Buffers in the libbless library may contain data from various data objects like
+Buffers in the libbls library may contain data from various data objects like
 files, memory regions or devices. In many cases only a part of a data object is
 actually used in a buffer (eg only some bytes from a file). Every such
 *continuous* part of a data object is abstractly called a segment.  
@@ -30,7 +30,7 @@ properties:
 
 Ofcourse, this not the only way to describe a segment. For example, instead of
 using a (start, length) notation for the range, one could use a (start, end)
-notation. In libbless we will use the first notation.
+notation. In libbls we will use the first notation.
 
 Segments are logically ordered to construct a buffer. For example a buffer may
 contain some bytes from memory (segment 1), some bytes from a file (segment 2)
@@ -156,10 +156,10 @@ within a single segcol. If a data object is shared between two or more segcols
 the user must additionally ensure that access to these segcols does not happen
 concurrently. 
 
-What libbless implements
+What libbls implements
 ========================
 
-Libbless currently uses immutable data objects and allows object sharing within
+Libbls currently uses immutable data objects and allows object sharing within
 a single segcol. The segcol takes ownership of the data objects and usage
 counting to know when to free them.
 

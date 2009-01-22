@@ -1,7 +1,7 @@
 /**
- * @file _error.c
+ * @file error.c
  *
- * Libbless errors implementation
+ * Library errors implementation
  */
 #include <string.h>
 #include "error.h"

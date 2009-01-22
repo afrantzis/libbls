@@ -11,7 +11,7 @@ benchmarks = []
 valgrind = int(ARGUMENTS.get('valgrind', 0))
 
 for source in sources: 
-	prog = env1.Program(source, LIBS='$libbless_name_no_lib',
+	prog = env1.Program(source, LIBS='$lib_name_no_lib',
 		LIBPATH='#build/src-release')
 
 	if valgrind == 1:

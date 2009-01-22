@@ -1,12 +1,12 @@
-Libbless - Efficient editable buffer library
+Libbls - Efficient editable buffer library
 ============================================
 
 What is an editable buffer? Imagine that you have an array of bytes that
 you can dynamically resize, insert data into, delete parts of, undo and redo
 editing operations and save the result to file. Imagine that you can do all
 this in a fast and memory efficient manner. Now you can stop imagining;
-libbless is here!
+libbls is here!
 
-Libbless is currently under heavy development and not API stable yet. However,
+Libbls is currently under heavy development and not API stable yet. However,
 its main features are in a very usable state, so don't hesitate to try it out
 and tell us what you think.
