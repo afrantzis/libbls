@@ -8,6 +8,7 @@
 
 #include "data_object.h"
 #include "data_object_internal.h"
+#include "util.h"
 
 struct data_object {
 	void *impl;
@@ -34,12 +35,12 @@ int data_object_create_impl(data_object_t **obj, void *impl,
 		struct data_object_funcs *funcs)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*obj = malloc(sizeof(data_object_t));
 
 	if (*obj == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	(*obj)->impl = impl;
 	(*obj)->funcs = funcs;
@@ -101,7 +102,7 @@ int data_object_free(data_object_t *obj)
 	int err = (*obj->funcs->free)(obj);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	free(obj);
 
@@ -123,7 +124,7 @@ int data_object_free(data_object_t *obj)
 int data_object_update_usage(void *obj, int change)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	data_object_t *data_obj = (data_object_t *) obj;
 
@@ -137,7 +138,7 @@ int data_object_update_usage(void *obj, int change)
 	if (data_obj->usage <= 0) {
 		int err = data_object_free(data_obj);
 		if (err)
-			return err;
+			return_error(err);
 	}
 
 	return 0;
@@ -172,7 +173,7 @@ int data_object_get_size(data_object_t *obj, off_t *size)
 int data_object_compare(int *result, data_object_t *obj1, data_object_t *obj2)
 {
 	if (obj1 == NULL || obj2 == NULL || result == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check if they are of the same type */
 	if (obj1->funcs != obj2->funcs) {

@@ -13,6 +13,7 @@
 #include "segcol_list.h"
 #include "type_limits.h"
 #include "list.h"
+#include "util.h"
 
 /* Helper macros for list */
 #define seg_list_head(ptr) list_head((ptr), struct segment_entry, ln)
@@ -89,7 +90,7 @@ static int find_seg_entry(segcol_t *segcol,
 	int err = segcol_find(segcol, &iter, offset);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	int valid = 0;
 	if (segcol_iter_is_valid(iter, &valid) || !valid) {
@@ -115,7 +116,7 @@ static int find_seg_entry(segcol_t *segcol,
 static int segcol_list_clear_cache(struct segcol_list_impl *impl)
 {
 	if (impl == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	impl->cached_node = NULL;
 	impl->cached_mapping = 0;
@@ -136,7 +137,7 @@ static int segcol_list_set_cache(struct segcol_list_impl *impl,
 		struct list_node *node, off_t mapping)
 {
 	if (impl == NULL || node == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	impl->cached_node = node;
 	impl->cached_mapping = mapping;
@@ -227,19 +228,18 @@ static int segcol_list_get_closest_node(segcol_t *segcol,
 int segcol_list_new(segcol_t **segcol)
 {
 	if (segcol == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Allocate memory for implementation */
 	struct segcol_list_impl *impl = malloc(sizeof(struct segcol_list_impl));
 	
 	if (impl == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Create head and tail nodes */
 	int err = list_new(&impl->list, struct segment_entry, ln);
-	if (err) {
-		return err;
-	}
+	if (err)
+		return_error(err);
 
 	segcol_list_clear_cache(impl);
 
@@ -249,7 +249,7 @@ int segcol_list_new(segcol_t **segcol)
 	if (err) {
 		list_free(impl->list, struct segment_entry, ln);
 		free(impl);
-		return err;
+		return_error(err);
 	}
 
 	return 0;
@@ -258,7 +258,7 @@ int segcol_list_new(segcol_t **segcol)
 static int segcol_list_free(segcol_t *segcol)
 {
 	if (segcol == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 		
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -282,7 +282,7 @@ static int segcol_list_free(segcol_t *segcol)
 static int segcol_list_append(segcol_t *segcol, segment_t *seg) 
 {
 	if (segcol == NULL || seg == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * If the segment size is 0, return successfully without adding
@@ -301,7 +301,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 	struct segment_entry *new_node;
 	int err = list_new_entry(&new_node, struct segment_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 		
 	new_node->segment = seg;
 
@@ -320,7 +320,7 @@ static int segcol_list_append(segcol_t *segcol, segment_t *seg)
 static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg) 
 {
 	if (segcol == NULL || seg == NULL || offset < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -329,7 +329,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segcol_iter_t *iter;
 	int err = segcol_list_find(segcol, &iter, offset);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* 
 	 * If the segment size is 0, return successfully without adding
@@ -364,7 +364,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	struct segment_entry *qnode;
 	err = list_new_entry(&qnode, struct segment_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 
 	qnode->segment = seg;
 
@@ -383,14 +383,14 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 		segment_t *rseg;
 		err = segment_split(pseg, &rseg, split_index);
 		if (err)
-			return err;
+			return_error(err);
 		
 		struct segment_entry *rnode;
 		err = list_new_entry(&rnode, struct segment_entry, ln);
 		if (err) {
 			segment_merge(pseg, rseg);
 			segment_free(rseg);
-			return err;
+			return_error(err);
 		}
 		rnode->segment = rseg;
 
@@ -423,11 +423,11 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		offset, off_t length)
 { 
 	if (segcol == NULL || offset < 0 || length < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check range for overflow */
 	if (__MAX(off_t) - offset < length - 1 * (length != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -440,7 +440,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	/* Find the first and last list nodes that contain the range */
 	int err = find_seg_entry(segcol, &first_entry, &first_mapping, offset);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* 
 	 * If the length is 0 return successfully without doing anything.
@@ -454,11 +454,11 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 			offset + length - 1 * (length != 0));
 
 	if (err)
-		return err;
+		return_error(err);
 
 	if (first_entry == NULL || last_entry == NULL 
 		|| first_entry->segment == NULL || last_entry->segment == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	segcol_list_clear_cache(impl);
 
@@ -473,11 +473,11 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 
 	err = list_new_entry(&entry_a, struct segment_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 	err = list_new_entry(&entry_b, struct segment_entry, ln);
 	if (err) {
 		free(entry_a);
-		return err;
+		return_error(err);
 	}
 
 	/* 
@@ -617,13 +617,13 @@ fail_first_entry:
 	free(entry_a);
 	free(entry_b);
 
-	return err;
+	return_error(err);
 }
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)
 {
 	if (segcol == NULL || iter == NULL || offset < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	int err;
 
@@ -632,7 +632,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	segcol_get_size(segcol, &segcol_size);
 
 	if (offset >= segcol_size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_impl *impl = 
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -695,7 +695,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 	/* Create iterator to return search results */
 	err = segcol_iter_new(segcol, iter);
 	if (err)
-		return err;
+		return_error(err);
 	
 	struct segcol_list_iter_impl *iter_impl = 
 		(struct segcol_list_iter_impl *) segcol_iter_get_impl(*iter);
@@ -709,7 +709,7 @@ static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset
 static int segcol_list_iter_new(segcol_t *segcol, void **iter_impl)
 {
 	if (segcol == NULL || iter_impl == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_impl *impl =
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
@@ -728,7 +728,7 @@ static int segcol_list_iter_new(segcol_t *segcol, void **iter_impl)
 static int segcol_list_iter_next(segcol_iter_t *iter)
 {
 	if (iter == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 	
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
@@ -749,7 +749,7 @@ static int segcol_list_iter_next(segcol_iter_t *iter)
 static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 {
 	if (iter == NULL || seg == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 	
@@ -761,7 +761,7 @@ static int segcol_list_iter_get_segment(segcol_iter_t *iter, segment_t **seg)
 static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
 {
 	if (iter == NULL || mapping == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 	
@@ -773,7 +773,7 @@ static int segcol_list_iter_get_mapping(segcol_iter_t *iter, off_t *mapping)
 static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid)
 {
 	if (iter == NULL || valid == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct segcol_list_iter_impl *iter_impl = segcol_iter_get_impl(iter);
 
@@ -788,7 +788,7 @@ static int segcol_list_iter_is_valid(segcol_iter_t *iter, int *valid)
 static int segcol_list_iter_free(segcol_iter_t *iter)
 {
 	if (iter == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	free(segcol_iter_get_impl(iter));
 

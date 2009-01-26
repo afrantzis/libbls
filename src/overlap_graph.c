@@ -7,6 +7,7 @@
 #include "disjoint_set.h"
 #include "priority_queue.h"
 #include "list.h"
+#include "util.h"
 
 #include <errno.h>
 #include <sys/types.h>
@@ -118,7 +119,7 @@ static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_
 	if (e->next == &g->tail) {
 		struct edge *edst = malloc (sizeof *edst);
 		if (edst == NULL)
-			return ENOMEM;
+			return_error(ENOMEM);
 
 		g->vertices[dst_id].in_degree += 1;
 
@@ -162,7 +163,7 @@ static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
 		if (e->removed == 0 && vtmp->visited == 0) {
 			err = topo_visit(g, e->dst_id, list);
 			if (err)
-				return err;
+				return_error(err);
 		}
 			
 		e = e->next;
@@ -172,7 +173,7 @@ static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
 	struct vertex_entry *entry;
 	err = list_new_entry(&entry, struct vertex_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Fill in entry */
 	entry->segment = v->segment;
@@ -203,18 +204,18 @@ static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
 int overlap_graph_new(overlap_graph_t **g, size_t capacity)
 {
 	if (g == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	overlap_graph_t *p;
 
 	p = malloc (sizeof *p);
 	if (p == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	p->vertices = malloc(capacity * sizeof *p->vertices);
 	if (p->vertices == NULL) {
 		free (p);
-		return ENOMEM;
+		return_error(ENOMEM);
 	}
 
 	p->capacity = capacity;
@@ -272,14 +273,14 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 		off_t mapping)
 {
 	if (g == NULL || seg == NULL || mapping < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check if we have enough memory */
 	if (g->size >= g->capacity) {
 		size_t new_capacity = ((5 * g->capacity) / 4) + 1;
 		struct vertex *t = realloc(g->vertices, new_capacity * sizeof *t);
 		if (t == NULL)
-			return ENOMEM;
+			return_error(ENOMEM);
 
 		g->vertices = t;
 		g->capacity = new_capacity;
@@ -290,7 +291,7 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 
 	int err = segment_copy(seg, &v->segment);
 	if (err)
-		return err;
+		return_error(err);
 
 	v->mapping = mapping;
 	v->self_loop_weight = 0;
@@ -300,7 +301,7 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 	v->head = malloc(sizeof *v->head);
 	if (v->head == NULL) {
 		segment_free(v->segment);
-		return ENOMEM;
+		return_error(ENOMEM);
 	}
 	v->head->next = &g->tail;
 
@@ -357,7 +358,7 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg,
 int overlap_graph_remove_cycles(overlap_graph_t *g)
 {
 	if (g == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * Create a disjoint-set to hold the vertices of the graph. This is used
@@ -367,14 +368,14 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 	disjoint_set_t *ds;
 	int err = disjoint_set_new(&ds, g->size);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Create a max priority queue and add all the edges. */
 	priority_queue_t *pq;
 	err = priority_queue_new(&pq, g->size);
 	if (err) {
 		disjoint_set_free(ds);
-		return err;
+		return_error(err);
 	}
 
 	/* For every vertex... */ 
@@ -459,7 +460,7 @@ out:
 
 	disjoint_set_free(ds);
 
-	return err;
+	return_error(err);
 }
 
 /**
@@ -473,11 +474,11 @@ out:
 int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 {
 	if (g == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	FILE *fp = fdopen(fd, "w");
 	if (fp == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Write dot header */
 	fprintf(fp, "digraph overlap_graph {\n");
@@ -528,11 +529,11 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
 int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 {
 	if (g == NULL || edges == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	int err = list_new(edges, struct edge_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* For every vertex... */ 
 	size_t i;
@@ -574,7 +575,7 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 
 fail:
 	list_free(*edges, struct edge_entry, ln);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -591,12 +592,12 @@ fail:
 int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices)
 {
 	if (g == NULL || vertices == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Create the list to hold the vertex entries */
 	int err = list_new(vertices, struct vertex_entry, ln);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Mark all the vertices as non visited */
 	size_t i;
@@ -621,6 +622,6 @@ int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices)
 
 fail:
 	list_free(*vertices, struct vertex_entry, ln);
-	return err;
+	return_error(err);
 }
 

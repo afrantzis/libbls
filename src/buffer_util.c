@@ -15,6 +15,7 @@
 #include "segment.h"
 #include "data_object.h"
 #include "data_object_memory.h"
+#include "util.h"
 
 #include "type_limits.h"
 
@@ -39,7 +40,7 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 		int err = data_object_get_data(dobj, &data, offset, &nbytes,
 				DATA_OBJECT_READ);
 		if (err)
-			return err;
+			return_error(err);
 
 		/* Copy data to provided buffer */
 		memcpy(cur_dst, data, nbytes);
@@ -77,7 +78,7 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 {
 	off_t s = lseek(fd, file_offset, SEEK_SET);
 	if (s != file_offset)
-		return errno;
+		return_error(errno);
 
 	while (length > 0) {
 		void *data;
@@ -85,11 +86,11 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 		int err = data_object_get_data(dobj, &data, offset, &nbytes,
 				DATA_OBJECT_READ);
 		if (err)
-			return err;
+			return_error(err);
 
 		err = write(fd, data, nbytes);
 		if (err == -1)
-			return errno;
+			return_error(errno);
 
 		/* See read_data_object() about this check */
 		if (__MAX(off_t) - offset >= nbytes)
@@ -120,21 +121,21 @@ static int get_data_from_iter(segcol_iter_t *iter, segment_t **segment,
 {
 	int err = segcol_iter_get_segment(iter, segment);
 	if (err)
-		return err;
+		return_error(err);
 
 	err = segcol_iter_get_mapping(iter, mapping);
 	if (err)
-		return err;
+		return_error(err);
 
 	off_t seg_start;
 	err = segment_get_start(*segment, &seg_start);
 	if (err)
-		return err;
+		return_error(err);
 
 	off_t seg_size;
 	err = segment_get_size(*segment, &seg_size);
 	if (err)
-		return err;
+		return_error(err);
 
 	if (length == 0 || seg_size == 0) {
 		*read_length = 0;
@@ -146,7 +147,7 @@ static int get_data_from_iter(segcol_iter_t *iter, segment_t **segment,
 
 	/* Check overflow */
 	if (__MAX(off_t) - offset < length - 1 * (length != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	/* The index of the end of the logical range in the segment range */
 	off_t end_index = (offset + length - 1 * (length != 0)) - *mapping;
@@ -159,7 +160,7 @@ static int get_data_from_iter(segcol_iter_t *iter, segment_t **segment,
 		end_index = seg_size - 1;
 
 	if (__MAX(off_t) - seg_start < start_index)
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	/* Calculate the read range for the data object */
 	*read_start = seg_start + start_index;
@@ -188,24 +189,24 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		segcol_foreach_func *func, void *user_data)
 {
 	if (segcol == NULL || offset < 0 || length < 0 || func == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < length - 1 * (length != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	/* Make sure that the range is valid */
 	off_t segcol_size;
 	segcol_get_size(segcol, &segcol_size);
 
 	if (offset + length - 1 * (length != 0) >= segcol_size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Get iterator to offset */
 	segcol_iter_t *iter;
 	int err = segcol_find(segcol, &iter, offset);
 	if (err)
-		return err;
+		return_error(err);
 
 	off_t cur_offset = offset;
 
@@ -254,7 +255,7 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 
 fail:
 	segcol_iter_free(iter);
-	return err;
+	return_error(err);
 
 }
 
@@ -282,7 +283,7 @@ static int read_segment_func(segcol_t *segcol, segment_t *seg,
 
 	int err = read_data_object(dobj, read_start, *dst, read_length);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Move the pointer forwards */
 	*dst += read_length;
@@ -302,18 +303,18 @@ static int read_segment_func(segcol_t *segcol, segment_t *seg,
 int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 {
 	if (segcol == NULL || offset < 0 || length < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Create data object to hold data */
 	void *new_data = malloc(length);
 	if (new_data == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	data_object_t *new_dobj;
 	int err = data_object_memory_new(&new_dobj, new_data, length);
 	if (err) {
 		free(new_data);
-		return err;
+		return_error(err);
 	}
 
 	/* Put it in a segment */
@@ -322,7 +323,7 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	if (err) {
 		data_object_free(new_dobj);
 		free(new_data);
-		return err;
+		return_error(err);
 	}
 
 	void *data_ptr = new_data;
@@ -331,14 +332,14 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = segcol_foreach(segcol, offset, length, read_segment_func, &data_ptr);
 	if (err) {
 		segment_free(new_seg);
-		return err;
+		return_error(err);
 	}
 
 	/* Delete old range in segcol */
 	err = segcol_delete(segcol, NULL, offset, length);
 	if (err) {
 		segment_free(new_seg);
-		return err;
+		return_error(err);
 	}
 
 	off_t segcol_size;
@@ -355,7 +356,7 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 
 	/* TODO: Handle this better because the segcol is going to be corrupted */
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }

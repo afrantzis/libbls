@@ -1,6 +1,7 @@
 #include "list.h"
 #include <errno.h>
 #include <stdlib.h>
+#include "util.h"
 
 /**
  * Creates a new doubly linked list.
@@ -14,19 +15,19 @@
 int _list_new(struct list **list, size_t entry_size, size_t ln_offset)
 {
 	if (list == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	void *head;
 	void *tail;
 
 	int err = _list_new_entry(&head, entry_size, ln_offset);
 	if (err)
-		return err;
+		return_error(err);
 
 	err = _list_new_entry(&tail, entry_size, ln_offset);
 	if (err) {
 		free(head);
-		return err;
+		return_error(err);
 	}
 
 	*list = malloc(sizeof **list);
@@ -69,7 +70,7 @@ int _list_new(struct list **list, size_t entry_size, size_t ln_offset)
 int _list_free(struct list *list, size_t ln_offset)
 {
 	if (list == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct list_node *node;
 	struct list_node *tmp;
@@ -97,7 +98,7 @@ int _list_free(struct list *list, size_t ln_offset)
 int list_insert_before(struct list_node *p, struct list_node *q)
 {
 	if (p == NULL || q == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	q->next = p;
 	q->prev = p->prev;
@@ -120,7 +121,7 @@ int list_insert_before(struct list_node *p, struct list_node *q)
 int list_insert_after(struct list_node *p, struct list_node *q)
 {
 	if (p == NULL || q == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	q->next = p->next;
 	q->prev = p;
@@ -147,7 +148,7 @@ int list_insert_after(struct list_node *p, struct list_node *q)
 int list_delete_chain(struct list_node *first, struct list_node *last)
 {
 	if (first == NULL || last == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct list_node *prev_node = first->prev;
 	struct list_node *next_node = last->next;
@@ -174,12 +175,12 @@ int list_delete_chain(struct list_node *first, struct list_node *last)
 int _list_new_entry(void **entry, size_t entry_size, size_t ln_offset)
 {
 	if (entry == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*entry = calloc(1, entry_size);
 
 	if (*entry == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	struct list_node *ln =
 		(struct list_node *)((unsigned char *)*entry + ln_offset);

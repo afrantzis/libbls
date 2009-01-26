@@ -21,6 +21,7 @@
 #include "overlap_graph.h"
 #include "list.h"
 #include "buffer_util.h"
+#include "util.h"
 
 
 #pragma GCC visibility push(default)
@@ -40,12 +41,15 @@
 static int reserve_disk_space(int fd, off_t size)
 {
 #ifdef HAVE_POSIX_FALLOCATE
-	return posix_fallocate(fd, 0, size);
+	int err = posix_fallocate(fd, 0, size);
+	if (err)  
+		return_error(err);
+	return 0;
 #else
 	off_t cur_size = lseek(fd, 0, SEEK_END);
 
 	if (cur_size == -1)
-		return errno;
+		return_error(errno);
 
 	if (cur_size >= size)
 		return 0;
@@ -54,7 +58,7 @@ static int reserve_disk_space(int fd, off_t size)
 
 	void *zero = calloc(1, block_size);
 	if (zero == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 	
 	off_t bytes_left = size - cur_size;
 	while (bytes_left > 0) {
@@ -84,14 +88,14 @@ static int create_overlap_graph(overlap_graph_t **g, segcol_t *segcol,
 {
 	int err = overlap_graph_new(g, 10);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Get an iterator for segcol */
 	segcol_iter_t *iter;
 	err = segcol_iter_new(segcol, &iter);
 	if (err) {
 		overlap_graph_free(*g);
-		return err;
+		return_error(err);
 	}
 
 	int valid;
@@ -157,7 +161,7 @@ static int break_edge(segcol_t *segcol, struct edge_entry *edge)
 			edge->weight);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }
@@ -227,7 +231,7 @@ static int write_segment(int fd, segment_t *segment, off_t mapping, off_t overla
 			err = write_data_object(dobj, seg_start + overlap, 
 					seg_size - overlap, fd, mapping + overlap);
 			if (err)
-				return err;
+				return_error(err);
 
 			/* The A's part size (assuming B's do not exist) */
 			nwrite = overlap;
@@ -238,7 +242,7 @@ static int write_segment(int fd, segment_t *segment, off_t mapping, off_t overla
 						2 * overlap - seg_size, fd,
 						mapping + (seg_size - overlap));
 				if (err)
-					return err;
+					return_error(err);
 
 				/* Adjust size of A's part */
 				nwrite -= 2 * overlap - seg_size;
@@ -253,7 +257,7 @@ static int write_segment(int fd, segment_t *segment, off_t mapping, off_t overla
 	 */
 	err = write_data_object(dobj, seg_start, nwrite, fd, mapping);
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }
@@ -273,9 +277,8 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 	/* Get an iterator for segcol */
 	segcol_iter_t *iter;
 	int err = segcol_iter_new(segcol, &iter);
-	if (err) {
-		return err;
-	}
+	if (err)
+		return_error(err);
 
 	int valid;
 
@@ -310,7 +313,7 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 out:
 	segcol_iter_free(iter);
 
-	return err;
+	return_error(err);
 }
 
 /*****************/
@@ -327,17 +330,17 @@ out:
 int bless_buffer_new(bless_buffer_t **buf)
 {
 	if (buf == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*buf = malloc(sizeof **buf);
 
 	if (*buf == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 	
 	int err = segcol_list_new(&(*buf)->segcol);
 	if (err) {
 		free(buf);
-		return err;
+		return_error(err);
 	}
 
 	return 0;
@@ -357,20 +360,20 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		bless_progress_func *progress_func)
 {
 	if (buf == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	off_t segcol_size;
 	segcol_get_size(buf->segcol, &segcol_size);
 
 	int err = reserve_disk_space(fd, segcol_size);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Create a data_object_t holding fd */
 	data_object_t *fd_obj;
 	err = data_object_file_new(&fd_obj, fd);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* 
 	 * Create the overlap graph and remove any cycles
@@ -484,7 +487,7 @@ fail2:
 fail1:
 	data_object_free(fd_obj);
 
-	return err;
+	return_error(err);
 
 fail4:
 	list_free(vertices, struct vertex_entry, ln);
@@ -503,11 +506,11 @@ fail4:
 int bless_buffer_free(bless_buffer_t *buf)
 {
 	if (buf == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	int err = segcol_free(buf->segcol);
 	if (err)
-		return err;
+		return_error(err);
 
 	free(buf);
 

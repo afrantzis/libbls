@@ -7,6 +7,7 @@
 #include <errno.h>
 #include "segment.h"
 #include "type_limits.h"
+#include "util.h"
 
 struct segment {
 	void *data;
@@ -35,7 +36,7 @@ int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 	segp = (segment_t *) malloc(sizeof(segment_t));
 
 	if (segp == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	/* Initialize to NULL, so that segment_set_data works correctly */
 	segp->data_usage_func = NULL;
@@ -54,7 +55,7 @@ int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 
 fail:
 	free(segp);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -68,13 +69,13 @@ fail:
 int segment_copy(segment_t *seg, segment_t **seg_copy)
 {
 	if (seg == NULL || seg_copy == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	int err = segment_new(seg_copy, seg->data, seg->start, seg->size,
 			seg->data_usage_func);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }
@@ -107,7 +108,7 @@ int segment_free(segment_t *seg)
 int segment_clear(segment_t *seg)
 {
 	if (seg == NULL)	
-		return EINVAL;
+		return_error(EINVAL);
 
 	seg->start = -1;
 	seg->size = 0;
@@ -134,7 +135,7 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 	int err = 0;
 
 	if (seg == NULL || seg1 == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*seg1 = NULL;
 
@@ -144,13 +145,13 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	/* is index out of range */
 	if (split_index >= size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	err = segment_new(seg1, data, start + split_index, size - split_index,
 			seg->data_usage_func);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Change 'seg' second so that if changing 'seg1' fails, 'seg' remains intact */
 	if (split_index == 0)
@@ -167,7 +168,7 @@ fail:
 	segment_free(*seg1);
 	*seg1 = NULL;
 
-	return err;
+	return_error(err);
 }
 
 /** 
@@ -185,25 +186,25 @@ fail:
 int segment_merge(segment_t *seg, segment_t *seg1)
 {
 	if (seg == NULL || seg1 == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Segments must point to the same object */
 	if (seg->data != seg1->data)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Calculate the size of the merged segment */
 	if (__MAX(off_t) - seg->size < seg1->size)
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	off_t new_size = seg->size + seg1->size;
 
 	/* Make sure the range of the merged segment doesn't overflow */
 	if (__MAX(off_t) - seg->start < new_size - 1 * (new_size != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	/* seg1 must be a continuation of seg */
 	if (seg->start + seg->size != seg1->start)
-		return EINVAL;
+		return_error(EINVAL);
 
 	seg->size = new_size;
 
@@ -221,7 +222,7 @@ int segment_merge(segment_t *seg, segment_t *seg1)
 int segment_get_data(segment_t *seg, void  **data)
 {
 	if (seg == NULL || data == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*data = seg->data;
 
@@ -239,7 +240,7 @@ int segment_get_data(segment_t *seg, void  **data)
 int segment_get_start(segment_t *seg, off_t *start)
 {
 	if (seg == NULL || start == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*start = seg->start;
 
@@ -257,7 +258,7 @@ int segment_get_start(segment_t *seg, off_t *start)
 int segment_get_size(segment_t *seg, off_t *size)
 {
 	if (seg == NULL || size == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*size = seg->size;
 
@@ -278,13 +279,13 @@ int segment_set_data(segment_t *seg, void *data,
 		segment_data_usage_func data_usage_func)
 {
 	if (seg == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Increase the usage count of the new data */
 	if (data_usage_func != NULL) {
 		int err = (*data_usage_func)(data, 1);
 		if (err)
-			return err;
+			return_error(err);
 	}
 
 	/* Decrease the usage count of the old data */
@@ -293,7 +294,7 @@ int segment_set_data(segment_t *seg, void *data,
 		if (err) {
 			/* Reset the usage count of the new data */
 			(*data_usage_func)(data, 0);
-			return err;
+			return_error(err);
 		}
 	}
 
@@ -315,11 +316,11 @@ int segment_set_data(segment_t *seg, void *data,
 int segment_set_range(segment_t *seg, off_t start, off_t size)
 {
 	if (seg == NULL || start < 0 || size < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check if range would overflow off_t */
 	if (__MAX(off_t) - start < size - 1 * (size != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	seg->start = start;
 	seg->size = size;
