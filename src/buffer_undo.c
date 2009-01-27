@@ -27,7 +27,7 @@
 #include "buffer_internal.h"
 #include "error.h"
 
-#pragma GCC visibility push(default)
+#pragma GCC visibility push(hidden)
 
 /**
  * Undoes the last operation in a bless_buffer_t.

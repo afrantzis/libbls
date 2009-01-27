@@ -264,6 +264,9 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 	return 0;
 }
 
+/* bless_buffer_copy and bless_buffer_find are not implemented yet */
+#pragma GCC visibility push(hidden)
+
 /**
  * Copies data from a bless_buffer_t to another.
  *
@@ -300,6 +303,8 @@ int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset,
 {
 	return BLESS_ENOTIMPL;
 }
+
+#pragma GCC visibility pop
 
 #pragma GCC visibility pop
 

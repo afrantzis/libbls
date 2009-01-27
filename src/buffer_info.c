@@ -30,6 +30,9 @@
 
 #pragma GCC visibility push(default)
 
+/* bless_buffer_can_{undo,redo} are not implemented yet */
+#pragma GCC visibility push(hidden)
+
 /**
  * Checks whether the last operation in a bless_buffer_t can be undone.
  *
@@ -55,6 +58,8 @@ int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 {
 	return BLESS_ENOTIMPL;
 }
+
+#pragma GCC visibility pop
 
 /**
  * Gets the size of a bless_buffer_t.
