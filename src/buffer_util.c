@@ -251,7 +251,8 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 			goto fail;
 	}
 
-	err = 0;
+	segcol_iter_free(iter);
+	return 0;
 
 fail:
 	segcol_iter_free(iter);

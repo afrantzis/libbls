@@ -9,8 +9,6 @@
 extern "C" {
 #endif
 
-#define ENABLE_DEBUG 1
-
 #ifdef ENABLE_DEBUG 
 #include <stdio.h>
 #include <string.h>

@@ -453,7 +453,10 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 		}
 	}
 
-	err = 0;
+	priority_queue_free(pq);
+	disjoint_set_free(ds);
+
+	return 0;
 
 out:
 	priority_queue_free(pq);

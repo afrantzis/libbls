@@ -85,11 +85,11 @@ env['docdir'] = ARGUMENTS.get('docdir',
 ################################
 
 # Add default CCFLAGS
-env.Append(CCFLAGS = '-std=c99 -D_XOPEN_SOURCE=600 -Wall -pedantic -O3')
+env.Append(CCFLAGS = '-std=c99 -D_XOPEN_SOURCE=600 -Wall -Wextra -pedantic -O2')
 
 debug = ARGUMENTS.get('debug', 0)
 if int(debug):
-	env.Append(CCFLAGS = '-g -O0')
+	env.Append(CCFLAGS = '-DENABLE_DEBUG=1 -g -O0')
 
 # Large File Support
 lfs = ARGUMENTS.get('lfs', 1)
