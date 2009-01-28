@@ -105,7 +105,7 @@ else:
 	env['lfs_ldflags'] = ''
 
 # Whether to install symbolic links for the library
-install_links = ARGUMENTS.get('install-links', 'no')
+install_links = ARGUMENTS.get('install-links', 'yes')
 
 #################
 # Build Targets #
@@ -157,6 +157,7 @@ if install_links == 'yes':
 	install_targets += install_dev_link
 
 env.Alias('install', install_targets)
+env.AlwaysBuild(install_targets)
 
 ##################
 # Testing Target #
