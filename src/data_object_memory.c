@@ -32,6 +32,7 @@
 #include "data_object_internal.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
+#include "util.h"
 
 
 /* forward declerations */
@@ -74,18 +75,18 @@ struct data_object_memory_impl {
 int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Check for overflow */
 	if (__MAX(size_t) - (size_t)data < size - 1 * (size != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	/* Allocate memory for implementation */
 	struct data_object_memory_impl *impl =
 		malloc (sizeof(struct data_object_memory_impl));
 
 	if (impl == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	impl->data = data;
 
@@ -94,7 +95,7 @@ int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 
 	if (err) {
 		free(impl);
-		return err;
+		return_error(err);
 	}
 
 	impl->size = size;
@@ -121,7 +122,7 @@ int data_object_memory_set_free_func(data_object_t *obj,
         data_object_memory_free_func *mem_free)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
@@ -135,20 +136,20 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 		off_t offset, size_t *length, data_object_flags flags)
 {
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	size_t len = *length;
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < len - 1 * (len != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
 
 	/* Make sure that the range is valid */
 	if (offset + len - 1 * (len != 0) >= impl->size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*buf = (unsigned char *)impl->data + offset;
 
@@ -158,7 +159,7 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 static int data_object_memory_free(data_object_t *obj)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
@@ -177,7 +178,7 @@ static int data_object_memory_free(data_object_t *obj)
 static int data_object_memory_get_size(data_object_t *obj, off_t *size)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_memory_impl *impl =
 		data_object_get_impl(obj);
@@ -191,7 +192,7 @@ static int data_object_memory_compare(int *result, data_object_t *obj1,
 		data_object_t *obj2)
 {
 	if (obj1 == NULL || obj2 == NULL || result == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_memory_impl *impl1 =
 		data_object_get_impl(obj1);

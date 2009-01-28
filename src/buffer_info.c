@@ -26,7 +26,9 @@
 #include <errno.h>
 #include "buffer.h"
 #include "buffer_internal.h"
-#include "error.h"
+
+#include "util.h"
+
 
 #pragma GCC visibility push(default)
 
@@ -43,7 +45,7 @@
  */
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 /**
@@ -56,7 +58,7 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
  */
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 #pragma GCC visibility pop
@@ -72,7 +74,7 @@ int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 {
 	if (buf == NULL || size == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	return segcol_get_size(buf->segcol, size);
 }

@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include "disjoint_set.h"
+#include "util.h"
 
 struct disjoint_set {
 	size_t *parent;
@@ -93,23 +94,23 @@ static size_t find_set(disjoint_set_t *ds, size_t id)
 int disjoint_set_new(disjoint_set_t **ds, size_t size)
 {
 	if (ds == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	disjoint_set_t *p = malloc(sizeof *p);
 	if (p == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	p->parent = malloc(size * sizeof *p->parent);
 	if (p->parent == NULL) {
 		free(p);
-		return ENOMEM;
+		return_error(ENOMEM);
 	}
 
 	p->rank = calloc(size, sizeof *p->rank);
 	if (p->rank == NULL) {
 		free(p->parent);
 		free(p);
-		return ENOMEM;
+		return_error(ENOMEM);
 	}
 
 	p->size = size;
@@ -133,7 +134,7 @@ int disjoint_set_new(disjoint_set_t **ds, size_t size)
 int disjoint_set_free(disjoint_set_t *ds)
 {
 	if (ds == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 	
 	free(ds->parent);
 	free(ds->rank);
@@ -155,7 +156,7 @@ int disjoint_set_free(disjoint_set_t *ds)
 int disjoint_set_union(disjoint_set_t *ds, size_t elem1, size_t elem2)
 {
 	if (ds == NULL || elem1 >= ds->size || elem2 >= ds->size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	size_t set1;
 	size_t set2;
@@ -180,7 +181,7 @@ int disjoint_set_union(disjoint_set_t *ds, size_t elem1, size_t elem2)
 int disjoint_set_find(disjoint_set_t *ds, size_t *set, size_t elem)
 {
 	if (ds == NULL || set == NULL || elem >= ds->size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*set = find_set(ds, elem);
 

@@ -23,9 +23,11 @@
  * Buffer undo operations
  */
 
+#include <errno.h>
 #include "buffer.h"
 #include "buffer_internal.h"
-#include "error.h"
+#include "util.h"
+
 
 #pragma GCC visibility push(hidden)
 
@@ -38,7 +40,7 @@
  */
 int bless_buffer_undo(bless_buffer_t *buf)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 /**
@@ -50,7 +52,7 @@ int bless_buffer_undo(bless_buffer_t *buf)
  */
 int bless_buffer_redo(bless_buffer_t *buf)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 /**
@@ -67,7 +69,7 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_op(bless_buffer_t *buf)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 /**
@@ -84,7 +86,7 @@ int bless_buffer_begin_multi_op(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_op(bless_buffer_t *buf)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 #pragma GCC visibility pop

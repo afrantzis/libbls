@@ -32,7 +32,8 @@
 #include "data_object.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
-#include "error.h"
+
+#include "util.h"
 
 #pragma GCC visibility push(default)
 
@@ -58,7 +59,7 @@ static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *sr
 	/* Create a segment pointing to the data object */
 	int err = segment_new(seg, obj, src_offset, length, data_object_update_usage);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* 
 	 * Check if the specified file range is valid. This is done 
@@ -79,7 +80,7 @@ static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *sr
 fail:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(*seg);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -105,7 +106,7 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 
 	int err = read_data_object(dobj, read_start, *dst, read_length);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Move the pointer forwards */
 	*dst += read_length;
@@ -131,7 +132,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 		off_t src_offset, off_t length)
 {
 	if (buf == NULL || src == NULL) 
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * No need to check for overflow, because it is detected by the
@@ -142,7 +143,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	int err = create_segment_from_source(&seg, src, src_offset, length);
 	if (err)
-		return err;
+		return_error(err);
 	
 	segcol_t *sc = buf->segcol;
 
@@ -155,7 +156,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 fail:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(seg);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -173,7 +174,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		bless_buffer_source_t *src, off_t src_offset, off_t length)
 {
 	if (buf == NULL || src == NULL) 
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * No need to check for overflow, because it is detected by the
@@ -184,7 +185,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	int err = create_segment_from_source(&seg, src, src_offset, length);
 	if (err)
-		return err;
+		return_error(err);
 
 	segcol_t *sc = buf->segcol;
 
@@ -197,7 +198,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 fail:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(seg);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -212,7 +213,7 @@ fail:
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 {
 	if (buf == NULL) 
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * No need to check for overflow, valid ranges etc.
@@ -222,7 +223,7 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	int err = segcol_delete(buf->segcol, NULL, offset, length);
 
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }
@@ -242,24 +243,24 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 		size_t dst_offset, size_t length)
 {
 	if (buf == NULL || src_offset < 0 || dst == NULL) 
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* 
 	 * Check for dst overflow (src_offset overflow is checked in
 	 * segcol_foreach()).
 	 */
 	if (__MAX(size_t) - (size_t)dst < dst_offset)
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	if (__MAX(size_t) - (size_t)dst - dst_offset < length - 1 * (length != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	void *cur_dst = (unsigned char *)dst + dst_offset;
 
 	int err = segcol_foreach(buf->segcol, src_offset, length,
 			read_foreach_func, &cur_dst);
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }
@@ -281,7 +282,7 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
 		off_t dst_offset, off_t length)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 /**
@@ -301,7 +302,7 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
 		void *data, size_t length, bless_progress_func *progress_func)
 {
-	return BLESS_ENOTIMPL;
+	return_error(ENOSYS);
 }
 
 #pragma GCC visibility pop

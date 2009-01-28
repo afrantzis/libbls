@@ -27,6 +27,8 @@
 #include "data_object.h"
 #include "data_object_memory.h"
 #include "data_object_file.h"
+#include "util.h"
+
 
 #include <errno.h>
 #include <stdlib.h>
@@ -50,18 +52,18 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 		size_t length, bless_mem_free_func *mem_free)
 {
 	if (src == NULL || data == NULL || length < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Create the data object and set its data free function */
 	data_object_t *obj;
 	int err = data_object_memory_new(&obj, data, length);
 	if (err)
-		return err;
+		return_error(err);
 
 	err = data_object_memory_set_free_func(obj, mem_free);
 	if (err) {
 		data_object_free(obj);
-		return err;
+		return_error(err);
 	}
 
 	/* 
@@ -73,7 +75,7 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 	err = data_object_update_usage(obj, 1);
 	if (err) {
 		data_object_free(obj);
-		return err;
+		return_error(err);
 	}
 
 	*src = obj;
@@ -97,18 +99,18 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 		bless_file_close_func *file_close)
 {
 	if (src == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Create the data object and set its data free function */
 	data_object_t *obj;
 	int err = data_object_file_new(&obj, fd);
 	if (err)
-		return err;
+		return_error(err);
 
 	err = data_object_file_set_close_func(obj, file_close);
 	if (err) {
 		data_object_free(obj);
-		return err;
+		return_error(err);
 	}
 
 	/* 
@@ -120,7 +122,7 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 	err = data_object_update_usage(obj, 1);
 	if (err) {
 		data_object_free(obj);
-		return err;
+		return_error(err);
 	}
 
 	*src = obj;
@@ -142,13 +144,13 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 int bless_buffer_source_unref(bless_buffer_source_t *src)
 {
 	if (src == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	data_object_t *obj = (data_object_t *) src;
 
 	int err = data_object_update_usage(obj, -1);
 	if (err)
-		return err;
+		return_error(err);
 
 	return 0;
 }

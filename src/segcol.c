@@ -28,6 +28,7 @@
 #include "segcol.h"
 #include "segcol_internal.h"
 #include "type_limits.h"
+#include "util.h"
 
 struct segcol {
 	void *impl;
@@ -60,12 +61,12 @@ int segcol_create_impl(segcol_t **segcol, void *impl,
 		struct segcol_funcs *funcs)
 {
 	if (segcol == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*segcol = malloc(sizeof(segcol_t));
 
 	if (*segcol == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	(*segcol)->size = 0;
 	(*segcol)->impl = impl;
@@ -130,14 +131,16 @@ int segcol_append(segcol_t *segcol, segment_t *seg)
 
 	/* Check for segcol->size overflow */
 	if (__MAX(off_t) - segcol->size < seg_size)
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	int err = (*segcol->funcs->append)(segcol, seg);
 
-	if (!err) 
+	if (!err) {
 		segcol->size += seg_size;
+		return err;
+	}
 
-	return err;
+	return_error(err);
 }
 
 /**
@@ -160,14 +163,16 @@ int segcol_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 
 	/* Check for segcol->size overflow */
 	if (__MAX(off_t) - segcol->size < seg_size)
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	int err = (*segcol->funcs->insert)(segcol, offset, seg);
 
-	if (!err) 
+	if (!err) {
 		segcol->size += seg_size;
+		return err;
+	}
 
-	return err;
+	return_error(err);
 }
 
 /**
@@ -187,9 +192,10 @@ int segcol_delete(segcol_t *segcol, segcol_t **deleted, off_t offset, off_t leng
 
 	if (!err) {
 		segcol->size -= length;
+		return err;
 	}
 	
-	return err;
+	return_error(err);
 }
 
 /**
@@ -305,7 +311,7 @@ int segcol_iter_free(segcol_iter_t *iter)
 int segcol_get_size(segcol_t *segcol, off_t *size)
 {
 	if (segcol == NULL || size == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*size = segcol->size;
 

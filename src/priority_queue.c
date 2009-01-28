@@ -25,6 +25,7 @@
 
 #include "priority_queue.h"
 #include "type_limits.h"
+#include "util.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -157,12 +158,12 @@ static int downheap(priority_queue_t *pq, size_t n)
 int priority_queue_new(priority_queue_t **pq, size_t capacity)
 {
 	if (pq == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	priority_queue_t *p = malloc(sizeof *p);
 
 	if (p == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	/* 
 	 * We need capacity + 1 because we start from index 1 in the
@@ -173,7 +174,7 @@ int priority_queue_new(priority_queue_t **pq, size_t capacity)
 
 	if (p->heap == NULL) {
 		free(p);
-		return ENOMEM;
+		return_error(ENOMEM);
 	}
 
 	p->capacity = capacity;
@@ -201,7 +202,7 @@ int priority_queue_new(priority_queue_t **pq, size_t capacity)
 int priority_queue_free(priority_queue_t *pq)
 {
 	if (pq == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	free(pq->heap);
 	free(pq);
@@ -221,7 +222,7 @@ int priority_queue_free(priority_queue_t *pq)
 int priority_queue_get_size(priority_queue_t *pq, size_t *size)
 {
 	if (pq == NULL || size == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	*size = pq->size;
 
@@ -241,7 +242,7 @@ int priority_queue_get_size(priority_queue_t *pq, size_t *size)
 int priority_queue_add(priority_queue_t *pq, void *data, int key, size_t *pos)
 {
 	if (pq == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Allocate more space if needed */
 	if (pq->size >= pq->capacity) {
@@ -249,7 +250,7 @@ int priority_queue_add(priority_queue_t *pq, void *data, int key, size_t *pos)
 		size_t new_size = ((5 * pq->capacity) / 4) + 1;
 		struct element *t = realloc(pq->heap, (new_size + 1) * sizeof *t);
 		if (t == NULL)
-			return ENOMEM;
+			return_error(ENOMEM);
 
 		pq->heap = t;
 		pq->capacity = new_size;
@@ -278,7 +279,7 @@ int priority_queue_add(priority_queue_t *pq, void *data, int key, size_t *pos)
 int priority_queue_remove_max(priority_queue_t *pq, void **data)
 {
 	if (pq == NULL || data == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* Store the maximum element */
 	struct element k = pq->heap[1];
@@ -308,7 +309,7 @@ int priority_queue_remove_max(priority_queue_t *pq, void **data)
 int priority_queue_change_key(priority_queue_t *pq, size_t pos, int key)
 {
 	if (pq == NULL || pos > pq->size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct element *e = &pq->heap[pos];
 	int old_key = e->key;

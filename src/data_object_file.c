@@ -35,6 +35,7 @@
 #include "data_object_internal.h"
 #include "data_object_file.h"
 #include "type_limits.h"
+#include "util.h"
 
 
 /* forward declarations */
@@ -85,24 +86,24 @@ struct data_object_file_impl {
 int data_object_file_new(data_object_t **obj, int fd)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 		
 	if (fd < 0)
-		return EBADF;
+		return_error(EBADF);
 
 	/* Allocate memory for implementation */
 	struct data_object_file_impl *impl =
 		malloc (sizeof(struct data_object_file_impl));
 
 	if (impl == NULL)
-		return ENOMEM;
+		return_error(ENOMEM);
 
 	/* Create data object with file implementation */
 	int err = data_object_create_impl(obj, impl, &data_object_file_funcs);
 
 	if (err) {
 		free(impl);
-		return err;
+		return_error(err);
 	}
 
 	impl->fd = fd;
@@ -140,7 +141,7 @@ int data_object_file_new(data_object_t **obj, int fd)
 
 fail:
 	free(impl);
-	return err;
+	return_error(err);
 }
 
 /**
@@ -159,7 +160,7 @@ int data_object_file_set_close_func(data_object_t *obj,
         data_object_file_close_func *file_close)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
@@ -184,20 +185,20 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 		off_t offset, size_t *length, data_object_flags flags)
 {
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
-		return EINVAL;
+		return_error(EINVAL);
 
 	size_t len = *length;
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < len - 1 * (len != 0))
-		return EOVERFLOW;
+		return_error(EOVERFLOW);
 
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
 
 	/* Make sure that the range is valid */
 	if (offset + len - 1 * (len != 0) >= impl->size)
-		return EINVAL;
+		return_error(EINVAL);
 
 	/* If requested data is not loaded in memory, load it... */
 	if (impl->page_data == NULL || offset < impl->page_offset
@@ -209,7 +210,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 		if (impl->page_data != NULL) {
 			err = munmap(impl->page_data, impl->page_size);
 			if (err)
-				return errno;
+				return_error(errno);
 
 			impl->page_data = NULL;
 		}
@@ -221,7 +222,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 				impl->fd, page_offset);
 
 		if (mmap_addr == MAP_FAILED)
-			return errno;
+			return_error(errno);
 
 		impl->page_data = mmap_addr;
 		impl->page_offset = page_offset;
@@ -242,7 +243,7 @@ static int data_object_file_get_data(data_object_t *obj, void **buf,
 static int data_object_file_free(data_object_t *obj)
 {
 	if (obj == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
@@ -253,7 +254,7 @@ static int data_object_file_free(data_object_t *obj)
 	if (file_close != NULL) {
 		int err = file_close(impl->fd);
 		if (err)
-			return err;
+			return_error(err);
 	}
 
 	free(impl);
@@ -264,7 +265,7 @@ static int data_object_file_free(data_object_t *obj)
 static int data_object_file_get_size(data_object_t *obj, off_t *size)
 {
 	if (obj == NULL || size == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
@@ -278,7 +279,7 @@ static int data_object_file_compare(int *result, data_object_t *obj1,
 		data_object_t *obj2)
 {
 	if (obj1 == NULL || obj2 == NULL || result == NULL)
-		return EINVAL;
+		return_error(EINVAL);
 
 	struct data_object_file_impl *impl1 =
 		data_object_get_impl(obj1);
