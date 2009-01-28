@@ -203,7 +203,7 @@ env.Depends(dist_archive, all_doc)
 benchmarks = env.SConscript('benchmarks/SConscript', build_dir='build/benchmarks/', duplicate=0, exports=['env'])
 env.Depends(benchmarks, lib_release)
 
-run_benchmarks = env.Alias('benchmark', benchmarks, benchmarks)
+run_benchmarks = env.Alias('benchmark', benchmarks)
 env.AlwaysBuild(run_benchmarks)
 
 ########

@@ -301,9 +301,10 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 			off_t mapping;
 			segcol_iter_get_mapping(iter, &mapping);
 			err = write_segment(fd, seg, mapping, 0);
-			if (err)
+			if (err) {
 				segcol_iter_free(iter);
 				return_error(err);
+			}
 		}
 
 		segcol_iter_next(iter);
