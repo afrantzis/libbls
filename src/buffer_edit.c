@@ -1,10 +1,26 @@
-/**
+/*
+ * Copyright 2008, 2009 Alexandros Frantzis, Michael Iatrou
+ *
+ * This file is part of libbls.
+ *
+ * libbls is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * libbls is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/** 
  * @file buffer_edit.c
  *
  * Buffer edit operations
- *
- * @author Michael Iatrou
- * @author Alexandros Frantzis
  */
 
 #include <errno.h>
@@ -248,6 +264,9 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 	return 0;
 }
 
+/* bless_buffer_copy and bless_buffer_find are not implemented yet */
+#pragma GCC visibility push(hidden)
+
 /**
  * Copies data from a bless_buffer_t to another.
  *
@@ -284,6 +303,8 @@ int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset,
 {
 	return BLESS_ENOTIMPL;
 }
+
+#pragma GCC visibility pop
 
 #pragma GCC visibility pop
 

@@ -1,17 +1,33 @@
+/*
+ * Copyright 2008, 2009 Alexandros Frantzis, Michael Iatrou
+ *
+ * This file is part of libbls.
+ *
+ * libbls is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * libbls is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 /**
  * @file buffer_undo.c
  *
  * Buffer undo operations
- *
- * @author Alexandros Frantzis
- * @author Michael Iatrou
  */
 
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "error.h"
 
-#pragma GCC visibility push(default)
+#pragma GCC visibility push(hidden)
 
 /**
  * Undoes the last operation in a bless_buffer_t.
