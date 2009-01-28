@@ -1,0 +1,24 @@
+Grokking libbls
+===============
+
+libbls is an extremely well documented project. We did that for you! Now we
+expect some feedback.
+
+To build documentation use:
+
+	$ scons doc
+
+This generates documentation from Doxygen comments and places it in
+doc/user/html and doc/devel/html directories. The former contains only the
+public API, for libbls users, whereas the latter contains the full libbls API
+for libbls developers. 
+
+High level overview and various design documents are included in doc/devel.
+
+The project uses Launchpad online collaboration platform
+(http://launchpad.net/libbls) and the Bazaar dVCS. To check out the source code
+use:
+
+	$ bzr branch lp:libbls
+
+The file TODO has a short list of tasks you may consider hacking on. 

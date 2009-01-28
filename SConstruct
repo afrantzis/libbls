@@ -238,7 +238,7 @@ docdir      $$datarootdir/doc/%(lib_name)s
 
 === Installation options ===
 
-install-links = yes|no-dev|no [default = no]
+install-links = yes|no-dev|no [default = yes]
     Install ldconfig-like symbolic links for the library.
     yes: install all links
     no-dev: install only links needed for running linked programs

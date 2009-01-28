@@ -1,0 +1,21 @@
+Building and installing libbls
+================================
+
+Libbls uses the scons build system. To build libbls change into the
+libbls directory and type::
+
+    $ scons
+
+To install libbls under ``/usr`` use (as root)::
+
+    # scons install prefix=/usr 
+    # ldconfig
+
+To see all available options use::
+
+    $ scons -h
+
+If there are packages for your distribution or operating system it is
+preferable to just use them (remember to install -dev packages!).
+
+
