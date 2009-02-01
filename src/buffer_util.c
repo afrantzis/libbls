@@ -55,14 +55,18 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 
 	while (length > 0) {
 		void *data;
-		size_t nbytes = length;
+		off_t nbytes = length;
 		int err = data_object_get_data(dobj, &data, offset, &nbytes,
 				DATA_OBJECT_READ);
 		if (err)
 			return_error(err);
 
 		/* Copy data to provided buffer */
-		memcpy(cur_dst, data, nbytes);
+		/* 
+		 * Note that the length of data returned by data_object_get_data is
+		 * guaranteed to fit in a ssize_t, hence the cast is safe. 
+		 */
+		memcpy(cur_dst, data, (ssize_t)nbytes);
 
 		/* 
 		 * cur_dst and offset may overflow here in the last iteration. This
@@ -101,14 +105,18 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 
 	while (length > 0) {
 		void *data;
-		size_t nbytes = length;
+		off_t nbytes = length;
 		int err = data_object_get_data(dobj, &data, offset, &nbytes,
 				DATA_OBJECT_READ);
 		if (err)
 			return_error(err);
 
-		err = write(fd, data, nbytes);
-		if (err == -1)
+		/* 
+		 * Note that the length of data returned by data_object_get_data is
+		 * guaranteed to fit in a ssize_t, hence the casts are safe.
+		 */
+		ssize_t nwritten = write(fd, data, (ssize_t)nbytes);
+		if (nwritten < (ssize_t)nbytes)
 			return_error(errno);
 
 		/* See read_data_object() about this check */

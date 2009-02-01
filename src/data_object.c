@@ -98,14 +98,15 @@ void *data_object_get_impl(data_object_t *obj)
  * @param[out] buf the location that will contain the data
  * @param offset the offset in the data object to get data from
  * @param[in,out] length the length of the data to get, on return will contain
- *                       the length of the data that was actually retrieved
+ *                       the length of the data that was actually retrieved.
+ *                       The returned length always fits in an ssize_t variable.
  * @param flags whether the data will be read or written to (or both)
  *
  * @return the operation error code
  */
 
 int data_object_get_data(data_object_t *obj, void **buf, off_t offset,
-		size_t *length, data_object_flags flags)
+		off_t *length, data_object_flags flags)
 {
 	return (*obj->funcs->get_data)(obj, buf, offset, length, flags);
 }

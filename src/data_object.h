@@ -62,7 +62,7 @@ typedef enum {
 } data_object_flags;
 
 int data_object_get_data(data_object_t *obj, void **buf, off_t offset,
-		size_t *length, data_object_flags flags);
+		off_t *length, data_object_flags flags);
 
 int data_object_free(data_object_t *obj);
 

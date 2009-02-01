@@ -42,7 +42,7 @@
 static int data_object_file_get_size(data_object_t *obj, off_t *size);
 static int data_object_file_free(data_object_t *obj);
 static int data_object_file_get_data(data_object_t *obj, void **buf, 
-		off_t offset, size_t *length, data_object_flags flags);
+		off_t offset, off_t *length, data_object_flags flags);
 static int data_object_file_compare(int *result, data_object_t *obj1,
 		data_object_t *obj2);
 
@@ -182,12 +182,12 @@ int data_object_file_set_close_func(data_object_t *obj,
  * the start of requested range (perhaps all of it).
  */
 static int data_object_file_get_data(data_object_t *obj, void **buf, 
-		off_t offset, size_t *length, data_object_flags flags)
+		off_t offset, off_t *length, data_object_flags flags)
 {
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
 		return_error(EINVAL);
 
-	size_t len = *length;
+	off_t len = *length;
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < len - 1 * (len != 0))
