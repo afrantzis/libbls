@@ -248,6 +248,13 @@ static int data_object_file_free(data_object_t *obj)
 	struct data_object_file_impl *impl =
 		data_object_get_impl(obj);
 
+	/* If we have mapped data, unmap them */
+	if (impl->page_data != NULL) {
+		int err = munmap(impl->page_data, impl->page_size);
+		if (err == -1)
+			return_error(errno);
+	}
+
 	/* Free the data (close the file) */
     data_object_file_close_func *file_close = impl->file_close;
 
