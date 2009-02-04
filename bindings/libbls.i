@@ -98,11 +98,11 @@
 }
 
 /* handle 'length' in data_object_get_data() */
-%typemap(in) size_t *length = size_t *INPUT;
+%typemap(in) off_t *length = size_t *INPUT;
 
 /* Make data_object_get_data() binding output a PyBuffer */
 %typemap(argout) (data_object_t *obj, void **buf, off_t offset,
-size_t *length, data_object_flags flags)
+off_t *length, data_object_flags flags)
 {
     if (($5 | DATA_OBJECT_RW) != 0)
         %append_output(PyBuffer_FromReadWriteMemory(*((unsigned char **)$2), *$4));

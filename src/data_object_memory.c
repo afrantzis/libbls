@@ -39,7 +39,7 @@
 static int data_object_memory_get_size(data_object_t *obj, off_t *size);
 static int data_object_memory_free(data_object_t *obj);
 static int data_object_memory_get_data(data_object_t *obj, void **buf, off_t offset,
-		size_t *length, data_object_flags flags);
+		off_t *length, data_object_flags flags);
 static int data_object_memory_compare(int *result, data_object_t *obj1,
 		data_object_t *obj2);
 
@@ -133,12 +133,12 @@ int data_object_memory_set_free_func(data_object_t *obj,
 }
 
 static int data_object_memory_get_data(data_object_t *obj, void **buf, 
-		off_t offset, size_t *length, data_object_flags flags)
+		off_t offset, off_t *length, data_object_flags flags)
 {
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
 		return_error(EINVAL);
 
-	size_t len = *length;
+	off_t len = *length;
 
 	/* Check for overflow */
 	if (__MAX(off_t) - offset < len - 1 * (len != 0))
@@ -152,6 +152,10 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 		return_error(EINVAL);
 
 	*buf = (unsigned char *)impl->data + offset;
+
+	/* Return data in chunks whose size fits in ssize_t */
+	if (len > __MAX(ssize_t))
+		*length = __MAX(ssize_t);
 
 	return 0;
 }

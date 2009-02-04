@@ -47,6 +47,28 @@
 /********************/
 
 /**
+ * Checks if a file descriptor points to a resizable file.
+ *
+ * @param fd the fd to check
+ * @param[out] fd_resizable whether the fd is resizable
+ *
+ * @return the operation error code
+ */
+static int is_fd_resizable(int fd, int *fd_resizable)
+{
+	struct stat stat;
+	if (fstat(fd, &stat) == -1)
+		return_error(errno);
+
+	if (S_ISREG(stat.st_mode))
+		*fd_resizable = 1;
+	else
+		*fd_resizable = 0;
+
+	return 0;
+}
+
+/**
  * Reserves disk space for writing a file.
  *
  * @param fd the file to extend
@@ -380,9 +402,32 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	off_t segcol_size;
 	segcol_get_size(buf->segcol, &segcol_size);
 
-	int err = reserve_disk_space(fd, segcol_size);
+	/* 
+	 * Check if file is resizable. Initialize variable just to silence
+	 * compiler warning.
+	 */
+	int fd_resizable = 0;
+
+	int err = is_fd_resizable(fd, &fd_resizable);
 	if (err)
 		return_error(err);
+
+	/* 
+	 * If fd is a resizable (eg regular) file try to reserve enough disk space
+	 * to fit the buffer.
+	 *
+	 * If fd is not a resizable file (eg block device) just check that the buffer
+	 * fits in the file.
+	 */
+	if (fd_resizable == 1) {
+		err = reserve_disk_space(fd, segcol_size); 
+		if (err)
+			return_error(err); 
+	} else { 
+		off_t fd_size = lseek(fd, 0, SEEK_END);
+		if (fd_size < segcol_size)
+			return_error(ENOSPC);
+	}
 
 	/* Create a data_object_t holding fd */
 	data_object_t *fd_obj;
@@ -481,11 +526,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (err)
 		goto fail1;
 
-	/* Truncate file to final size */
-	err = ftruncate(fd, segcol_size);
-	if (err == -1) {
-		err = errno;
-		goto fail1;
+	/* Truncate file to final size (only if it is a resizable file) */
+	if (fd_resizable == 1) {
+		err = ftruncate(fd, segcol_size);
+		if (err == -1) {
+			err = errno;
+			goto fail1;
+		}
 	}
 
 	/* Use the new segcol in the buffer */

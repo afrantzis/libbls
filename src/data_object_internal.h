@@ -37,7 +37,7 @@ extern "C" {
  */
 struct data_object_funcs {
 	int (*get_data)(data_object_t *obj, void **buf, off_t offset,
-		size_t *length, data_object_flags flags);
+		off_t *length, data_object_flags flags);
 	int (*free)(data_object_t *obj);
 	int (*get_size)(data_object_t *obj, off_t *size);
 	int (*compare)(int *result, data_object_t *obj1, data_object_t *obj2);
