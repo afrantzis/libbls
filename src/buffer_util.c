@@ -345,6 +345,13 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 		return_error(err);
 	}
 
+	/* Set the data object's free function */
+	err = data_object_memory_set_free_func(new_dobj, free);
+	if (err) {
+		free(new_data);
+		return_error(err);
+	}
+
 	/* Put it in a segment */
 	segment_t *new_seg;
 	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
