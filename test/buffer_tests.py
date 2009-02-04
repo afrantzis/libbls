@@ -649,6 +649,12 @@ class BufferTests(unittest.TestCase):
 
 		self.check_save(fd1, segment_desc, "123abc4567890")
 
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
+
 		# Remove temporary file
 		os.remove(fd1_path)
 
@@ -670,6 +676,12 @@ class BufferTests(unittest.TestCase):
 				(fd1_src, 7, 3)]
 
 		self.check_save(fd1, segment_desc, "a4567bc890")
+
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
 
 		# Remove temporary file
 		os.remove(fd1_path)
@@ -693,6 +705,12 @@ class BufferTests(unittest.TestCase):
 
 		self.check_save(fd1, segment_desc, "789abcd345")
 
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
+
 		# Remove temporary file
 		os.remove(fd1_path)
 
@@ -714,6 +732,12 @@ class BufferTests(unittest.TestCase):
 		segment_desc = [(fd1_src, 5, 3), (fd2_src, 3, 4), (fd1_src, 1, 3)]
 
 		self.check_save(fd1, segment_desc, "678defg234")
+
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
 
 		# Remove temporary file
 		os.remove(fd1_path)
@@ -739,6 +763,12 @@ class BufferTests(unittest.TestCase):
 
 		self.check_save(fd1, segment_desc, "67890j234a")
 
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
+
 		# Remove temporary file
 		os.remove(fd1_path)
 
@@ -763,6 +793,12 @@ class BufferTests(unittest.TestCase):
 
 		self.check_save(fd1, segment_desc, "j789a1234")
 
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
+
 		# Remove temporary file
 		os.remove(fd1_path)
 
@@ -784,6 +820,12 @@ class BufferTests(unittest.TestCase):
 				(fd1_src, 7, 3)]
 
 		self.check_save(fd1, segment_desc, "23489034890")
+
+		err = bless_buffer_source_unref(fd1_src)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_source_unref(fd2_src)
+		self.assertEqual(err, 0)
 
 		# Remove temporary file
 		os.remove(fd1_path)

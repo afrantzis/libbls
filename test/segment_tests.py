@@ -32,6 +32,8 @@ class SegmentTests(unittest.TestCase):
 
 		self.assert_(segment_get_data(seg1)[1] is
 				segment_get_data(self.seg)[1])
+
+		segment_free(seg1)
 		
 	def testClear(self):
 		"Clear a segment"
