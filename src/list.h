@@ -174,6 +174,8 @@ struct list {
 int _list_new(struct list **list, size_t entry_size, size_t ln_offset);
 int list_insert_before(struct list_node *p, struct list_node *q);
 int list_insert_after(struct list_node *p, struct list_node *q);
+int list_insert_chain_after(struct list_node *p, struct list_node *start,
+		struct list_node *end);
 int _list_new_entry(void **entry, size_t entry_size, size_t ln_offset);
 int list_delete_chain(struct list_node *start, struct list_node *end);
 int _list_free(struct list *list, size_t ln_offset);

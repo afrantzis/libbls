@@ -116,6 +116,8 @@ class DataObjectFileTests(unittest.TestCase):
 		# Compare our hash digest with the precomputed one
 		self.assertEqual(digest, expected_digest)
 
+		data_object_free(dobj)
+
 	def testGetDataOverflow(self):
 		"Test boundary cases for get_data overflow"
 
@@ -141,6 +143,8 @@ class DataObjectFileTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(result, 0)
 
+		data_object_free(obj1)
+
 		fd = get_file_fd("data_object_file_tests.py")
 		(err, obj1) = data_object_file_new(fd)
 		self.assertEqual(err, 0)
@@ -157,6 +161,9 @@ class DataObjectFileTests(unittest.TestCase):
 		(err, result) = data_object_compare(obj1, obj2)
 		self.assertEqual(err, 0)
 		self.assertEqual(result, 1)
+
+		data_object_free(obj1)
+		data_object_free(obj2)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -58,22 +58,26 @@ class SegcolTestsList(unittest.TestCase):
 		seg = segcol_iter_get_segment(iter)[1]
 
 		self.assertEqual(seg, seg1)
+		segcol_iter_free(iter)
 
 		iter = segcol_find(self.segcol, 5)[1]
 		seg = segcol_iter_get_segment(iter)[1]
 
 		self.assertEqual(seg, seg1)
+		segcol_iter_free(iter)
 
 		# Check seg2 corner cases
 		iter = segcol_find(self.segcol, 6)[1]
 		seg = segcol_iter_get_segment(iter)[1]
 
 		self.assertEqual(seg, seg2)
+		segcol_iter_free(iter)
 
 		iter = segcol_find(self.segcol, 11)[1]
 		seg = segcol_iter_get_segment(iter)[1]
 
 		self.assertEqual(seg, seg2)
+		segcol_iter_free(iter)
 	
 	def testIterator(self):
 		"Create and traverse an iterator"
@@ -182,6 +186,8 @@ class SegcolTestsList(unittest.TestCase):
 
 		self.check_iter_segments(self.segcol, segs)
 
+		segment_free(seg1)
+
 	def testDeleteBeginning(self):
 		"Delete a range from the beginning of a segment"
 
@@ -199,6 +205,8 @@ class SegcolTestsList(unittest.TestCase):
 		segs = [("abcdef", 0, 0, 4)]
 		self.check_iter_segments(del_segcol, segs)
 
+		segcol_free(del_segcol)
+
 		(err, del_segcol) = segcol_delete(self.segcol, 2, 6) 
 		self.assertEqual(err, 0)
 
@@ -209,6 +217,8 @@ class SegcolTestsList(unittest.TestCase):
 		# Deleted segcol should be ["012345"]
 		segs = [("012345", 0, 0, 6)]
 		self.check_iter_segments(del_segcol, segs)
+
+		segcol_free(del_segcol)
 
 		(err, del_segcol) = segcol_delete(self.segcol, 0, 2) 
 		self.assertEqual(err, 0)
@@ -221,6 +231,8 @@ class SegcolTestsList(unittest.TestCase):
 		segs = [("abcdef", 0, 4, 2)]
 		self.check_iter_segments(del_segcol, segs)
 		
+		segcol_free(del_segcol)
+
 	def testDeleteMiddle(self):
 		"Delete a range from the middle of a segment"
 
@@ -231,7 +243,6 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertEqual(segcol_get_size(self.segcol)[1], 10)
 
 		for i in xrange(4, 0, -1):
-			segcol_get_size(self.segcol)
 			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
 			self.assertEqual(err, 0)
 			
@@ -245,6 +256,8 @@ class SegcolTestsList(unittest.TestCase):
 
 			self.check_iter_segments(del_segcol, segs)
 
+			segcol_free(del_segcol)
+
 	def testDeleteMiddleMulti(self):
 		"Delete a range from the middle of multiple segments"
 
@@ -252,7 +265,6 @@ class SegcolTestsList(unittest.TestCase):
 		self.testAppend()
 
 		for i in xrange(5, 0, -1):
-			segcol_get_size(self.segcol)
 			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
 			self.assertEqual(err, 0)
 			
@@ -263,6 +275,8 @@ class SegcolTestsList(unittest.TestCase):
 			# Deleted segcol should be ["abcde"f]-[0"12345"]
 			segs = [("abcdef", 0, i, 1), ("012345", 1, 6 - i - 1, 1)]
 			self.check_iter_segments(del_segcol, segs)
+
+			segcol_free(del_segcol)
 
 	def testDeleteNoDeleted(self):
 		"Delete a range from a segcol but don't ask for the deleted segments"
@@ -278,6 +292,46 @@ class SegcolTestsList(unittest.TestCase):
 			# Segcol should now be ["abcde"f]-[0"12345"]
 			segs = [("abcdef", 0, 0, i), ("012345", i, 6 - i, i)]
 			self.check_iter_segments(self.segcol, segs)
+
+	def testDeleteMany(self):
+		"Delete a range affecting many (more that 2) segments from the segcol"
+
+		# Append some segments (>2) to the segcol
+		self.testInsertMiddle()
+
+		(err, del_segcol) = segcol_delete(self.segcol, 2, 15)
+		self.assertEqual(err, 0)
+
+		# Segcol should be ["BB"B]-[01"2345"]
+		segs = [("BBB", 0, 0, 2), ("012345", 2, 2, 4)]
+
+		self.check_iter_segments(self.segcol, segs)
+
+		# deleted segcol should be [BB"B"]-["ab"cdef]-["MMM"]-[ab"cde"f]-["EEE"]
+		# -[abcde"f"]-["01"2345]
+		del_segs = [("BBB", 0, 2, 1), ("abcdef", 1, 0, 2), ("MMM", 3, 0, 3), 
+				("abcdef", 6, 2, 3), ("EEE", 9, 0, 3), ("abcdef", 12, 5, 1),
+				("012345", 13, 0, 2)]
+
+		self.check_iter_segments(del_segcol, del_segs)
+
+		segcol_free(del_segcol)
+
+	def testDeleteAll(self):
+		"Delete a whole segcol (with >2 segments)"
+
+		# Append some segments (>2) to the segcol
+		self.testInsertBeginning()
+
+		(err, size) = segcol_get_size(self.segcol)
+		(err, del_segcol) = segcol_delete(self.segcol, 0, size)
+		self.assertEqual(err, 0)
+
+		# Segcol should be ["BBB"]-["abcdef"]-["012345"]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
+		self.check_iter_segments(del_segcol, segs)
+
+		segcol_free(del_segcol)
 
 	def testFindStressTest(self):
 		"Find a segment stress test"
@@ -298,6 +352,8 @@ class SegcolTestsList(unittest.TestCase):
 			self.assertEqual(mapping, (i/6)*6)
 
 			self.assertEqual(seg, segs[i/6])
+
+			segcol_iter_free(iter)
 
 	def testTryFindInvalidOffset(self):
 		"Try to search for invalid offsets"
@@ -333,8 +389,11 @@ class SegcolTestsList(unittest.TestCase):
 		err = segcol_append(self.segcol, seg2)
 		self.assertNotEqual(err, 0)
 
+		segment_free(seg2)
+
 		# Clear segcol
 		(err, deleted) = segcol_delete(self.segcol, 0, get_max_off_t())
+		segcol_free(deleted)
 
 		# Test 2
 		(err, seg1) = segment_new(None, 0, 1, None)
@@ -354,6 +413,8 @@ class SegcolTestsList(unittest.TestCase):
 
 		err = segcol_append(self.segcol, seg2)
 		self.assertNotEqual(err, 0)
+
+		segment_free(seg2)
 
 	def testInsertOverflow(self):
 		"Try boundary conditions for overflow in insert"
@@ -374,8 +435,11 @@ class SegcolTestsList(unittest.TestCase):
 		err = segcol_insert(self.segcol, get_max_off_t(), seg2)
 		self.assertNotEqual(err, 0)
 
+		segment_free(seg2)
+
 		# Clear segcol
 		(err, deleted) = segcol_delete(self.segcol, 0, get_max_off_t())
+		segcol_free(deleted)
 
 		# Test 2
 		(err, seg1) = segment_new(None, 0, 1, None)
@@ -399,17 +463,15 @@ class SegcolTestsList(unittest.TestCase):
 		err = segcol_insert(self.segcol, 0, seg2)
 		self.assertNotEqual(err, 0)
 
+		segment_free(seg2)
+
 	def testDeleteOverflow(self):
 		"Try boundary conditions for overflow in delete"
 
-		# Test 1
 		(err, seg1) = segment_new(None, 0, get_max_off_t(), None)
 		self.assertEqual(err, 0)
 
 		err = segcol_append(self.segcol, seg1)
-		self.assertEqual(err, 0)
-
-		(err, seg2) = segment_new(None, 0, 1, None)
 		self.assertEqual(err, 0)
 
 		(err, deleted) = segcol_delete(self.segcol, 1, get_max_off_t())

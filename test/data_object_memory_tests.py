@@ -151,9 +151,13 @@ class DataObjectMemoryTests(unittest.TestCase):
 
 		(err, obj) = data_object_memory_new_ptr(0, get_max_size_t())
 		self.assertEqual(err, 0)
+
+		data_object_free(obj)
 		
 		(err, obj) = data_object_memory_new_ptr(1, get_max_size_t())
 		self.assertEqual(err, 0)
+
+		data_object_free(obj)
 
 		(err, obj) = data_object_memory_new_ptr(2, get_max_size_t())
 		self.assertEqual(err, errno.EOVERFLOW)
@@ -161,8 +165,12 @@ class DataObjectMemoryTests(unittest.TestCase):
 		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 0)
 		self.assertEqual(err, 0)
 		
+		data_object_free(obj)
+
 		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 1)
 		self.assertEqual(err, 0)
+
+		data_object_free(obj)
 
 		(err, obj) = data_object_memory_new_ptr(get_max_size_t(), 2)
 		self.assertEqual(err, errno.EOVERFLOW)
@@ -184,6 +192,8 @@ class DataObjectMemoryTests(unittest.TestCase):
 				DATA_OBJECT_READ)
 		self.assertEqual(err, errno.EOVERFLOW)
 	
+		data_object_free(obj)
+
 	def testCompare(self):
 		"Compare two memory data objects"
 
@@ -197,6 +207,8 @@ class DataObjectMemoryTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(result, 0)
 
+		data_object_free(obj2)
+
 		(err, obj2) = data_object_memory_new_ptr(0, get_max_size_t() - 1)
 		self.assertEqual(err, 0)
 
@@ -204,12 +216,17 @@ class DataObjectMemoryTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(result, 1)
 
+		data_object_free(obj2)
+
 		(err, obj2) = data_object_memory_new_ptr(1, get_max_size_t())
 		self.assertEqual(err, 0)
 
 		(err, result) = data_object_compare(obj1, obj2)
 		self.assertEqual(err, 0)
 		self.assertEqual(result, 1)
+
+		data_object_free(obj1)
+		data_object_free(obj2)
 
 if __name__ == '__main__':
 	unittest.main()

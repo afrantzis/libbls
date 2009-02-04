@@ -86,6 +86,9 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_dot(self.g, expected_lines)
 
+		segment_free(seg1)
+		segment_free(seg2)
+
 	def testAddSegments2(self):
 		"Add segments to the overlap graph (2)" 
 
@@ -109,6 +112,10 @@ class OverlapGraphTests(unittest.TestCase):
 				"2 -> 1 [label = 3]\n")
 
 		self.check_dot(self.g, expected_lines)
+
+		segment_free(seg1)
+		segment_free(seg2)
+		segment_free(seg3)
 
 	def testSpanningTree(self):
 		"Find the spanning tree of an overlap graph"
@@ -160,6 +167,10 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_dot(self.g, expected_lines)
 
+		segment_free(seg1)
+		segment_free(seg2)
+		segment_free(seg3)
+
 	def testGetRemovedEdges(self):
 		"Get the removed edges of the graph"
 
@@ -188,6 +199,10 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_removed_edges(self.g, expected_edges)
 
+		segment_free(seg1)
+		segment_free(seg2)
+		segment_free(seg3)
+
 	def testTopo(self):
 		"Get the vertices of the graph in topological order"
 
@@ -214,6 +229,9 @@ class OverlapGraphTests(unittest.TestCase):
 
 		self.check_vertices_topo(self.g, expected_vertices)
 
+		segment_free(seg1)
+		segment_free(seg2)
+		segment_free(seg3)
 
 if __name__ == '__main__':
 	unittest.main()

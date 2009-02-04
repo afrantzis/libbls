@@ -248,7 +248,7 @@ segment_data_usage_func data_usage_func)
 /* Set the segcol of a bless_buffer_t */
 void set_buffer_segcol(bless_buffer_t *buf, segcol_t *segcol)
 {
-    free(buf->segcol);
+    segcol_free(buf->segcol);
     buf->segcol = segcol;
 }
 
