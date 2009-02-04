@@ -144,19 +144,34 @@ int list_insert_before(struct list_node *p, struct list_node *q)
  */
 int list_insert_after(struct list_node *p, struct list_node *q)
 {
-	if (p == NULL || q == NULL)
+	return list_insert_chain_after(p, q, q);
+}
+
+
+/**
+ * Inserts a chain of nodes after another node in a list.
+ *
+ * @param p the node after which the node chain is inserted
+ * @param first the first node in the chain to insert
+ * @param last the last node in the chain to insert
+ *
+ * @return the operation error code
+ */
+int list_insert_chain_after(struct list_node *p, struct list_node *first,
+		struct list_node *last)
+{
+	if (p == NULL || first == NULL || last == NULL)
 		return_error(EINVAL);
 
-	q->next = p->next;
-	q->prev = p;
+	last->next = p->next;
+	first->prev = p;
 
-	p->next->prev = q;
+	last->next->prev = last;
 
-	p->next = q;
+	p->next = first;
 
 	return 0;
 }
-
 
 /**
  * Deletes a chain of nodes from the list.

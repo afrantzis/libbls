@@ -590,9 +590,8 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segcol_list_impl *deleted_impl = 
 		(struct segcol_list_impl *) segcol_get_impl(deleted_tmp);
 
-	list_insert_after(seg_list_head(deleted_impl->list), &first_entry->ln);
-	if (first_entry != last_entry)
-		list_insert_before(seg_list_tail(deleted_impl->list), &last_entry->ln);
+	list_insert_chain_after(seg_list_head(deleted_impl->list), &first_entry->ln,
+			&last_entry->ln);
 
 	/* Either return the deleted segments or free them */
 	if (deleted != NULL) 

@@ -231,7 +231,6 @@ class SegcolTestsList(unittest.TestCase):
 		self.assertEqual(segcol_get_size(self.segcol)[1], 10)
 
 		for i in xrange(4, 0, -1):
-			segcol_get_size(self.segcol)
 			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
 			self.assertEqual(err, 0)
 			
@@ -252,7 +251,6 @@ class SegcolTestsList(unittest.TestCase):
 		self.testAppend()
 
 		for i in xrange(5, 0, -1):
-			segcol_get_size(self.segcol)
 			(err, del_segcol) = segcol_delete(self.segcol, i, 2)
 			self.assertEqual(err, 0)
 			
@@ -278,6 +276,42 @@ class SegcolTestsList(unittest.TestCase):
 			# Segcol should now be ["abcde"f]-[0"12345"]
 			segs = [("abcdef", 0, 0, i), ("012345", i, 6 - i, i)]
 			self.check_iter_segments(self.segcol, segs)
+
+	def testDeleteMany(self):
+		"Delete a range affecting many (more that 2) segments from the segcol"
+
+		# Append some segments (>2) to the segcol
+		self.testInsertMiddle()
+
+		(err, del_segcol) = segcol_delete(self.segcol, 2, 15)
+		self.assertEqual(err, 0)
+
+		# Segcol should be ["BB"B]-[01"2345"]
+		segs = [("BBB", 0, 0, 2), ("012345", 2, 2, 4)]
+
+		self.check_iter_segments(self.segcol, segs)
+
+		# deleted segcol should be [BB"B"]-["ab"cdef]-["MMM"]-[ab"cde"f]-["EEE"]
+		# -[abcde"f"]-["01"2345]
+		del_segs = [("BBB", 0, 2, 1), ("abcdef", 1, 0, 2), ("MMM", 3, 0, 3), 
+				("abcdef", 6, 2, 3), ("EEE", 9, 0, 3), ("abcdef", 12, 5, 1),
+				("012345", 13, 0, 2)]
+
+		self.check_iter_segments(del_segcol, del_segs)
+
+	def testDeleteAll(self):
+		"Delete a whole segcol (with >2 segments)"
+
+		# Append some segments (>2) to the segcol
+		self.testInsertBeginning()
+
+		(err, size) = segcol_get_size(self.segcol)
+		(err, del_segcol) = segcol_delete(self.segcol, 0, size)
+		self.assertEqual(err, 0)
+
+		# Segcol should be ["BBB"]-["abcdef"]-["012345"]
+		segs = [("BBB", 0, 0, 3), ("abcdef", 3, 0, 6), ("012345", 9, 0, 6)]
+		self.check_iter_segments(del_segcol, segs)
 
 	def testFindStressTest(self):
 		"Find a segment stress test"
