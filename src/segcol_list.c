@@ -358,6 +358,7 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 	segment_get_size(seg, &seg_size);
 	if (seg_size == 0) {
 		segment_free(seg);
+		segcol_iter_free(iter);
 		return 0;
 	}
 
