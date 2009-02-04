@@ -1,0 +1,24 @@
+libbls v0.1.1 20090402
+----------------------
+
+* Added support for saving to block devices.
+* Fixed various memory leaks.
+
+libbls v0.1.0 20092901
+----------------------
+
+* Initial public release.
+* Implemented API functions:
+	bless_buffer_new
+	bless_buffer_free
+	bless_buffer_save
+	bless_buffer_append
+	bless_buffer_insert
+	bless_buffer_delete
+	bless_buffer_read
+	bless_buffer_get_size
+	bless_buffer_source_file
+	bless_buffer_source_memory
+	bless_buffer_source_unref
+
+

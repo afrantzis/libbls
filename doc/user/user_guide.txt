@@ -1,5 +1,5 @@
 =======================
-Libbls 0.1 user guide
+Libbls 0.1.1 user guide
 =======================
 
 :Authors: Alexandros Frantzis, Michael Iatrou
@@ -171,7 +171,7 @@ these sources using the ``bless_buffer_source_t`` opaque type.
 
 There are currently two kinds of sources: memory sources and file sources. A
 memory source represents data from a memory region. A file source represents
-data from a file. 
+data from a file (regular or block device).
 
 A file source consumes a small constant amount of memory regardless of the size
 of the file or how it is used in buffers. This means that one can add large
