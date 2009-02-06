@@ -349,6 +349,7 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = data_object_memory_set_free_func(new_dobj, free);
 	if (err) {
 		free(new_data);
+		data_object_free(new_dobj);
 		return_error(err);
 	}
 
@@ -357,7 +358,6 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
 	if (err) {
 		data_object_free(new_dobj);
-		free(new_data);
 		return_error(err);
 	}
 
@@ -464,7 +464,7 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length)
 	 * (so if we did this before the data object would have a size of 0)
 	 */
 	data_object_t *new_dobj;
-	err = data_object_file_new(&new_dobj, fd);
+	err = data_object_tempfile_new(&new_dobj, fd, tmpl);
 	if (err) {
 		close(fd);
 		unlink(tmpl);
@@ -475,7 +475,7 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length)
 	err = data_object_file_set_close_func(new_dobj, close);
 	if (err) {
 		close(fd);
-		unlink(tmpl);
+		data_object_free(new_dobj);
 		return_error(err);
 	}
 
