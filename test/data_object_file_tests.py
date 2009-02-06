@@ -2,6 +2,8 @@ import unittest
 import os
 import hashlib
 import errno
+import tempfile
+import shutil
 from libbls import *
 
 def get_file_fd(name):
@@ -17,6 +19,27 @@ def get_file_fd(name):
 	fd = os.open("%s" % name, os.O_RDONLY)
 	return fd
 	
+def get_tmp_copy_file_fd(name, flags = os.O_RDONLY):
+	"""Get the fd of a temporary file which is a copy of the specified
+	file."""
+
+	(tmp_fd, tmp_path) = tempfile.mkstemp();
+	os.close(tmp_fd)
+
+	success = False
+	try:
+		shutil.copyfile("test/%s" % name, tmp_path)
+		success = True
+	except:
+		pass
+	
+	if not success:
+		shutil.copyfile(name, tmp_path)
+
+	fd = os.open(tmp_path, flags)
+
+	return (fd, tmp_path)
+
 class DataObjectFileTests(unittest.TestCase):
 
 	def setUp(self):
@@ -164,6 +187,30 @@ class DataObjectFileTests(unittest.TestCase):
 
 		data_object_free(obj1)
 		data_object_free(obj2)
+
+	def testTempFile(self):
+		"Create a tempfile data object"
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("data_object_test_file.bin", os.O_RDWR)
+		(err, obj1) = data_object_tempfile_new(fd1, fd1_path)
+		self.assertEqual(err, 0)
+
+		# Read data from the file
+		(err, buf) = data_object_get_data(obj1, 0, 10, DATA_OBJECT_READ)
+		self.assertEqual(err, 0)
+		self.assertEqual(len(buf), 10)
+
+		expected_data = "1234567890"
+
+		for i in range(len(buf)):
+			self.assertEqual(buf[i], expected_data[i])
+
+		# Free the data object
+		data_object_free(obj1)
+
+		# Make sure that the temporary file has been deleted
+		self.assertEqual(os.path.exists(fd1_path), False)
+
 
 if __name__ == '__main__':
 	unittest.main()

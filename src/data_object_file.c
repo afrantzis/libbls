@@ -67,7 +67,10 @@ struct data_object_file_impl {
 	dev_t dev;
 	ino_t inode;
 
-    data_object_file_close_func *file_close;
+	data_object_file_close_func *file_close;
+
+	/* The path of the file (only used in tempfile data objects */
+	char *path;
 };
 
 /**
@@ -135,7 +138,9 @@ int data_object_file_new(data_object_t **obj, int fd)
 	impl->page_data = NULL;
 
 	/* We don't own the file by default */
-    impl->file_close = NULL;
+	impl->file_close = NULL;
+	
+	impl->path = NULL;
 
 	return 0;
 
@@ -144,6 +149,45 @@ fail:
 	return_error(err);
 }
 
+/**
+ * Creates a new temporary file data object.
+ *
+ * When the data object is freed the temporary file will be deleted
+ * from the file system.
+ *
+ * The data object by default doesn't own the file passed to it.
+ * That means that when the data object is freed the file will
+ * not be closed. To change data ownership by the data_object_t
+ * use data_object_set_data_ownership().
+ *
+ * @param[out] obj the created data object
+ * @param fd the file descriptor of the file to use
+ * @param path the path of the file the file descriptor points to 
+ *
+ * @return the operation error code
+ */
+int data_object_tempfile_new(data_object_t **obj, int fd, char *path)
+{
+	int err = data_object_file_new(obj, fd);
+	if (err)
+		return_error(err);
+
+	struct data_object_file_impl *impl =
+		data_object_get_impl(*obj);
+
+	/* Store path */
+	size_t path_len = strlen(path);
+	
+	impl->path = malloc(path_len + 1);
+	if (impl->path == NULL) {
+		data_object_free(*obj);
+		return_error(ENOMEM);
+	}
+
+	strncpy(impl->path, path, path_len + 1);
+
+	return 0;
+}
 /**
  * Sets the function used to close the file associated with the data object.
  *
@@ -262,6 +306,12 @@ static int data_object_file_free(data_object_t *obj)
 		int err = file_close(impl->fd);
 		if (err)
 			return_error(err);
+	}
+
+	/* If we have a path (this is a temp file) remove the path */
+	if (impl->path != NULL) {
+		unlink(impl->path);
+		free(impl->path);
 	}
 
 	free(impl);
