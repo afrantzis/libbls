@@ -127,6 +127,23 @@ function to store the result::
 
     err = bless_buffer_new(dbuf);
 
+Out of memory situations
+------------------------
+
+libbls dutifully checks all memory allocations it makes internally and
+gracefully returns ENOMEM if an allocation fails. This, of course, requires
+that the underlying system can correctly inform libbls when there is not enough
+memory.
+
+Unfortunately for us, many systems use an optimistic over-committing memory
+scheme when allocating memory. This means that an allocation can apparently
+succeed but an access to the supposedly allocated memory may fail!
+
+If you are planning to use libbls (or any other program for that matter) in
+situations that may lead to out of memory conditions it is advisable to
+disallow such overcommitting behaviour. Check your operating system's
+documentation for more information on this matter.
+
 Creating and freeing a buffer
 =============================
 
@@ -411,7 +428,12 @@ checked by the save function to determine if the save should continue or not.
 Note, that the save function is free to ignore the cancel request if that would
 leave the saved file in an incosistent state.
 
-For example::
+Note that in some situations, if the buffer contains data from the target file
+of the save operation, additional temporary storage space may be needed. Main
+memory is utilized first, followed by temporary files on disk, if memory is not
+sufficient.
+
+An example of how to save a buffer::
 
     /* Assume "buf" is initialized and contains some data */
     bless_buffer_t *buf;
