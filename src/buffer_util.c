@@ -349,6 +349,7 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = data_object_memory_set_free_func(new_dobj, free);
 	if (err) {
 		free(new_data);
+		data_object_free(new_dobj);
 		return_error(err);
 	}
 
@@ -357,7 +358,6 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
 	if (err) {
 		data_object_free(new_dobj);
-		free(new_data);
 		return_error(err);
 	}
 
@@ -367,6 +367,123 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 	err = segcol_foreach(segcol, offset, length, read_segment_func, &data_ptr);
 	if (err) {
 		segment_free(new_seg);
+		return_error(err);
+	}
+
+	/* Delete old range in segcol */
+	err = segcol_delete(segcol, NULL, offset, length);
+	if (err) {
+		segment_free(new_seg);
+		return_error(err);
+	}
+
+	off_t segcol_size;
+	segcol_get_size(segcol, &segcol_size);
+
+	/* 
+	 * Add to segcol the new segment that hold the same data as the deleted
+	 * range (but keeps them in memory)
+	 */
+	if (offset < segcol_size)
+		err = segcol_insert(segcol, offset, new_seg);
+	else if (offset == segcol_size)
+		err = segcol_append(segcol, new_seg);
+
+	/* TODO: Handle this better because the segcol is going to be corrupted */
+	if (err)
+		return_error(err);
+
+	return 0;
+}
+
+/**
+ * A segcol_foreach_func that writes data from a segment_t into a file.
+ *
+ * @param segcol the segcol_t containing the segment
+ * @param seg the segment to read from
+ * @param mapping the mapping of the segment in segcol
+ * @param read_start the offset in the data of the segment to start reading
+ * @param read_length the length of the data to read
+ * @param user_data a int * pointer pointing to the fd to write to
+ *
+ * @return the operation error code
+ */
+static int store_segment_func(segcol_t *segcol, segment_t *seg,
+		off_t mapping, off_t read_start, off_t read_length, void *user_data)
+{
+	data_object_t *dobj;
+	segment_get_data(seg, (void **)&dobj);
+
+	/* user_data is actually a pointer to a file descriptor */
+	int fd = *(int *)user_data;
+
+	off_t cur_off = lseek(fd, 0, SEEK_CUR);
+
+	int err = write_data_object(dobj, read_start, read_length, fd, cur_off);
+	if (err)
+		return_error(err);
+
+	return 0;
+}
+
+/**
+ * Stores a range from a segcol_t in a file data object.
+ *
+ * @param segcol the segcol_t 
+ * @param offset the offset to starting storing from
+ * @param length the length of the data to store
+ *
+ * @return the operation error code 
+ */
+int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length)
+{
+	if (segcol == NULL || offset < 0 || length < 0)
+		return_error(EINVAL);
+
+	/* Store data from range to temporary file */
+	char tmpl[15];
+	strncpy(tmpl, "/tmp/lb-XXXXXX", sizeof tmpl);
+
+	int fd = mkstemp(tmpl);
+	if (fd == -1)
+		return_error(errno);
+
+	int *fd_ptr = &fd;
+
+	int err = segcol_foreach(segcol, offset, length, store_segment_func, fd_ptr);
+	if (err) {
+		close(fd);
+		unlink(tmpl);
+		return_error(err);
+	}
+
+	/* 
+	 * Create file data object with temporary file.
+	 * Note that this must be done after we have filled the file with the
+	 * data, because the data object's size is set only once when creating it.
+	 * (so if we did this before the data object would have a size of 0)
+	 */
+	data_object_t *new_dobj;
+	err = data_object_tempfile_new(&new_dobj, fd, tmpl);
+	if (err) {
+		close(fd);
+		unlink(tmpl);
+		return_error(err);
+	}
+
+	/* Set the data object's close function */
+	err = data_object_file_set_close_func(new_dobj, close);
+	if (err) {
+		close(fd);
+		data_object_free(new_dobj);
+		return_error(err);
+	}
+
+	/* Put it in a segment */
+	segment_t *new_seg;
+	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
+	if (err) {
+		data_object_free(new_dobj);
 		return_error(err);
 	}
 

@@ -195,8 +195,14 @@ static int break_edge(segcol_t *segcol, struct edge_entry *edge)
 	else
 		overlap_offset = edge->dst_mapping;
 
+	/* Try to store the data first in memory and if that fails, in a file */
 	int err = segcol_store_in_memory(segcol, overlap_offset,
 			edge->weight);
+
+	if (err == ENOMEM) {
+		err = segcol_store_in_file(segcol, overlap_offset,
+			edge->weight);
+	}
 
 	if (err)
 		return_error(err);
