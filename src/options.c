@@ -87,6 +87,13 @@ int options_set_option(options_t *opts, size_t key, char *val)
 	return 0;
 }
 
+/**
+ * Frees an options_t.
+ *
+ * @param opts the options_t to free
+ *
+ * @return the operation error code
+ */
 int options_free(options_t *opts)
 {
 	if (opts == NULL)

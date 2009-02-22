@@ -374,4 +374,5 @@ void print_vertex_list(struct list *vertices, int fd)
 %include "../src/buffer_util.h"
 %include "../src/list.h"
 %include "../src/options.h"
+%include "../src/buffer_options.h"
 

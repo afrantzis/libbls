@@ -30,6 +30,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "buffer.h"
+#include "buffer_options.h"
 #include "buffer_internal.h"
 #include "segcol_list.h"
 #include "data_object.h"
@@ -386,6 +387,13 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(err);
 	}
 
+	err = options_new(&(*buf)->options, BLESS_BUF_SENTINEL);
+	if (err) {
+		segcol_free((*buf)->segcol);
+		free(buf);
+		return_error(err);
+	}
+
 	return 0;
 }
 
@@ -577,6 +585,10 @@ int bless_buffer_free(bless_buffer_t *buf)
 		return_error(EINVAL);
 
 	int err = segcol_free(buf->segcol);
+	if (err)
+		return_error(err);
+
+	err = options_free(buf->options);
 	if (err)
 		return_error(err);
 

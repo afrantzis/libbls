@@ -33,6 +33,7 @@ extern "C" {
 
 
 #include "buffer_source.h"
+#include "buffer_options.h"
 
 /**
  * @defgroup buffer Buffer
@@ -117,7 +118,7 @@ int bless_buffer_end_multi_op(bless_buffer_t *buf);
 
 /** @} */
 /**
- * @name Buffer Information
+ * @name Buffer Information/Options
  *
  * @{
  */
@@ -129,6 +130,12 @@ int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
 */
 
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
+
+int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
+		char *val);
+
+int bless_buffer_get_option(bless_buffer_t *buf, char **val,
+		bless_buffer_option_t opt);
 
 /** @} */
 
