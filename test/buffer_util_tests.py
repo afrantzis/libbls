@@ -47,9 +47,9 @@ class BufferUtilTests(unittest.TestCase):
 		self.assertEqual(read_data.value, from_python)
 
 		data_object_free(data_obj)
-
-	def testSegcolStoreInMemory(self):
-		"Store the segcol data in memory data objects"
+	
+	def create_buffer(self):
+		"Create a buffer used in testSegcolStore*"
 
 		fd = get_file_fd("buffer_tests.py")
 		
@@ -108,23 +108,54 @@ class BufferUtilTests(unittest.TestCase):
 		self.assertEqual(from_python[:r1] + data + from_python[r1:r1+r2],
 				read_data.value)
 
-		# Store in memory
-		err = segcol_store_in_memory(segcol, 0, r1 + r2 + 10)
+		return (buf, segcol, fd, read_data.value)
+		
+	def check_buffer(self, buf, expected_data):
+		"Check if the buffer contains the expected_data"
+
+		# Read data from buffer and compare it to expected data
+		err, buf_size = bless_buffer_get_size(buf)
+		read_data = create_string_buffer(buf_size)
+		err = bless_buffer_read(buf, 0, read_data, 0, buf_size)
 		self.assertEqual(err, 0)
 
-		## close the file to make sure that we are reading only from memory
-		#os.close(fd)
+		self.assertEqual(expected_data, read_data.value)
 
-		## Read data from buffer again and compare it to data read from python
-		#read_data = create_string_buffer(r1 + r2 + 10)
-		#err = bless_buffer_read(buf, 0, read_data, 0, r1 + r2 + 10)
-		#self.assertEqual(err, 0)
+	def testSegcolStoreInMemory(self):
+		"Store the segcol data in memory data objects"
 
-		#self.assertEqual(from_python[:r1] + data + from_python[r1:r1+r2],
-		#		read_data.value)
+		buf, segcol, fd, data = self.create_buffer()
+		err, buf_size = bless_buffer_get_size(buf)
+
+		# Store in memory
+		err = segcol_store_in_memory(segcol, 0, buf_size)
+		self.assertEqual(err, 0)
+
+		# Close buffer file to make sure segcol_store_in_memory worked 
+		os.close(fd)
+
+		# Read data from buffer and compare it to original data
+		self.check_buffer(buf, data)
 
 		bless_buffer_free(buf)	
 
+	def testSegcolStoreInFile(self):
+		"Store the segcol data in file data objects"
+
+		buf, segcol, fd, data = self.create_buffer()
+		err, buf_size = bless_buffer_get_size(buf)
+
+		# Store in file
+		err = segcol_store_in_file(segcol, 0, buf_size, "/tmp"); 
+		self.assertEqual(err, 0)
+
+		# Close buffer file to make sure segcol_store_in_file worked 
+		os.close(fd)
+
+		# Read data from buffer and compare it to original data
+		self.check_buffer(buf, data)
+
+		bless_buffer_free(buf)	
 		
 if __name__ == '__main__':
 	unittest.main()
