@@ -38,5 +38,19 @@ class OptionsTests(unittest.TestCase):
 		(err, opt) = options_get_option(self.options, 5)
 		self.assertEqual(err, errno.EINVAL)
 
+	def testSetNull(self):
+		"Set options to NULL"
+
+		self.testSetGet()
+
+		for i in xrange(5):
+			err = options_set_option(self.options, i, None)
+			self.assertEqual(err, 0)
+
+		for i in xrange(5):
+			(err, opt) = options_get_option(self.options, i)
+			self.assertEqual(err, 0)
+			self.assertEqual(opt, None)
+
 if __name__ == '__main__':
 	unittest.main()

@@ -82,7 +82,18 @@ int options_set_option(options_t *opts, size_t key, char *val)
 	if (opts == NULL || key >= opts->size)
 		return_error(EINVAL);
 
-	opts->values[key] = strdup(val);
+    if (val == NULL)
+        opts->values[key] = NULL;
+    else {
+        char *dup = strdup(val);
+        if (dup == NULL)
+            return_error(ENOMEM);
+
+        /* Free old value and set new one */
+        if (opts->values[key] != NULL)
+            free(opts->values[key]);
+        opts->values[key] = dup;
+    }
 		
 	return 0;
 }
