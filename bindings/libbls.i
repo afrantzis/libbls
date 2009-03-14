@@ -19,6 +19,7 @@
 #include "buffer_util.h"
 #include "list.h"
 #include "options.h"
+#include "util.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -375,4 +376,5 @@ void print_vertex_list(struct list *vertices, int fd)
 %include "../src/list.h"
 %include "../src/options.h"
 %include "../src/buffer_options.h"
+%include "../src/util.h"
 

@@ -20,6 +20,7 @@ extern "C" {
 #define return_error(RET) return (RET)
 #endif
 
+int path_join(char **result, char *path1, char *path2);
 
 #ifdef __cplusplus
 }
