@@ -51,7 +51,7 @@
 int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 		size_t length, bless_mem_free_func *mem_free)
 {
-	if (src == NULL || data == NULL || length < 0)
+	if (src == NULL || data == NULL)
 		return_error(EINVAL);
 
 	/* Create the data object and set its data free function */

@@ -34,6 +34,7 @@
 #include "segment.h"
 #include "data_object.h"
 #include "data_object_memory.h"
+#include "data_object_file.h"
 #include "util.h"
 
 #include "type_limits.h"
