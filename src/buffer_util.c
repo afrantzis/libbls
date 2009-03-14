@@ -432,28 +432,40 @@ static int store_segment_func(segcol_t *segcol, segment_t *seg,
  * @param segcol the segcol_t 
  * @param offset the offset to starting storing from
  * @param length the length of the data to store
+ * @param tmpdir the directory where to create the file
  *
  * @return the operation error code 
  */
-int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length)
+
+int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
+		char *tmpdir)
 {
-	if (segcol == NULL || offset < 0 || length < 0)
+	if (segcol == NULL || offset < 0 || length < 0 || tmpdir == NULL)
 		return_error(EINVAL);
 
-	/* Store data from range to temporary file */
-	char tmpl[15];
-	strncpy(tmpl, "/tmp/lb-XXXXXX", sizeof tmpl);
+	/* Create temporary path string */
+	char *file_tmpl = "lb-XXXXXX";
+	char *tmpl = NULL;
 
+	int err = path_join(&tmpl, tmpdir, file_tmpl);
+	if (err)
+		return err;
+
+	/* Store data from range to temporary file */
 	int fd = mkstemp(tmpl);
-	if (fd == -1)
+	if (fd == -1) {
+		free(tmpl);
 		return_error(errno);
+	}
 
 	int *fd_ptr = &fd;
 
-	int err = segcol_foreach(segcol, offset, length, store_segment_func, fd_ptr);
+	err = segcol_foreach(segcol, offset, length, store_segment_func,
+			fd_ptr);
 	if (err) {
 		close(fd);
 		unlink(tmpl);
+		free(tmpl);
 		return_error(err);
 	}
 
@@ -468,8 +480,12 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length)
 	if (err) {
 		close(fd);
 		unlink(tmpl);
+		free(tmpl);
 		return_error(err);
 	}
+
+	/* We don't need tmpl any longer */
+	free(tmpl);
 
 	/* Set the data object's close function */
 	err = data_object_file_set_close_func(new_dobj, close);
