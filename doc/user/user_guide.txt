@@ -431,7 +431,8 @@ leave the saved file in an incosistent state.
 Note that in some situations, if the buffer contains data from the target file
 of the save operation, additional temporary storage space may be needed. Main
 memory is utilized first, followed by temporary files on disk, if memory is not
-sufficient.
+sufficient. The directory used to store temporary files can be set using the
+``BLESS_BUF_TMP_DIR`` option (see `Setting buffer options`_).
 
 An example of how to save a buffer::
 
@@ -447,3 +448,44 @@ An example of how to save a buffer::
     err = bless_buffer_save(buf, wfd, NULL);
     if (err)
         ...
+
+Setting buffer options
+======================
+
+Some aspects of the buffer can be configured using buffer options. To set or a
+buffer option use the ``bless_buffer_set_option()`` and
+``bless_buffer_get_option()`` functions respectively::
+
+ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
+        char *val)
+
+ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
+        bless_buffer_option_t opt)
+
+Note that the string value returned by ``bless_buffer_get_option()`` is the
+actually value that is used internally (not a copy). If you alter it in any
+way the world may come to a horrific end (so don't do it!).
+
+The options that are currently implemented are:
+
+BLESS_BUF_TMP_DIR
+    The directory to store temporary files in (see `Saving the buffer contents
+    to a file`_). The default value is `/tmp`.
+
+An example of setting a buffer option::
+
+    /* Assume "buf" is initialized */
+    bless_buffer_t *buf;
+    int err;
+
+    err = bless_buffer_set_option(buf, BLESS_BUF_TMP_DIR, "/mydir");
+    if (err)
+        ...
+
+    char *val;
+
+    err = bless_buffer_get_option(buf, &val, BLESS_BUF_TMP_DIR);
+    if (err)
+        ...
+
+    /* Don't change the string stored in "val"! */

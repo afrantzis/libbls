@@ -73,7 +73,7 @@ int options_get_option(options_t *opts, char **val, size_t key)
  * 
  * @param opts the options_t to set the option in
  * @param key the key of the option to set
- * @param key val the value to set the specified option to
+ * @param val the value to set the specified option to
  * 
  * @return the operation error code
  */

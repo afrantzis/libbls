@@ -100,6 +100,9 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 /** 
  * Gets a buffer option.
  * 
+ * The returned option value is the char * which is used internally
+ * so it must not be altered.
+ *
  * @param buf the buffer to get the option of
  * @param[out] val the returned value of the option
  * @param opt the option to get
