@@ -18,6 +18,8 @@
 #include "disjoint_set.h"
 #include "buffer_util.h"
 #include "list.h"
+#include "options.h"
+#include "util.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -67,7 +69,7 @@
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
 %apply segment_t ** { priority_queue_t **, overlap_graph_t **, disjoint_set_t ** }
-%apply segment_t ** { struct list ** }
+%apply segment_t ** { struct list **, options_t **, char **}
 
 
 /* Exception for void **: Append void * to return list without conversion */
@@ -75,6 +77,19 @@
 {
     %append_output((PyObject *)retval$argnum);
     Py_INCREF((PyObject *)retval$argnum);
+}
+
+/* Exception for char **: Append char * to return list as a python string */
+%typemap(argout) char ** 
+{
+    char *str = retval$argnum;
+    if (str != NULL) {
+        Py_ssize_t size = strlen(str);
+        %append_output(PyString_FromStringAndSize(str, size));
+    } else {
+        %append_output(Py_None);
+    }
+    
 }
 
 /* Match segment_new() and increase reference count of stored data */
@@ -359,4 +374,7 @@ void print_vertex_list(struct list *vertices, int fd)
 %include "../src/disjoint_set.h"
 %include "../src/buffer_util.h"
 %include "../src/list.h"
+%include "../src/options.h"
+%include "../src/buffer_options.h"
+%include "../src/util.h"
 

@@ -79,5 +79,44 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 	return segcol_get_size(buf->segcol, size);
 }
 
+/** 
+ * Sets a buffer option.
+ * 
+ * @param buf the buffer to set an option of
+ * @param opt the option to set
+ * @param val the value to set the option to 
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
+		char *val)
+{
+	if (buf == NULL || opt >= BLESS_BUF_SENTINEL)
+		return_error(EINVAL);
+
+	return options_set_option(buf->options, opt, val);
+}
+
+/** 
+ * Gets a buffer option.
+ * 
+ * The returned option value is the char * which is used internally
+ * so it must not be altered.
+ *
+ * @param buf the buffer to get the option of
+ * @param[out] val the returned value of the option
+ * @param opt the option to get
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_get_option(bless_buffer_t *buf, char **val,
+		bless_buffer_option_t opt)
+{
+	if (buf == NULL || opt >= BLESS_BUF_SENTINEL)
+		return_error(EINVAL);
+
+	return options_get_option(buf->options, val, opt);
+}
+
 #pragma GCC visibility pop
 

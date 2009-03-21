@@ -47,7 +47,8 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 
 int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length);
 
-int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length);
+int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
+		char *tmpdir);
 
 #ifdef __cplusplus
 }

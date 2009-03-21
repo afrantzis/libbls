@@ -830,5 +830,24 @@ class BufferTests(unittest.TestCase):
 		# Remove temporary file
 		os.remove(fd1_path)
 
+	def testBufferOptions(self):
+		"Set and get buffer options"
+
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_SENTINEL)
+		self.assertEqual(err, errno.EINVAL)
+
+		for i in xrange(BLESS_BUF_SENTINEL):
+			(err, val) = bless_buffer_get_option(self.buf, i) 
+			self.assertEqual(err, 0)
+			self.assertEqual(val, None)
+			err = bless_buffer_set_option(self.buf, i, 'opt%d' % i)
+			self.assertEqual(err, 0)
+
+		for i in xrange(BLESS_BUF_SENTINEL):
+			(err, val) = bless_buffer_get_option(self.buf, i) 
+			self.assertEqual(err, 0)
+			self.assertEqual(val, 'opt%d' % i)
+
+
 if __name__ == '__main__':
 	unittest.main()

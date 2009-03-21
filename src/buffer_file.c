@@ -30,6 +30,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "buffer.h"
+#include "buffer_options.h"
 #include "buffer_internal.h"
 #include "segcol_list.h"
 #include "data_object.h"
@@ -175,10 +176,11 @@ static int create_overlap_graph(overlap_graph_t **g, segcol_t *segcol,
  *
  * @param segcol the segcol_t containing the segments
  * @param edge the edge to break
+ * @param tmpdir the directory where to store temporary files (if needed)
  *
  * @return the operation error code
  */ 
-static int break_edge(segcol_t *segcol, struct edge_entry *edge)
+static int break_edge(segcol_t *segcol, struct edge_entry *edge, char *tmpdir)
 {
 	off_t src_start;
 	segment_get_start(edge->src, &src_start);
@@ -201,7 +203,7 @@ static int break_edge(segcol_t *segcol, struct edge_entry *edge)
 
 	if (err == ENOMEM) {
 		err = segcol_store_in_file(segcol, overlap_offset,
-			edge->weight);
+			edge->weight, tmpdir);
 	}
 
 	if (err)
@@ -386,6 +388,13 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(err);
 	}
 
+	err = options_new(&(*buf)->options, BLESS_BUF_SENTINEL);
+	if (err) {
+		segcol_free((*buf)->segcol);
+		free(buf);
+		return_error(err);
+	}
+
 	return 0;
 }
 
@@ -465,9 +474,15 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		list_head(removed_edges, struct edge_entry, ln)->next;
 	struct list_node *node;
 
+	char *tmpdir = NULL;
+	bless_buffer_get_option(buf, &tmpdir, BLESS_BUF_TMP_DIR);
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+
 	list_for_each(first_node, node) {
 		struct edge_entry *e = list_entry(node, struct edge_entry, ln);
-		err = break_edge(buf->segcol, e);
+
+		err = break_edge(buf->segcol, e, tmpdir);
 		if (err)
 			goto fail3;
 	}
@@ -577,6 +592,10 @@ int bless_buffer_free(bless_buffer_t *buf)
 		return_error(EINVAL);
 
 	int err = segcol_free(buf->segcol);
+	if (err)
+		return_error(err);
+
+	err = options_free(buf->options);
 	if (err)
 		return_error(err);
 
