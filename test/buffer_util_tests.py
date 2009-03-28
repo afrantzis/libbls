@@ -156,7 +156,70 @@ class BufferUtilTests(unittest.TestCase):
 		self.check_buffer(buf, data)
 
 		bless_buffer_free(buf)	
-		
+	
+	def testSegcolAddCopy(self):
+		"Copy data from a segcol into another"
+
+		# Create and fill memory data object
+		(err, data_obj) = data_object_memory_new_ptr(bless_malloc(10), 10)
+		self.assertEqual(err, 0)
+
+		data = "0123456789"
+		(err, buf) = data_object_get_data(data_obj, 0, 10, DATA_OBJECT_WRITE)
+		self.assertEqual(err, 0)
+		buf[:] = data
+
+		# Create segments
+		(err, seg1) = segment_new_ptr(int(data_obj), 0, 4, None)
+		self.assertEqual(err, 0)
+
+		(err, seg2) = segment_new_ptr(int(data_obj), 4, 3, None)
+		self.assertEqual(err, 0)
+
+		(err, seg3) = segment_new_ptr(int(data_obj), 7, 3, None)
+		self.assertEqual(err, 0)
+
+		# Append the segments to the list
+		(err, segcol) = segcol_list_new()
+		self.assertEqual(err, 0)
+
+		segcol_append(segcol, seg2)
+		segcol_append(segcol, seg3)
+		segcol_append(segcol, seg1)
+
+		(err, segcol1) = segcol_list_new()
+		self.assertEqual(err, 0)
+
+		segcol_append(segcol1, segment_copy(seg3)[1])
+		segcol_append(segcol1, segment_copy(seg1)[1])
+		segcol_append(segcol1, segment_copy(seg2)[1])
+
+		# Create a bless buffer and set the segcol
+		(err, buf) = bless_buffer_new()
+		self.assertEqual(err, 0)
+		set_buffer_segcol(buf, segcol)
+
+		# Read data from buffer and compare it to data read from python
+		read_data = create_string_buffer(10)
+		err = bless_buffer_read(buf, 0, read_data, 0, 10)
+		self.assertEqual(err, 0)
+		self.assertEqual("4567890123", read_data.value)
+
+		err = segcol_add_copy(segcol, 5, segcol1)
+		self.assertEqual(err, 0)
+
+		err, segcol_size = segcol_get_size(segcol)
+		self.assertEqual(err, 0)
+		self.assertEqual(segcol_size, 20)
+
+		read_data = create_string_buffer(20)
+		err = bless_buffer_read(buf, 0, read_data, 0, 20)
+		self.assertEqual(err, 0)
+		self.assertEqual("45678789012345690123", read_data.value)
+
+		segcol_free(segcol1)
+		bless_buffer_free(buf)
+
 if __name__ == '__main__':
 	unittest.main()
 

@@ -530,3 +530,83 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
 	return 0;
 }
 
+/** 
+ * Copies data from a segcol into another.
+ * 
+ * The dst and src segcol must not be the same.
+ *
+ * @param dst the segcol to copy data into
+ * @param offset the offset in the segcol to copy data into
+ * @param src the segcol to copy data from
+ * 
+ * @return the operation error code
+ */
+int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src)
+{
+	if (dst == NULL || src == NULL || offset < 0 || dst == src)
+		return_error(EINVAL);
+
+	off_t dst_size;
+	int err = segcol_get_size(dst, &dst_size);
+	if (err)
+		return_error(err);
+
+	segcol_iter_t *iter;
+	err = segcol_iter_new(src, &iter);
+	if (err)
+		return_error(err);
+
+	/* If the deleted data was beyond the end of file we must append it */
+	int use_append = (offset >= dst_size);
+
+	/* The offset of the last byte we re-added to the segcol */
+	off_t offset_reached = offset - 1;
+
+	int valid;
+
+	/* Re-add a copy of every segment to the segcol at its original position */
+	while (!segcol_iter_is_valid(iter, &valid) && valid) {
+		segment_t *seg;
+		off_t mapping;
+		segcol_iter_get_segment(iter, &seg);
+		segcol_iter_get_mapping(iter, &mapping);
+
+		segment_t *seg_copy;
+		segment_copy(seg, &seg_copy);
+
+		if (use_append)
+			err = segcol_append(dst, seg_copy);
+		else
+			err = segcol_insert(dst, offset + mapping, seg_copy);
+
+		if (err) {
+			segment_free(seg_copy);
+			goto fail;
+		}
+
+		offset_reached = offset + mapping - 1;
+
+		err = segcol_iter_next(iter);
+		if (err)
+			goto fail;
+	}
+
+	err = segcol_iter_free(iter);
+	if (err)
+		goto fail_iter_free;
+
+	return 0;
+
+fail:
+	segcol_iter_free(iter);
+fail_iter_free:
+	/* 
+	 * If we fail try to restore the previous state of the buffer by
+	 * deleting any segments we re-added.
+	 */
+	if (offset_reached >= offset)
+		segcol_delete(dst, NULL, offset, offset_reached - offset + 1);
+
+	return_error(err);
+}
+
