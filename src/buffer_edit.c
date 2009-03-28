@@ -32,56 +32,16 @@
 #include "data_object.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
+#include "buffer_action.h"
+#include "buffer_action_edit.h"
 
 #include "util.h"
 
 #pragma GCC visibility push(default)
 
-/********************/
-/* Helper functions */
-/********************/
-
-/**
- * Create a segment from a bless_buffer_source_t.
- *
- * @param[out] seg the created segment
- * @param src the source
- * @param src_offset the start of the segment range in src
- * @param length the length of the segment range
- *
- * @return the operation error code
- */
-static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *src,
-		off_t src_offset, off_t length)
-{
-	data_object_t *obj = (data_object_t *) src;
-
-	/* Create a segment pointing to the data object */
-	int err = segment_new(seg, obj, src_offset, length, data_object_update_usage);
-	if (err)
-		return_error(err);
-
-	/* 
-	 * Check if the specified file range is valid. This is done 
-	 * here so that overflow has already been checked by segment_new().
-	 */
-	off_t obj_size;
-	err = data_object_get_size(obj, &obj_size);
-	if (err)
-		goto fail;
-
-	if (src_offset + length - 1 * (length != 0) >= obj_size) {
-		err = EINVAL;
-		goto fail;
-	}
-
-	return 0;
-
-fail:
-	/* No need to free obj, this is handled by segment_free */
-	segment_free(*seg);
-	return_error(err);
-}
+/********************
+ * Helper functions *
+ ********************/
 
 /**
  * A segcol_foreach_func that reads data from a segment_t into memory.
@@ -114,9 +74,9 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 	return 0;
 }
 
-/*****************/
-/* API Functions */
-/*****************/
+/*****************
+ * API Functions *
+ *****************/
 
 /**
  * Appends data to a bless_buffer_t.
@@ -134,29 +94,24 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	if (buf == NULL || src == NULL) 
 		return_error(EINVAL);
 
-	/* 
-	 * No need to check for overflow, because it is detected by the
-	 * functions that follow.
-	 */
+	buffer_action_t *action;
 
-	segment_t *seg;
+	/* Create an append action */
+	int err = buffer_action_append_new(&action, buf, src, src_offset, length);
 
-	int err = create_segment_from_source(&seg, src, src_offset, length);
 	if (err)
 		return_error(err);
-	
-	segcol_t *sc = buf->segcol;
 
-	/* Append segment to the segcol */
-	err = segcol_append(sc, seg);
-	if (err) 
-		goto fail;
+	/* Perform action */
+	err = buffer_action_do(action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
+		
+	buffer_action_free(action);
 
 	return 0;
-fail:
-	/* No need to free obj, this is handled by segment_free */
-	segment_free(seg);
-	return_error(err);
 }
 
 /**
@@ -176,29 +131,25 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	if (buf == NULL || src == NULL) 
 		return_error(EINVAL);
 
-	/* 
-	 * No need to check for overflow, because it is detected by the
-	 * functions that follow.
-	 */
+	/* Create an insert action */
+	buffer_action_t *action;
 
-	segment_t *seg;
+	int err = buffer_action_insert_new(&action, buf, offset, src, src_offset,
+			length);
 
-	int err = create_segment_from_source(&seg, src, src_offset, length);
 	if (err)
 		return_error(err);
 
-	segcol_t *sc = buf->segcol;
-
-	/* Insert segment to the segcol */
-	err = segcol_insert(sc, offset, seg);
-	if (err) 
-		goto fail;
+	/* Perform action */
+	err = buffer_action_do(action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
+		
+	buffer_action_free(action);
 
 	return 0;
-fail:
-	/* No need to free obj, this is handled by segment_free */
-	segment_free(seg);
-	return_error(err);
 }
 
 /**
@@ -212,18 +163,25 @@ fail:
  */
 int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 {
-	if (buf == NULL) 
+	if (buf == NULL)
 		return_error(EINVAL);
 
-	/* 
-	 * No need to check for overflow, valid ranges etc.
-	 * They are all checked in segcol_delete().
-	 */
+	/* Create a delete action */
+	buffer_action_t *action;
 
-	int err = segcol_delete(buf->segcol, NULL, offset, length);
+	int err = buffer_action_delete_new(&action, buf, offset, length);
 
 	if (err)
 		return_error(err);
+
+	/* Perform action */
+	err = buffer_action_do(action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
+		
+	buffer_action_free(action);
 
 	return 0;
 }
