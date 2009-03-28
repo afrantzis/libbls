@@ -71,7 +71,7 @@
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
 %apply segment_t ** { priority_queue_t **, overlap_graph_t **, disjoint_set_t ** }
-%apply segment_t ** { struct list **, options_t **, char **}
+%apply segment_t ** { struct list **, options_t **, char **, buffer_action_t **}
 
 
 /* Exception for void **: Append void * to return list without conversion */
