@@ -4,9 +4,9 @@
  * This file is part of libbls.
  *
  * libbls is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option) any later
- * version.
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
  *
  * libbls is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -92,6 +92,7 @@ struct buffer_action_delete_impl {
 	bless_buffer_t *buf;
 	off_t offset;
 	off_t length;
+	segcol_t *deleted;
 };
 
 /********************
@@ -163,13 +164,15 @@ int buffer_action_append_new(buffer_action_t **action, bless_buffer_t *buf,
 		return_error(EINVAL);
 
 	/* Allocate memory for implementation */
-	struct buffer_action_append_impl *impl = malloc(sizeof(struct buffer_action_append_impl));
+	struct buffer_action_append_impl *impl =
+		malloc(sizeof(struct buffer_action_append_impl));
 	
 	if (impl == NULL)
 		return_error(EINVAL);
 
 	/* Create buffer_action_t */
-	int err = buffer_action_create_impl(action, impl, &buffer_action_append_funcs);
+	int err = buffer_action_create_impl(action, impl,
+			&buffer_action_append_funcs);
 
 	if (err)
 		goto fail;
@@ -212,13 +215,16 @@ int buffer_action_insert_new(buffer_action_t **action, bless_buffer_t *buf,
 		return_error(EINVAL);
 
 	/* Allocate memory for implementation */
-	struct buffer_action_insert_impl *impl = malloc(sizeof(struct buffer_action_insert_impl));
+	struct buffer_action_insert_impl *impl =
+		malloc(sizeof(struct buffer_action_insert_impl));
 	
 	if (impl == NULL)
 		return_error(EINVAL);
 
 	/* Create buffer_action_t */
-	int err = buffer_action_create_impl(action, impl, &buffer_action_insert_funcs);
+	int err = buffer_action_create_impl(action, impl,
+			&buffer_action_insert_funcs);
+
 	if (err)
 		goto fail;
 
@@ -259,13 +265,16 @@ int buffer_action_delete_new(buffer_action_t **action, bless_buffer_t *buf,
 		return_error(EINVAL);
 
 	/* Allocate memory for implementation */
-	struct buffer_action_delete_impl *impl = malloc(sizeof(struct buffer_action_delete_impl));
+	struct buffer_action_delete_impl *impl =
+		malloc(sizeof(struct buffer_action_delete_impl));
 	
 	if (impl == NULL)
 		return_error(EINVAL);
 
 	/* Create buffer_action_t */
-	int err = buffer_action_create_impl(action, impl, &buffer_action_delete_funcs);
+	int err = buffer_action_create_impl(action, impl,
+			&buffer_action_delete_funcs);
+
 	if (err)
 		goto fail;
 
@@ -273,6 +282,7 @@ int buffer_action_delete_new(buffer_action_t **action, bless_buffer_t *buf,
 	impl->buf = buf;
 	impl->offset = offset;
 	impl->length = length;
+	impl->deleted = NULL;
 
 	return 0;
 
@@ -300,7 +310,9 @@ static int buffer_action_append_do(buffer_action_t *action)
 	 */
 	segment_t *seg;
 
-	int err = create_segment_from_source(&seg, impl->src, impl->src_offset, impl->length);
+	int err = create_segment_from_source(&seg, impl->src, impl->src_offset,
+			impl->length);
+
 	if (err)
 		return_error(err);
 	
@@ -312,15 +324,36 @@ static int buffer_action_append_do(buffer_action_t *action)
 		goto fail;
 
 	return 0;
+
 fail:
-	/* No need to free obj, this is handled by segment_free */
 	segment_free(seg);
 	return_error(err);
 }
 
 static int buffer_action_append_undo(buffer_action_t *action)
 {
-	return_error(ENOSYS);
+	if (action == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_append_impl *impl =
+		(struct buffer_action_append_impl *) buffer_action_get_impl(action);
+
+	/* 
+	 * No need to check for overflow, because it is detected by the
+	 * functions that follow.
+	 */
+	segcol_t *sc = impl->buf->segcol;
+	off_t segcol_size;
+	int err = segcol_get_size(sc, &segcol_size);
+	if (err)
+		return_error(err);
+
+	/* Delete range from the segcol */
+	err = segcol_delete(sc, NULL, segcol_size - impl->length, impl->length);
+	if (err) 
+		return_error(err);
+
+	return 0;
 }
 
 static int buffer_action_append_free(buffer_action_t *action)
@@ -359,7 +392,9 @@ static int buffer_action_insert_do(buffer_action_t *action)
 	 */
 	segment_t *seg;
 
-	int err = create_segment_from_source(&seg, impl->src, impl->src_offset, impl->length);
+	int err = create_segment_from_source(&seg, impl->src, impl->src_offset,
+			impl->length);
+
 	if (err)
 		return_error(err);
 	
@@ -372,14 +407,30 @@ static int buffer_action_insert_do(buffer_action_t *action)
 
 	return 0;
 fail:
-	/* No need to free obj, this is handled by segment_free */
 	segment_free(seg);
 	return_error(err);
 }
 
 static int buffer_action_insert_undo(buffer_action_t *action)
 {
-	return_error(ENOSYS);
+	if (action == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_insert_impl *impl =
+		(struct buffer_action_insert_impl *) buffer_action_get_impl(action);
+
+	/* 
+	 * No need to check for overflow, because it is detected by the
+	 * functions that follow.
+	 */
+	segcol_t *sc = impl->buf->segcol;
+
+	/* Delete range from the segcol */
+	int err = segcol_delete(sc, NULL, impl->offset, impl->length);
+	if (err) 
+		return_error(err);
+
+	return 0;
 }
 
 static int buffer_action_insert_free(buffer_action_t *action)
@@ -416,19 +467,42 @@ static int buffer_action_delete_do(buffer_action_t *action)
 	 * No need to check for overflow, valid ranges etc.
 	 * They are all checked in segcol_delete().
 	 */
-
-	int err = segcol_delete(impl->buf->segcol, NULL, impl->offset,
+	segcol_t *deleted;
+	int err = segcol_delete(impl->buf->segcol, &deleted, impl->offset,
 			impl->length);
 
 	if (err)
 		return_error(err);
+
+	/* Free previous deleted data if any */
+	if (impl->deleted != NULL) {
+		err = segcol_free(impl->deleted);
+		if (err) {
+			segcol_add_copy(impl->buf->segcol, impl->offset, deleted);
+			segcol_free(deleted);
+			return_error(err);
+		}
+	}
+
+	/* Store new deleted data */
+	impl->deleted = deleted;
 
 	return 0;
 }
 
 static int buffer_action_delete_undo(buffer_action_t *action)
 {
-	return_error(ENOSYS);
+	if (action == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_delete_impl *impl =
+		(struct buffer_action_delete_impl *) buffer_action_get_impl(action);
+
+	int err = segcol_add_copy(impl->buf->segcol, impl->offset, impl->deleted);
+	if (err)
+		return_error(err);
+		
+	return 0;
 }
 
 static int buffer_action_delete_free(buffer_action_t *action)
@@ -436,8 +510,14 @@ static int buffer_action_delete_free(buffer_action_t *action)
 	if (action == NULL)
 		return_error(EINVAL);
 
-	struct buffer_action_insert_impl *impl =
-		(struct buffer_action_insert_impl *) buffer_action_get_impl(action);
+	struct buffer_action_delete_impl *impl =
+		(struct buffer_action_delete_impl *) buffer_action_get_impl(action);
+
+	if (impl->deleted != NULL) {
+		int err = segcol_free(impl->deleted);
+		if (err)
+			return err;
+	}
 
 	free(impl);
 
