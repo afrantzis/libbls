@@ -74,6 +74,39 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 	return 0;
 }
 
+
+/** 
+ * Appends a buffer_action_t to an action list.
+ * 
+ * @param list the action list to append to
+ * @param action the action to append
+ * 
+ * @return the operation error code
+ */
+static int append_action(struct list *list, buffer_action_t *action)
+{
+	if (list == NULL || action == NULL)
+		return_error(EINVAL);
+
+	/* Create a new buffer_action_entry */
+	struct buffer_action_entry *entry;
+
+	int err = list_new_entry(&entry, struct buffer_action_entry, ln);
+	if (err)
+		return_error(err);
+
+	entry->action = action;
+
+	/* Append it to the list */
+	err = list_insert_before(action_list_tail(list), &entry->ln);
+	if (err) {
+		free(entry);
+		return_error(err);
+	}
+
+	return 0;
+}
+
 /*****************
  * API Functions *
  *****************/
@@ -109,7 +142,12 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 		return_error(err);
 	}
 		
-	buffer_action_free(action);
+	/* Append the action to the undo list */
+	err = append_action(buf->undo_list, action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
 
 	return 0;
 }
@@ -147,7 +185,12 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		return_error(err);
 	}
 		
-	buffer_action_free(action);
+	/* Append the action to the undo list */
+	err = append_action(buf->undo_list, action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
 
 	return 0;
 }
@@ -181,7 +224,12 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 		return_error(err);
 	}
 		
-	buffer_action_free(action);
+	/* Append the action to the undo list */
+	err = append_action(buf->undo_list, action);
+	if (err) {
+		buffer_action_free(action);
+		return_error(err);
+	}
 
 	return 0;
 }

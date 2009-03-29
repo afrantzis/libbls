@@ -30,6 +30,20 @@ extern "C" {
 
 #include "segcol.h"
 #include "options.h"
+#include "list.h"
+#include "buffer_action.h"
+
+/* Helper macros for action list */
+#define action_list_head(ptr) list_head((ptr), struct buffer_action_entry, ln)
+#define action_list_tail(ptr) list_tail((ptr), struct buffer_action_entry, ln)
+
+/** 
+ * Buffer action list entry.
+ */
+struct buffer_action_entry {
+	struct list_node ln;
+	buffer_action_t *action;
+};
 
 /**
  * Bless buffer struct
@@ -37,6 +51,7 @@ extern "C" {
 struct bless_buffer {
 	segcol_t *segcol;
 	options_t *options;
+	struct list *undo_list;
 };
 
 #ifdef __cplusplus

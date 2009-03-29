@@ -395,6 +395,14 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(err);
 	}
 
+	err = list_new(&(*buf)->undo_list, struct buffer_action_entry, ln);
+	if (err) {
+		options_free((*buf)->options);
+		segcol_free((*buf)->segcol);
+		free(buf);
+		return_error(err);
+	}
+
 	return 0;
 }
 
@@ -598,6 +606,18 @@ int bless_buffer_free(bless_buffer_t *buf)
 	err = options_free(buf->options);
 	if (err)
 		return_error(err);
+
+	/* Free the stored actions */
+	struct list_node *node;
+
+	list_for_each(action_list_head(buf->undo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		buffer_action_free(entry->action);
+	}
+
+	list_free(buf->undo_list, struct buffer_action_entry, ln);
 
 	free(buf);
 

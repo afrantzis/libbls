@@ -31,6 +31,7 @@
 #include "buffer_action.h"
 #include "buffer_action_internal.h"
 #include "buffer_action_edit.h"
+#include "buffer_util.h"
 #include "segcol.h"
 #include "data_object.h"
 #include "util.h"

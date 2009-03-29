@@ -48,12 +48,24 @@ class BufferTests(unittest.TestCase):
 		self.assertNotEqual(self.buf, None)
 
 	def tearDown(self):
-		bless_buffer_free(self.buf)
+		err = bless_buffer_free(self.buf)
+		self.assertEqual(err, 0)
 
 	def testNew(self):
 		(err, size) = bless_buffer_get_size(self.buf)
 		self.assertEqual(err, 0)
 		self.assertEqual(size, 0)
+
+	def check_buffer(self, buf, expected_data):
+		"Check if the buffer contains the expected_data"
+
+		# Read data from buffer and compare it to expected data
+		err, buf_size = bless_buffer_get_size(buf)
+		read_data = create_string_buffer(buf_size)
+		err = bless_buffer_read(buf, 0, read_data, 0, buf_size)
+		self.assertEqual(err, 0)
+
+		self.assertEqual(expected_data, read_data.value)
 
 	def testAppend(self):
 		"Append data to the buffer"
@@ -848,6 +860,88 @@ class BufferTests(unittest.TestCase):
 			self.assertEqual(err, 0)
 			self.assertEqual(val, 'opt%d' % i)
 
+	def testBufferUndo(self):
+		"Undo buffer actions"
+
+		data = "0123456789abcdefghij" 
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Add data
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 1)
+
+		err = bless_buffer_insert(self.buf, 5, src, 10, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		err = bless_buffer_delete(self.buf, 0, 2);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_insert(self.buf, 0, src, 13, 4);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_delete(self.buf, 2, 13);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_append(self.buf, src, 17, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "dehij")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+		# Start undoing
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+
+		(err, bufsize) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(bufsize, 0)
+
+		# No more actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
 
 if __name__ == '__main__':
 	unittest.main()

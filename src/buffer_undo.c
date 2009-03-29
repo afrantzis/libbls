@@ -24,12 +24,12 @@
  */
 
 #include <errno.h>
+#include <stdlib.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "buffer_action.h"
 #include "util.h"
 
-
-#pragma GCC visibility push(hidden)
 
 /**
  * Undoes the last operation in a bless_buffer_t.
@@ -40,8 +40,44 @@
  */
 int bless_buffer_undo(bless_buffer_t *buf)
 {
-	return_error(ENOSYS);
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	/* Make sure we can undo */
+	int can_undo;
+	int err = bless_buffer_can_undo(buf, &can_undo);
+	if (err)
+		return_error(err);
+
+	if (!can_undo)
+		return_error(EINVAL);
+
+	/* Get the last action from the undo list and undo it */
+	struct list_node *last = action_list_tail(buf->undo_list)->prev;
+
+	struct buffer_action_entry *entry = 
+		list_entry(last, struct buffer_action_entry, ln);
+
+	err = buffer_action_undo(entry->action);
+	if (err)
+		return_error(err);
+	
+	/* Remove the action from the action list */
+	err = list_delete_chain(last, last);
+	if (err) {
+		/* If we can remove the action redo it and report error */
+		buffer_action_do(entry->action);
+		return_error(err);
+	}
+
+	/* Free the action and the list entry */
+	buffer_action_free(entry->action);
+	free(entry);
+
+	return 0;
 }
+
+#pragma GCC visibility push(hidden)
 
 /**
  * Redoes the last undone operation in a bless_buffer_t.

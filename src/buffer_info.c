@@ -32,8 +32,6 @@
 
 #pragma GCC visibility push(default)
 
-/* bless_buffer_can_{undo,redo} are not implemented yet */
-#pragma GCC visibility push(hidden)
 
 /**
  * Checks whether the last operation in a bless_buffer_t can be undone.
@@ -45,8 +43,17 @@
  */
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 {
-	return_error(ENOSYS);
+	if (buf == NULL || can_undo == NULL)
+		return_error(EINVAL);
+
+	struct list_node *first = action_list_head(buf->undo_list)->next;
+
+	*can_undo = !(first->next == first);
+
+	return 0;
 }
+
+#pragma GCC visibility push(hidden)
 
 /**
  * Checks whether the last undone operation in a bless_buffer_t can be redone.
