@@ -53,8 +53,6 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 	return 0;
 }
 
-#pragma GCC visibility push(hidden)
-
 /**
  * Checks whether the last undone operation in a bless_buffer_t can be redone.
  *
@@ -65,10 +63,15 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
  */
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 {
-	return_error(ENOSYS);
-}
+	if (buf == NULL || can_redo == NULL)
+		return_error(EINVAL);
 
-#pragma GCC visibility pop
+	struct list_node *first = action_list_head(buf->redo_list)->next;
+
+	*can_redo = !(first->next == first);
+
+	return 0;
+}
 
 /**
  * Gets the size of a bless_buffer_t.

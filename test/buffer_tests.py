@@ -67,6 +67,21 @@ class BufferTests(unittest.TestCase):
 
 		self.assertEqual(expected_data, read_data.value)
 
+	def undo_redo_mix(self, expected_after_redo, expected_after_undo):
+		"Redo, then undo, then redo again"
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, expected_after_redo)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, expected_after_undo)
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, expected_after_redo)
+
 	def testAppend(self):
 		"Append data to the buffer"
 
@@ -860,20 +875,10 @@ class BufferTests(unittest.TestCase):
 			self.assertEqual(err, 0)
 			self.assertEqual(val, 'opt%d' % i)
 
-	def testBufferUndo(self):
-		"Undo buffer actions"
-
+	def fill_buffer_for_undo(self):
 		data = "0123456789abcdefghij" 
 		(err, src) = bless_buffer_source_memory(data, 20, None)
 		self.assertEqual(err, 0)
-
-		# No actions to undo, these should fail
-		(err, can_undo) = bless_buffer_can_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.assertEqual(can_undo, 0)
-		
-		err = bless_buffer_undo(self.buf)
-		self.assertNotEqual(err, 0)
 
 		# Add data
 		err = bless_buffer_append(self.buf, src, 0, 10)
@@ -906,6 +911,19 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
+		
+	def testBufferUndo(self):
+		"Undo buffer actions"
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		self.fill_buffer_for_undo()
 
 		# Start undoing
 		err = bless_buffer_undo(self.buf)
@@ -942,6 +960,120 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_undo(self.buf)
 		self.assertNotEqual(err, 0)
+
+	def testBufferRedo(self):
+		"Redo buffer actions"
+
+		self.testBufferUndo()
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		# Start undo-redo mixes (redo, then undo, then redo again)
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 1)
+
+		self.undo_redo_mix("01234abc56789", "0123456789")
+
+		self.undo_redo_mix("234abc56789", "01234abc56789")
+
+		self.undo_redo_mix("defg234abc56789", "234abc56789")
+
+		self.undo_redo_mix("de", "defg234abc56789")
+
+		self.undo_redo_mix("dehij", "de")
+
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+
+		err = bless_buffer_redo(self.buf)
+		self.assertNotEqual(err, 0)
+
+	def testBufferUndoMixedEdits(self):
+		"Undo buffer actions and perform edit between undos"
+
+		data = "!@#$%^&*()" 
+		(err, src) = bless_buffer_source_memory(data, 10, None)
+		self.assertEqual(err, 0)
+
+		self.fill_buffer_for_undo()
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 1)
+
+		err = bless_buffer_insert(self.buf, 5, src, 0, 2)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg2!@34abc56789")
+
+		# We must not be able to redo after performing an action
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg2!@34abc56789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_delete(self.buf, 0, 6)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "56789")
+
+		# We must not be able to redo after performing an action
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "56789")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_append(self.buf, src, 3, 6)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789$%^&*(")
+
+		# We must not be able to redo after performing an action
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -383,27 +383,34 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(ENOMEM);
 	
 	int err = segcol_list_new(&(*buf)->segcol);
-	if (err) {
-		free(buf);
-		return_error(err);
-	}
+	if (err)
+		goto fail_segcol;
 
 	err = options_new(&(*buf)->options, BLESS_BUF_SENTINEL);
-	if (err) {
-		segcol_free((*buf)->segcol);
-		free(buf);
-		return_error(err);
-	}
+	if (err)
+		goto fail_options;
 
 	err = list_new(&(*buf)->undo_list, struct buffer_action_entry, ln);
-	if (err) {
-		options_free((*buf)->options);
-		segcol_free((*buf)->segcol);
-		free(buf);
-		return_error(err);
-	}
+	if (err)
+		goto fail_undo;
+
+	err = list_new(&(*buf)->redo_list, struct buffer_action_entry, ln);
+	if (err)
+		goto fail_redo;
 
 	return 0;
+
+	/* Handle failures */
+fail_redo:
+	list_free((*buf)->undo_list, struct buffer_action_entry, ln);
+fail_undo:
+	options_free((*buf)->options);
+fail_options:
+	segcol_free((*buf)->segcol);
+fail_segcol:
+	free(buf);
+
+	return_error(err);
 }
 
 /**
@@ -607,7 +614,7 @@ int bless_buffer_free(bless_buffer_t *buf)
 	if (err)
 		return_error(err);
 
-	/* Free the stored actions */
+	/* Free the stored undo actions */
 	struct list_node *node;
 
 	list_for_each(action_list_head(buf->undo_list)->next, node) {
@@ -618,6 +625,16 @@ int bless_buffer_free(bless_buffer_t *buf)
 	}
 
 	list_free(buf->undo_list, struct buffer_action_entry, ln);
+
+	/* Free the stored redo actions */
+	list_for_each(action_list_head(buf->redo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		buffer_action_free(entry->action);
+	}
+
+	list_free(buf->redo_list, struct buffer_action_entry, ln);
 
 	free(buf);
 

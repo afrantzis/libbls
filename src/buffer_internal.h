@@ -52,6 +52,7 @@ struct bless_buffer {
 	segcol_t *segcol;
 	options_t *options;
 	struct list *undo_list;
+	struct list *redo_list;
 };
 
 #ifdef __cplusplus

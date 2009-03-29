@@ -108,9 +108,9 @@ int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset,
 
 int bless_buffer_undo(bless_buffer_t *buf);
 
-/* Not yet implemented
 int bless_buffer_redo(bless_buffer_t *buf);
 
+/* Not yet implemented
 int bless_buffer_begin_multi_op(bless_buffer_t *buf);
 
 int bless_buffer_end_multi_op(bless_buffer_t *buf);
@@ -125,9 +125,7 @@ int bless_buffer_end_multi_op(bless_buffer_t *buf);
 
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
 
-/* Not yet implemented
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
-*/
 
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 

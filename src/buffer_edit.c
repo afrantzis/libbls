@@ -83,7 +83,7 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
  * 
  * @return the operation error code
  */
-static int append_action(struct list *list, buffer_action_t *action)
+static int action_list_append(struct list *list, buffer_action_t *action)
 {
 	if (list == NULL || action == NULL)
 		return_error(EINVAL);
@@ -102,6 +102,34 @@ static int append_action(struct list *list, buffer_action_t *action)
 	if (err) {
 		free(entry);
 		return_error(err);
+	}
+
+	return 0;
+}
+
+/** 
+ * Clears an action list's contents without freeing the list itself.
+ * 
+ * @param list the list whose contents to clear
+ * 
+ * @return the operation error code
+ */
+static int action_list_clear(struct list *list)
+{
+	struct list_node *node;
+	struct list_node *tmp;
+
+	/* 
+	 * Use the safe iterator so that we can delete the current 
+	 * node from the list as we traverse it.
+	 */
+	list_for_each_safe(action_list_head(list)->next, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		list_delete_chain(node, node);
+		buffer_action_free(entry->action);
+		free(entry);
 	}
 
 	return 0;
@@ -143,11 +171,13 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	}
 		
 	/* Append the action to the undo list */
-	err = append_action(buf->undo_list, action);
+	err = action_list_append(buf->undo_list, action);
 	if (err) {
 		buffer_action_free(action);
 		return_error(err);
 	}
+
+	action_list_clear(buf->redo_list);
 
 	return 0;
 }
@@ -186,11 +216,13 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	}
 		
 	/* Append the action to the undo list */
-	err = append_action(buf->undo_list, action);
+	err = action_list_append(buf->undo_list, action);
 	if (err) {
 		buffer_action_free(action);
 		return_error(err);
 	}
+
+	action_list_clear(buf->redo_list);
 
 	return 0;
 }
@@ -225,11 +257,13 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	}
 		
 	/* Append the action to the undo list */
-	err = append_action(buf->undo_list, action);
+	err = action_list_append(buf->undo_list, action);
 	if (err) {
 		buffer_action_free(action);
 		return_error(err);
 	}
+
+	action_list_clear(buf->redo_list);
 
 	return 0;
 }
