@@ -23,7 +23,9 @@
  * Buffer info operations
  */
 
+#include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 #include "buffer.h"
 #include "buffer_internal.h"
 
@@ -94,7 +96,27 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 	if (buf == NULL || opt >= BLESS_BUF_SENTINEL)
 		return_error(EINVAL);
 
-	return options_set_option(buf->options, opt, val);
+	switch (opt) {
+		case BLESS_BUF_TMP_DIR:
+			if (val == NULL)
+				buf->options->tmp_dir = NULL;
+			else {
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->tmp_dir != NULL)
+					free(buf->options->tmp_dir);
+				buf->options->tmp_dir = dup;
+			}
+			break;
+
+		default:
+			break;
+	}
+
+	return 0;
 }
 
 /** 
@@ -115,7 +137,17 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 	if (buf == NULL || opt >= BLESS_BUF_SENTINEL)
 		return_error(EINVAL);
 
-	return options_get_option(buf->options, val, opt);
+	switch (opt) {
+		case BLESS_BUF_TMP_DIR:
+			*val = buf->options->tmp_dir;
+			break;
+
+		default:
+			*val = NULL;
+			break;
+	}
+
+	return 0;
 }
 
 #pragma GCC visibility pop
