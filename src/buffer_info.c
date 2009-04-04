@@ -99,7 +99,7 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 	switch (opt) {
 		case BLESS_BUF_TMP_DIR:
 			if (val == NULL)
-				buf->options->tmp_dir = NULL;
+				return_error(EINVAL);
 			else {
 				char *dup = strdup(val);
 				if (dup == NULL)

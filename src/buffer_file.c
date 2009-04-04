@@ -374,7 +374,10 @@ static int buffer_options_new(struct buffer_options **opts)
 	if (*opts == NULL)
 		return_error(ENOMEM);
 
-	(*opts)->tmp_dir = NULL;
+	(*opts)->tmp_dir = strdup("/tmp");
+	if ((*opts)->tmp_dir == NULL)
+		return_error(ENOMEM);
+
 
 	return 0;
 }
@@ -507,14 +510,10 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		list_head(removed_edges, struct edge_entry, ln)->next;
 	struct list_node *node;
 
-	char *tmpdir = buf->options->tmp_dir;
-	if (tmpdir == NULL)
-		tmpdir = "/tmp";
-
 	list_for_each(first_node, node) {
 		struct edge_entry *e = list_entry(node, struct edge_entry, ln);
 
-		err = break_edge(buf->segcol, e, tmpdir);
+		err = break_edge(buf->segcol, e, buf->options->tmp_dir);
 		if (err)
 			goto fail3;
 	}
