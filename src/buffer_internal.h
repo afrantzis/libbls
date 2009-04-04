@@ -29,7 +29,6 @@ extern "C" {
 #endif
 
 #include "segcol.h"
-#include "options.h"
 #include "list.h"
 #include "buffer_action.h"
 
@@ -45,12 +44,19 @@ struct buffer_action_entry {
 	buffer_action_t *action;
 };
 
+/** 
+ * Buffer options struct
+ */
+struct buffer_options {
+	char *tmp_dir;
+};
+
 /**
  * Bless buffer struct
  */
 struct bless_buffer {
 	segcol_t *segcol;
-	options_t *options;
+	struct buffer_options *options;
 	struct list *undo_list;
 	struct list *redo_list;
 };
