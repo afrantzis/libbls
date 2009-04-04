@@ -863,6 +863,7 @@ class BufferTests(unittest.TestCase):
 		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_SENTINEL)
 		self.assertEqual(err, errno.EINVAL)
 
+		# BLESS_BUF_TMP_DIR
 		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_TMP_DIR)
 		self.assertEqual(err, 0)
 		self.assertEqual(val, '/tmp')
@@ -873,6 +874,25 @@ class BufferTests(unittest.TestCase):
 		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_TMP_DIR) 
 		self.assertEqual(err, 0)
 		self.assertEqual(val, '/mydir/tmp')
+
+		# BLESS_BUF_UNDO_LIMIT
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_UNDO_LIMIT)
+		self.assertEqual(err, 0)
+		self.assertEqual(val, 'infinite')
+
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '2rst')
+		self.assertEqual(err, errno.EINVAL)
+
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_UNDO_LIMIT)
+		self.assertEqual(err, 0)
+		self.assertEqual(val, 'infinite')
+
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '1024')
+		self.assertEqual(err, 0)
+
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_UNDO_LIMIT) 
+		self.assertEqual(err, 0)
+		self.assertEqual(val, '1024')
 
 	def fill_buffer_for_undo(self):
 		data = "0123456789abcdefghij" 
@@ -1073,6 +1093,202 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
+
+	def testBufferUndoLimitZero(self):
+		"Try to undo actions when the limit is zero"
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Add some data
+		data = "0123456789abcdefghij" 
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+		# Set undo limit
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '0')
+		self.assertEqual(err, 0)
+
+		# The undo limit is 0, we shouldn't be able to undo
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+	def testBufferUndoLimit(self):
+		"Enforce an undo limit"
+
+		# Set undo limit
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '2')
+		self.assertEqual(err, 0)
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Fill the buffer
+		self.fill_buffer_for_undo()
+
+		# Undo some actions
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+		
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+
+	def testBufferUndoLimitAfter(self):
+		"Enforce an undo limit after having performed actions"
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Fill the buffer
+		self.fill_buffer_for_undo()
+
+		# Undo some actions
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		# Set undo limit
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '1')
+		self.assertEqual(err, 0)
+
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+	def testBufferUndoLimitIncrease(self):
+		"Increase the undo limit"
+
+		# No actions to undo, these should fail
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Fill the buffer
+		self.fill_buffer_for_undo()
+
+		# Undo some actions
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+		
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		# Set undo limit
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '2')
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		# Increase undo limit
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '4')
+		self.assertEqual(err, 0)
+
+		# Some more actions
+		data = "!@#$%^&*()" 
+		(err, src) = bless_buffer_source_memory(data, 10, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 0, 2)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789!@")
+
+		err = bless_buffer_insert(self.buf, 5, src, 2, 2)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234ab#$c56789!@")
+
+		err = bless_buffer_delete(self.buf, 8, 3)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234ab#$c89!@")
+
+		err = bless_buffer_append(self.buf, src, 8, 2)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234ab#$c89!@()")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+		# Only the last 4 actions should be available
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234ab#$c89!@")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234ab#$c56789!@")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789!@")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
 
 if __name__ == '__main__':
 	unittest.main()

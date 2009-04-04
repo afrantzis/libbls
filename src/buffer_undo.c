@@ -70,14 +70,19 @@ int bless_buffer_undo(bless_buffer_t *buf)
 		return_error(err);
 	}
 
+	--buf->undo_list_size;
+
 	/* Add the entry to the redo list */
 	err = list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
 	if (err) {
 		/* Add it back to the undo list and redo the action */
 		list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+		++buf->undo_list_size;
 		buffer_action_do(entry->action);
 		return_error(err);
 	}
+
+	++buf->redo_list_size;
 
 	return 0;
 }
@@ -122,14 +127,24 @@ int bless_buffer_redo(bless_buffer_t *buf)
 		return_error(err);
 	}
 
-	/* Add the entry to the undo list */
+	--buf->redo_list_size;
+
+	/* 
+	 * Add the entry to the undo list.
+	 * We don't need to check if we can indeed move the entry to the undo list
+	 * without surpassing the undo limit, because throughout the program we
+	 * maintain the undo-redo invariant (undo+redo actions <= undo_limit).
+	 */
 	err = list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
 	if (err) {
 		/* Add it back to the redo list and undo the action */
 		list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
+		++buf->redo_list_size;
 		buffer_action_undo(entry->action);
 		return_error(err);
 	}
+
+	++buf->undo_list_size;
 
 	return 0;
 }

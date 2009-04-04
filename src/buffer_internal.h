@@ -49,6 +49,9 @@ struct buffer_action_entry {
  */
 struct buffer_options {
 	char *tmp_dir;
+
+	size_t undo_limit;
+	char *undo_limit_str;
 };
 
 /**
@@ -59,6 +62,8 @@ struct bless_buffer {
 	struct buffer_options *options;
 	struct list *undo_list;
 	struct list *redo_list;
+	size_t undo_list_size;
+	size_t redo_list_size;
 };
 
 #ifdef __cplusplus

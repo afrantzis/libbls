@@ -74,7 +74,6 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 	return 0;
 }
 
-
 /** 
  * Appends a buffer_action_t to an action list.
  * 
@@ -83,9 +82,9 @@ static int read_foreach_func(segcol_t *segcol, segment_t *seg,
  * 
  * @return the operation error code
  */
-static int action_list_append(struct list *list, buffer_action_t *action)
+static int undo_list_append(bless_buffer_t *buf, buffer_action_t *action)
 {
-	if (list == NULL || action == NULL)
+	if (buf == NULL || action == NULL)
 		return_error(EINVAL);
 
 	/* Create a new buffer_action_entry */
@@ -98,42 +97,17 @@ static int action_list_append(struct list *list, buffer_action_t *action)
 	entry->action = action;
 
 	/* Append it to the list */
-	err = list_insert_before(action_list_tail(list), &entry->ln);
+	err = list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
 	if (err) {
 		free(entry);
 		return_error(err);
 	}
 
-	return 0;
-}
-
-/** 
- * Clears an action list's contents without freeing the list itself.
- * 
- * @param list the list whose contents to clear
- * 
- * @return the operation error code
- */
-static int action_list_clear(struct list *list)
-{
-	struct list_node *node;
-	struct list_node *tmp;
-
-	/* 
-	 * Use the safe iterator so that we can delete the current 
-	 * node from the list as we traverse it.
-	 */
-	list_for_each_safe(action_list_head(list)->next, node, tmp) {
-		struct buffer_action_entry *entry =
-			list_entry(node, struct buffer_action_entry , ln);
-
-		list_delete_chain(node, node);
-		buffer_action_free(entry->action);
-		free(entry);
-	}
+	++buf->undo_list_size;
 
 	return 0;
 }
+
 
 /*****************
  * API Functions *
@@ -165,21 +139,34 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	/* Perform action */
 	err = buffer_action_do(action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
-	}
+	if (err)
+		goto fail;
 		
-	/* Append the action to the undo list */
-	err = action_list_append(buf->undo_list, action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
+	/* 
+	 * Make sure that the undo list has space for one action (provided the
+	 * undo limit is > 0).
+	 */
+	err = undo_list_enforce_limit(buf, 1);
+	if (err)
+		goto fail;
+
+	/* 
+	 * If we have space in the undo list to append the action.
+	 * Then only case we won't have space is when the undo limit is 0.
+	 */
+	if (buf->undo_list_size < buf->options->undo_limit) {
+		err = undo_list_append(buf, action);
+		if (err)
+			goto fail;
 	}
 
-	action_list_clear(buf->redo_list);
+	redo_list_clear(buf);
 
 	return 0;
+
+fail:
+	buffer_action_free(action);
+	return_error(err);
 }
 
 /**
@@ -215,16 +202,31 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		return_error(err);
 	}
 		
-	/* Append the action to the undo list */
-	err = action_list_append(buf->undo_list, action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
+	/* 
+	 * Make sure that the undo list has space for one action (provided the
+	 * undo limit is > 0).
+	 */
+	err = undo_list_enforce_limit(buf, 1);
+	if (err)
+		goto fail;
+
+	/* 
+	 * If we have space in the undo list to append the action.
+	 * Then only case we won't have space is when the undo limit is 0.
+	 */
+	if (buf->undo_list_size < buf->options->undo_limit) {
+		err = undo_list_append(buf, action);
+		if (err)
+			goto fail;
 	}
 
-	action_list_clear(buf->redo_list);
+	redo_list_clear(buf);
 
 	return 0;
+
+fail:
+	buffer_action_free(action);
+	return_error(err);
 }
 
 /**
@@ -256,16 +258,31 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 		return_error(err);
 	}
 		
-	/* Append the action to the undo list */
-	err = action_list_append(buf->undo_list, action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
+	/* 
+	 * Make sure that the undo list has space for one action (provided the
+	 * undo limit is > 0).
+	 */
+	err = undo_list_enforce_limit(buf, 1);
+	if (err)
+		goto fail;
+
+	/* 
+	 * If we have space in the undo list to append the action.
+	 * Then only case we won't have space is when the undo limit is 0.
+	 */
+	if (buf->undo_list_size < buf->options->undo_limit) {
+		err = undo_list_append(buf, action);
+		if (err)
+			goto fail;
 	}
 
-	action_list_clear(buf->redo_list);
+	redo_list_clear(buf);
 
 	return 0;
+
+fail:
+	buffer_action_free(action);
+	return_error(err);
 }
 
 /**

@@ -29,7 +29,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "buffer.h"
 #include "buffer_util.h"
+#include "buffer_internal.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -608,5 +610,89 @@ fail_iter_free:
 		segcol_delete(dst, NULL, offset, offset_reached - offset + 1);
 
 	return_error(err);
+}
+
+/**
+ * Enforces the undo limit on the undo list.
+ *
+ * After the operation the undo list contains at most the most recent
+ * buf->options->undo_limit actions. Additionally if ensure_vacancy == 1 the
+ * undo list contains space for at least one action (unless the undo limit is
+ * 0).
+ * 
+ * @param buf the bless_buffer_t
+ * @param ensure_vacancy whether to make sure that there is space for one
+ *                       additional action
+ * 
+ * @return the operation error code
+ */
+int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
+{
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	size_t limit = buf->options->undo_limit;
+	/* 
+	 * if we want to ensure vacancy of one action we must delete one more
+	 * existing action than we would normally do.
+	 */
+	if (limit != 0 && ensure_vacancy)
+		limit--;
+
+	/* 
+	 * Remove actions from the start of the undo list (older ones) until
+	 * we reach the limit.
+	 */
+	struct list_node *node = action_list_head(buf->undo_list)->next;
+	struct list_node *node_next;
+
+	while (buf->undo_list_size > limit) {
+		node_next = node->next;
+		int err = list_delete_chain(node, node);
+		if (err)
+			return_error(err);
+
+        --buf->undo_list_size;
+		struct buffer_action_entry *del_entry = 
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_free(del_entry->action);
+		free(del_entry);
+
+		node = node_next;
+	}
+
+
+	return 0;
+}
+
+/** 
+ * Clears the redo list's contents without freeing the list itself.
+ * 
+ * @param buf the bless_buffer_t
+ * 
+ * @return the operation error code
+ */
+int redo_list_clear(bless_buffer_t *buf)
+{
+	struct list_node *node;
+	struct list_node *tmp;
+
+	/* 
+	 * Use the safe iterator so that we can delete the current 
+	 * node from the list as we traverse it.
+	 */
+	list_for_each_safe(action_list_head(buf->redo_list)->next, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		list_delete_chain(node, node);
+		buffer_action_free(entry->action);
+		free(entry);
+	}
+
+	buf->redo_list_size = 0;
+
+	return 0;
 }
 

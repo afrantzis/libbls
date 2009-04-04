@@ -31,7 +31,8 @@ extern "C" {
 
 /** Buffer options */
 typedef enum { 
-	BLESS_BUF_TMP_DIR, /**< The directory to use for saving temporary files */
+	BLESS_BUF_TMP_DIR,    /**< The directory to use for saving temporary files */
+	BLESS_BUF_UNDO_LIMIT, /**< The maximum number of actions that can be undone */
 	BLESS_BUF_SENTINEL
 } bless_buffer_option_t;
 

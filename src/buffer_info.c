@@ -28,6 +28,8 @@
 #include <string.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "buffer_util.h"
+#include "type_limits.h"
 
 #include "util.h"
 
@@ -122,6 +124,48 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 			}
 			break;
 
+		case BLESS_BUF_UNDO_LIMIT:
+			if (val == NULL)
+				return_error(EINVAL);
+			else if (!strcmp(val, "infinite")) {
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_limit_str != NULL)
+					free(buf->options->undo_limit_str);
+
+				buf->options->undo_limit_str = dup;
+				buf->options->undo_limit = __MAX(size_t);
+			}
+			else {
+				char *endptr;
+				size_t limit = strtoul(val, &endptr, 10);
+				if (*val == '\0' || *endptr != '\0')
+					return_error(EINVAL);
+
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_limit_str != NULL)
+					free(buf->options->undo_limit_str);
+
+				buf->options->undo_limit_str = dup;
+				buf->options->undo_limit = limit;
+			}
+
+			/* 
+			 * Make sure that the undo list size adheres to the new limit and
+			 * clear the redo list.
+			 */
+			undo_list_enforce_limit(buf, 0);
+			redo_list_clear(buf);
+
+			break;
+
 		default:
 			break;
 	}
@@ -150,6 +194,10 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 	switch (opt) {
 		case BLESS_BUF_TMP_DIR:
 			*val = buf->options->tmp_dir;
+			break;
+
+		case BLESS_BUF_UNDO_LIMIT:
+			*val = buf->options->undo_limit_str;
 			break;
 
 		default:

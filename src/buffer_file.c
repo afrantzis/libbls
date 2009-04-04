@@ -39,6 +39,7 @@
 #include "list.h"
 #include "buffer_util.h"
 #include "util.h"
+#include "type_limits.h"
 
 
 #pragma GCC visibility push(default)
@@ -374,10 +375,18 @@ static int buffer_options_new(struct buffer_options **opts)
 	if (*opts == NULL)
 		return_error(ENOMEM);
 
+	/* Set default values for options */
 	(*opts)->tmp_dir = strdup("/tmp");
 	if ((*opts)->tmp_dir == NULL)
 		return_error(ENOMEM);
 
+	(*opts)->undo_limit = __MAX(size_t);
+
+	(*opts)->undo_limit_str = strdup("infinite");
+	if ((*opts)->undo_limit_str == NULL) {
+		free((*opts)->tmp_dir);
+		return_error(ENOMEM);
+	}
 
 	return 0;
 }
@@ -392,6 +401,7 @@ static int buffer_options_new(struct buffer_options **opts)
 static int buffer_options_free(struct buffer_options *opts)
 {
 	free(opts->tmp_dir);
+	free(opts->undo_limit_str);
 	free(opts);
 
 	return 0;
@@ -430,9 +440,13 @@ int bless_buffer_new(bless_buffer_t **buf)
 	if (err)
 		goto fail_undo;
 
+	(*buf)->undo_list_size = 0;
+
 	err = list_new(&(*buf)->redo_list, struct buffer_action_entry, ln);
 	if (err)
 		goto fail_redo;
+
+	(*buf)->redo_list_size = 0;
 
 	return 0;
 
