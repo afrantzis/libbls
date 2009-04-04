@@ -836,17 +836,16 @@ class BufferTests(unittest.TestCase):
 		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_SENTINEL)
 		self.assertEqual(err, errno.EINVAL)
 
-		for i in xrange(BLESS_BUF_SENTINEL):
-			(err, val) = bless_buffer_get_option(self.buf, i) 
-			self.assertEqual(err, 0)
-			self.assertEqual(val, None)
-			err = bless_buffer_set_option(self.buf, i, 'opt%d' % i)
-			self.assertEqual(err, 0)
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_TMP_DIR)
+		self.assertEqual(err, 0)
+		self.assertEqual(val, '/tmp')
 
-		for i in xrange(BLESS_BUF_SENTINEL):
-			(err, val) = bless_buffer_get_option(self.buf, i) 
-			self.assertEqual(err, 0)
-			self.assertEqual(val, 'opt%d' % i)
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_TMP_DIR, '/mydir/tmp')
+		self.assertEqual(err, 0)
+
+		(err, val) = bless_buffer_get_option(self.buf, BLESS_BUF_TMP_DIR) 
+		self.assertEqual(err, 0)
+		self.assertEqual(val, '/mydir/tmp')
 
 
 if __name__ == '__main__':

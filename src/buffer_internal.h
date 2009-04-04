@@ -29,14 +29,20 @@ extern "C" {
 #endif
 
 #include "segcol.h"
-#include "options.h"
+
+/** 
+ * Buffer options struct
+ */
+struct buffer_options {
+	char *tmp_dir;
+};
 
 /**
  * Bless buffer struct
  */
 struct bless_buffer {
 	segcol_t *segcol;
-	options_t *options;
+	struct buffer_options *options;
 };
 
 #ifdef __cplusplus

@@ -361,6 +361,42 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 	return 0;
 }
 
+/** 
+ * Creates a new buffer_options struct.
+ * 
+ * @param[out] opts the created buffer_options struct.
+ * 
+ * @return the operation error code
+ */
+static int buffer_options_new(struct buffer_options **opts)
+{
+	*opts = malloc(sizeof(**opts));
+	if (*opts == NULL)
+		return_error(ENOMEM);
+
+	(*opts)->tmp_dir = strdup("/tmp");
+	if ((*opts)->tmp_dir == NULL)
+		return_error(ENOMEM);
+
+
+	return 0;
+}
+
+/** 
+ * Frees a buffer_options struct.
+ * 
+ * @param opts the buffer_options struct to free
+ * 
+ * @return the operation error code
+ */
+static int buffer_options_free(struct buffer_options *opts)
+{
+	free(opts->tmp_dir);
+	free(opts);
+
+	return 0;
+}
+
 /*****************/
 /* API functions */
 /*****************/
@@ -388,7 +424,7 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(err);
 	}
 
-	err = options_new(&(*buf)->options, BLESS_BUF_SENTINEL);
+	err = buffer_options_new(&(*buf)->options);
 	if (err) {
 		segcol_free((*buf)->segcol);
 		free(buf);
@@ -474,15 +510,10 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		list_head(removed_edges, struct edge_entry, ln)->next;
 	struct list_node *node;
 
-	char *tmpdir = NULL;
-	bless_buffer_get_option(buf, &tmpdir, BLESS_BUF_TMP_DIR);
-	if (tmpdir == NULL)
-		tmpdir = "/tmp";
-
 	list_for_each(first_node, node) {
 		struct edge_entry *e = list_entry(node, struct edge_entry, ln);
 
-		err = break_edge(buf->segcol, e, tmpdir);
+		err = break_edge(buf->segcol, e, buf->options->tmp_dir);
 		if (err)
 			goto fail3;
 	}
@@ -595,7 +626,7 @@ int bless_buffer_free(bless_buffer_t *buf)
 	if (err)
 		return_error(err);
 
-	err = options_free(buf->options);
+	err = buffer_options_free(buf->options);
 	if (err)
 		return_error(err);
 
