@@ -76,17 +76,13 @@ static struct buffer_action_funcs buffer_action_delete_funcs = {
 /* Action implementations */
 struct buffer_action_append_impl {
 	bless_buffer_t *buf;
-	bless_buffer_source_t *src;
-	off_t src_offset;
-	off_t length;
+	segment_t *seg;
 };
 
 struct buffer_action_insert_impl {
 	bless_buffer_t *buf;
 	off_t offset;
-	bless_buffer_source_t *src;
-	off_t src_offset;
-	off_t length;
+	segment_t *seg;
 };
 
 struct buffer_action_delete_impl {
@@ -178,17 +174,12 @@ int buffer_action_append_new(buffer_action_t **action, bless_buffer_t *buf,
 	if (err)
 		goto fail;
 
-	/* Update usage count of data object */
-	data_object_t *obj = (data_object_t *) src;
-	err = data_object_update_usage(obj, 1);
-	if (err)
-		goto fail;
-
 	/* Initialize implementation */
+	err = create_segment_from_source(&impl->seg, src, src_offset, length);
+	if (err)
+		return_error(err);
+
 	impl->buf = buf;
-	impl->src = src;
-	impl->src_offset = src_offset;
-	impl->length = length;
 
 	return 0;
 
@@ -229,18 +220,13 @@ int buffer_action_insert_new(buffer_action_t **action, bless_buffer_t *buf,
 	if (err)
 		goto fail;
 
-	/* Update usage count of data object */
-	data_object_t *obj = (data_object_t *) src;
-	err = data_object_update_usage(obj, 1);
+	/* Initialize implementation */
+	err = create_segment_from_source(&impl->seg, src, src_offset, length);
 	if (err)
 		goto fail;
 
-	/* Initialize implementation */
 	impl->buf = buf;
 	impl->offset = offset;
-	impl->src = src;
-	impl->src_offset = src_offset;
-	impl->length = length;
 
 	return 0;
 
@@ -311,9 +297,7 @@ static int buffer_action_append_do(buffer_action_t *action)
 	 */
 	segment_t *seg;
 
-	int err = create_segment_from_source(&seg, impl->src, impl->src_offset,
-			impl->length);
-
+	int err = segment_copy(impl->seg, &seg);
 	if (err)
 		return_error(err);
 	
@@ -349,8 +333,13 @@ static int buffer_action_append_undo(buffer_action_t *action)
 	if (err)
 		return_error(err);
 
+	off_t seg_size;
+	err = segment_get_size(impl->seg, &seg_size);
+	if (err)
+		return_error(err);
+
 	/* Delete range from the segcol */
-	err = segcol_delete(sc, NULL, segcol_size - impl->length, impl->length);
+	err = segcol_delete(sc, NULL, segcol_size - seg_size, seg_size);
 	if (err) 
 		return_error(err);
 
@@ -365,8 +354,7 @@ static int buffer_action_append_free(buffer_action_t *action)
 	struct buffer_action_append_impl *impl =
 		(struct buffer_action_append_impl *) buffer_action_get_impl(action);
 
-	data_object_t *obj = (data_object_t *) impl->src;
-	int err = data_object_update_usage(obj, -1);
+	int err = segment_free(impl->seg);
 	if (err)
 		return_error(err);
 
@@ -393,9 +381,7 @@ static int buffer_action_insert_do(buffer_action_t *action)
 	 */
 	segment_t *seg;
 
-	int err = create_segment_from_source(&seg, impl->src, impl->src_offset,
-			impl->length);
-
+	int err = segment_copy(impl->seg, &seg);
 	if (err)
 		return_error(err);
 	
@@ -426,8 +412,13 @@ static int buffer_action_insert_undo(buffer_action_t *action)
 	 */
 	segcol_t *sc = impl->buf->segcol;
 
+	off_t seg_size;
+	int err = segment_get_size(impl->seg, &seg_size);
+	if (err)
+		return_error(err);
+
 	/* Delete range from the segcol */
-	int err = segcol_delete(sc, NULL, impl->offset, impl->length);
+	err = segcol_delete(sc, NULL, impl->offset, seg_size);
 	if (err) 
 		return_error(err);
 
@@ -442,8 +433,7 @@ static int buffer_action_insert_free(buffer_action_t *action)
 	struct buffer_action_insert_impl *impl =
 		(struct buffer_action_insert_impl *) buffer_action_get_impl(action);
 
-	data_object_t *obj = (data_object_t *) impl->src;
-	int err = data_object_update_usage(obj, -1);
+	int err = segment_free(impl->seg);
 	if (err)
 		return_error(err);
 
