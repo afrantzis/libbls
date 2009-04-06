@@ -1,5 +1,5 @@
 =======================
-Libbls 0.1.1 user guide
+Libbls 0.2 user guide
 =======================
 
 :Authors: Alexandros Frantzis, Michael Iatrou
@@ -385,6 +385,35 @@ For example::
     if (err)
         ...
 
+Undoing and redoing operations
+------------------------------
+
+Libbls buffers have built-in undo-redo capabilities. The functions used to
+perform undo and redo are unsuprisingly named ``bless_buffer_undo`` and 
+``bless_buffer_redo``::
+
+    int bless_buffer_undo(bless_buffer_t *buf);
+
+    int bless_buffer_redo(bless_buffer_t *buf);
+
+There are two related functions that query if there are any actions to 
+undo or redo::
+
+    int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
+
+    int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
+
+As usual for a linear undo-redo scheme, when you edit the buffer the 
+list of actions that can be redone is cleared.
+
+The maximum number of actions that can be undone/redone is controlled
+by the ``BLESS_BUF_UNDO_LIMIT`` buffer option (see `Setting buffer options`_).
+The default value for this options is ``"infinite"`` which means that there
+is no undo limiting.
+
+Note that undo/redo capabilities incur a performance and memory overhead so if
+you don't need them it is recommended that you turn them off (set
+BLESS_BUF_UNDO_LIMIT to ``"0"``).
 
 Reading data from the buffer
 ============================
@@ -470,7 +499,13 @@ The options that are currently implemented are:
 
 BLESS_BUF_TMP_DIR
     The directory to store temporary files in (see `Saving the buffer contents
-    to a file`_). The default value is `/tmp`.
+    to a file`_). The default value is ``"/tmp"``.
+
+BLESS_BUF_UNDO_LIMIT
+    The maximum number of actions that can be undone or redone. Acceptable
+    values are strings representing natural numbers or ``"infinite"`` to
+    turn off undo limiting. The default value is ``"infinite"`` (no undo
+	limiting).
 
 An example of setting a buffer option::
 
