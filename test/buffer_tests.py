@@ -1289,6 +1289,66 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(can_undo, 0)
 
+	def testUndoAfterSave(self):
+		"Undo actions after having saved a file"
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin",
+				os.O_RDWR)
+		
+		(err, src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		# Perform actions
+		err = bless_buffer_append(self.buf, src, 5, 5)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "67890")
+
+		err = bless_buffer_append(self.buf, src, 0, 5)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "6789012345")
+
+		err = bless_buffer_delete(self.buf, 3, 4)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "678345")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+		# Save
+		err = bless_buffer_save(self.buf, fd1, None)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "678345")
+
+		# Undo 
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "6789012345")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "67890")
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		(err, size) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(size, 0)
+
+		# Redo
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "67890")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "6789012345")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "678345")
+
+		# Remove temporary file
+		os.remove(fd1_path)
 
 if __name__ == '__main__':
 	unittest.main()

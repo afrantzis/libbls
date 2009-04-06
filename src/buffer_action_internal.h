@@ -25,6 +25,7 @@
 #ifndef _BUFFER_ACTION_INTERNAL_H
 #define _BUFFER_ACTION_INTERNAL_H
 
+#include "data_object.h"
 #include "buffer_action.h"
 
 #ifdef __cplusplus
@@ -44,6 +45,7 @@ extern "C" {
 struct buffer_action_funcs {
 	int (*do_func)(buffer_action_t *action);
 	int (*undo_func)(buffer_action_t *action);
+	int (*private_copy_func)(buffer_action_t *action, data_object_t *obj);
 	int (*free_func)(buffer_action_t *action);
 };
 

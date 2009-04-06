@@ -34,42 +34,56 @@
 #include "buffer_util.h"
 #include "segcol.h"
 #include "data_object.h"
+#include "data_object_memory.h"
 #include "util.h"
 
 
 /* Forward declarations */
 
 /* Helper functions */
-static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *src,
-		off_t src_offset, off_t length);
+static int create_segment_from_source(segment_t **seg, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length);
+static int segment_inplace_private_copy(segment_t *seg, data_object_t *cmp_dobj);
+static int segcol_inplace_private_copy(segcol_t *segcol, data_object_t *cmp_dobj);
 
 /* API functions */
 static int buffer_action_append_do(buffer_action_t *action);
 static int buffer_action_append_undo(buffer_action_t *action);
+static int buffer_action_append_private_copy(buffer_action_t *action,
+		data_object_t *dobj);
 static int buffer_action_append_free(buffer_action_t *action);
+
 static int buffer_action_insert_do(buffer_action_t *action);
 static int buffer_action_insert_undo(buffer_action_t *action);
+static int buffer_action_insert_private_copy(buffer_action_t *action,
+		data_object_t *dobj);
 static int buffer_action_insert_free(buffer_action_t *action);
+
 static int buffer_action_delete_do(buffer_action_t *action);
 static int buffer_action_delete_undo(buffer_action_t *action);
+static int buffer_action_delete_private_copy(buffer_action_t *action,
+		data_object_t *dobj);
 static int buffer_action_delete_free(buffer_action_t *action);
 
 /* Action functions */
 static struct buffer_action_funcs buffer_action_append_funcs = {
 	.do_func = buffer_action_append_do,
 	.undo_func = buffer_action_append_undo,
+	.private_copy_func = buffer_action_append_private_copy,
 	.free_func = buffer_action_append_free
 };
 
 static struct buffer_action_funcs buffer_action_insert_funcs = {
 	.do_func = buffer_action_insert_do,
 	.undo_func = buffer_action_insert_undo,
+	.private_copy_func = buffer_action_insert_private_copy,
 	.free_func = buffer_action_insert_free
 };
 
 static struct buffer_action_funcs buffer_action_delete_funcs = {
 	.do_func = buffer_action_delete_do,
 	.undo_func = buffer_action_delete_undo,
+	.private_copy_func = buffer_action_delete_private_copy,
 	.free_func = buffer_action_delete_free
 };
 
@@ -97,22 +111,22 @@ struct buffer_action_delete_impl {
  ********************/
 
 /**
- * Create a segment from a bless_buffer_source_t.
+ * Create a segment from a data_object_t.
  *
  * @param[out] seg the created segment
- * @param src the source
+ * @param src_dobj the data_object_t
  * @param src_offset the start of the segment range in src
  * @param length the length of the segment range
  *
  * @return the operation error code
  */
-static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *src,
-		off_t src_offset, off_t length)
+static int create_segment_from_source(segment_t **seg, 
+		bless_buffer_source_t *src, off_t src_offset, off_t length)
 {
-	data_object_t *obj = (data_object_t *) src;
-
+	data_object_t *dobj = (data_object_t *) src;
 	/* Create a segment pointing to the data object */
-	int err = segment_new(seg, obj, src_offset, length, data_object_update_usage);
+	int err = segment_new(seg, dobj, src_offset, length,
+			data_object_update_usage);
 	if (err)
 		return_error(err);
 
@@ -120,12 +134,12 @@ static int create_segment_from_source(segment_t **seg, bless_buffer_source_t *sr
 	 * Check if the specified file range is valid. This is done 
 	 * here so that overflow has already been checked by segment_new().
 	 */
-	off_t obj_size;
-	err = data_object_get_size(obj, &obj_size);
+	off_t dobj_size;
+	err = data_object_get_size(dobj, &dobj_size);
 	if (err)
 		goto fail;
 
-	if (src_offset + length - 1 * (length != 0) >= obj_size) {
+	if (src_offset + length - 1 * (length != 0) >= dobj_size) {
 		err = EINVAL;
 		goto fail;
 	}
@@ -138,6 +152,139 @@ fail:
 	return_error(err);
 }
 
+/** 
+ * Makes a private copy of the data held by a segment if
+ * that data belongs to a specific data_object_t.
+ *
+ * The operation is performed in-place: upon completion
+ * the segment will point to the private copy of the data.
+ * 
+ * @param seg the segment_t
+ * @param cmp_dobj the data_object_t the data must belong to
+ * 
+ * @return the operation error code
+ */
+static int segment_inplace_private_copy(segment_t *seg, data_object_t *cmp_dobj)
+{
+	data_object_t *seg_dobj;
+	off_t seg_start;
+	off_t seg_size;
+
+	/* Get segment information */
+	int err = segment_get_data(seg, (void **)&seg_dobj);
+	if (err)
+		return_error(err);
+
+	/* Continue this operation only if the data comes from the cmp_dobj */
+	int result;
+	err = data_object_compare(&result, seg_dobj, cmp_dobj);
+	if (err)
+		return_error(err);
+	if (result != 0)
+		return 0;
+
+	err = segment_get_start(seg, &seg_start);
+	if (err)
+		return_error(err);
+	err = segment_get_size(seg, &seg_size);
+	if (err)
+		return_error(err);
+
+	/* Create new data object to hold data */
+	void *new_data = malloc(seg_size);
+	if (new_data == NULL)
+		return_error(ENOMEM);
+
+	data_object_t *new_dobj;
+	err = data_object_memory_new(&new_dobj, new_data, seg_size);
+	if (err) {
+		free(new_data);
+		return_error(err);
+	}
+
+	/* Set the data object's free function */
+	err = data_object_memory_set_free_func(new_dobj, free);
+	if (err) {
+		free(new_data);
+		data_object_free(new_dobj);
+		return_error(err);
+	}
+
+	/* Copy the data to the new object and setup the segment */
+	err = read_data_object(seg_dobj, seg_start, new_data, seg_size);
+	if (err) {
+		data_object_free(new_dobj);
+		return_error(err);
+	}
+
+	err = segment_set_range(seg, 0, seg_size);
+	if (err) {
+		data_object_free(new_dobj);
+		return_error(err);
+	}
+
+	err = segment_set_data(seg, new_dobj, data_object_update_usage);
+	if (err) {
+		segment_set_range(seg, seg_start, seg_size);
+		data_object_free(new_dobj);
+		return_error(err);
+	}
+
+
+	return 0;
+}
+
+/** 
+ * Makes a private copy of the data held by a segcol if
+ * that data belongs to a specific data_object_t.
+ *
+ * The operation is performed in-place: upon completion
+ * the segments in the segment collection will point to
+ * the private copy of the data.
+ * 
+ * @param seg the segcol_t
+ * @param cmp_dobj the data_object_t the data must belong to
+ * 
+ * @return the operation error code
+ */
+static int segcol_inplace_private_copy(segcol_t *segcol, data_object_t *cmp_dobj)
+{
+	segcol_iter_t *iter;
+	int err = segcol_iter_new(segcol, &iter);
+	if (err)
+		return_error(err);
+
+	int iter_valid;
+
+	/* 
+	 * Iterate over the whole segcol
+	 */
+	while (!(err = segcol_iter_is_valid(iter, &iter_valid)) && iter_valid) {
+		segment_t *seg;
+
+		err = segcol_iter_get_segment(iter, &seg);
+		if (err)
+			goto fail;
+
+		/* Make private copy of segment data (if they belong to cmp_dobj) */
+		err = segment_inplace_private_copy(seg, cmp_dobj);
+		if (err)
+			goto fail;
+
+		err = segcol_iter_next(iter);
+		if (err)
+			goto fail;
+
+	}
+
+	segcol_iter_free(iter);
+
+	return 0;
+
+fail:
+	segcol_iter_free(iter);
+	return_error(err);
+}
 
 /****************
  * Constructors *
@@ -346,6 +493,22 @@ static int buffer_action_append_undo(buffer_action_t *action)
 	return 0;
 }
 
+static int buffer_action_append_private_copy(buffer_action_t *action,
+		data_object_t *cmp_dobj)
+{
+	if (action == NULL || cmp_dobj == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_append_impl *impl =
+		(struct buffer_action_append_impl *) buffer_action_get_impl(action);
+
+	int err = segment_inplace_private_copy(impl->seg, cmp_dobj);
+	if (err)
+		return_error(err);
+
+	return 0;
+}
+
 static int buffer_action_append_free(buffer_action_t *action)
 {
 	if (action == NULL)
@@ -425,6 +588,22 @@ static int buffer_action_insert_undo(buffer_action_t *action)
 	return 0;
 }
 
+static int buffer_action_insert_private_copy(buffer_action_t *action,
+		data_object_t *cmp_dobj)
+{
+	if (action == NULL || cmp_dobj == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_insert_impl *impl =
+		(struct buffer_action_insert_impl *) buffer_action_get_impl(action);
+
+	int err = segment_inplace_private_copy(impl->seg, cmp_dobj);
+	if (err)
+		return_error(err);
+
+	return 0;
+}
+
 static int buffer_action_insert_free(buffer_action_t *action)
 {
 	if (action == NULL)
@@ -489,10 +668,27 @@ static int buffer_action_delete_undo(buffer_action_t *action)
 	struct buffer_action_delete_impl *impl =
 		(struct buffer_action_delete_impl *) buffer_action_get_impl(action);
 
+	/* Add the deleted data back to the segcol */
 	int err = segcol_add_copy(impl->buf->segcol, impl->offset, impl->deleted);
 	if (err)
 		return_error(err);
 		
+	return 0;
+}
+
+static int buffer_action_delete_private_copy(buffer_action_t *action,
+		data_object_t *cmp_dobj)
+{
+	if (action == NULL || cmp_dobj == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_delete_impl *impl =
+		(struct buffer_action_delete_impl *) buffer_action_get_impl(action);
+
+	int err = segcol_inplace_private_copy(impl->deleted, cmp_dobj);
+	if (err)
+		return_error(err);
+
 	return 0;
 }
 

@@ -362,6 +362,47 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 	return 0;
 }
 
+
+/** 
+ * Makes private copies of buffer (undo/redo) action data that belong to
+ * a specific data object.
+ *
+ * This is done to ensure the integrity of the data in case the specified
+ * data object changes (eg a file during save).
+ *  
+ * @param buf the bless_buffer_t 
+ * @param obj the data_object_t the data must belong to
+ * 
+ * @return the operation error code
+ */
+static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj)
+{
+	/* Free the stored undo actions */
+	int err;
+	struct list_node *node;
+
+	list_for_each(action_list_head(buf->undo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		err = buffer_action_private_copy(entry->action, obj);
+		if (err)
+			return_error(err);
+	}
+
+	/* Free the stored redo actions */
+	list_for_each(action_list_head(buf->redo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		err = buffer_action_private_copy(entry->action, obj);
+		if (err)
+			return_error(err);
+	}
+
+	return 0;
+}
+
 /** 
  * Creates a new buffer_options struct.
  * 
@@ -512,6 +553,11 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Create a data_object_t holding fd */
 	data_object_t *fd_obj;
 	err = data_object_file_new(&fd_obj, fd);
+	if (err)
+		return_error(err);
+
+	/* Make private copies of data in undo/redo actions */
+	err = actions_make_private_copy(buf, fd_obj);
 	if (err)
 		return_error(err);
 

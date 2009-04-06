@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "data_object.h"
 #include "buffer_action.h"
 #include "buffer_action_internal.h"
 #include "util.h"
@@ -109,6 +110,28 @@ int buffer_action_undo(buffer_action_t *action)
 		return_error(EINVAL);
 
 	return (*action->funcs->undo_func)(action);
+}
+
+/** 
+ * Makes a private copy of all the data held by this action
+ * that belong to a data object.
+ *
+ * The data object is represented by a supplied
+ * data_object_t although the original data may have been
+ * accessed using another data_object_t (which of course
+ * refers to the same data object as the supplied).
+ * 
+ * @param action the action to perform
+ * @param dobj the data_object_t the data must belong to
+ * 
+ * @return the operation error code
+ */
+int buffer_action_private_copy(buffer_action_t *action, data_object_t *dobj)
+{
+	if (action == NULL || dobj == NULL)
+		return_error(EINVAL);
+
+	return (*action->funcs->private_copy_func)(action, dobj);
 }
 
 /** 
