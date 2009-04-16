@@ -369,36 +369,98 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
  *
  * This is done to ensure the integrity of the data in case the specified
  * data object changes (eg a file during save).
+ *
+ * If 'del' is non-zero and a private copy of an action can not be made, that and
+ * older actions are removed from the undo/redo list. Otherwise in case a private
+ * copy fails an error is immediately returned.
  *  
  * @param buf the bless_buffer_t 
  * @param obj the data_object_t the data must belong to
+ * @param del whether to delete any actions (and actions older than them) that
+ *            we cannot make private copies of.
  * 
  * @return the operation error code
  */
-static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj)
+static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
+		int del)
 {
-	/* Free the stored undo actions */
 	int err;
 	struct list_node *node;
+	struct list_node *tmp;
+	int undo_err = 0;
+	int redo_err = 0;
 
-	list_for_each(action_list_head(buf->undo_list)->next, node) {
+	/* 
+	 * Try to make private copies of undo actions starting from the newest one.
+	 * If a private copy of an action fails, remove that and all older actions
+	 * from the undo list.
+	 */
+	list_for_each_reverse_safe(action_list_tail(buf->undo_list)->prev, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
-		err = buffer_action_private_copy(entry->action, obj);
-		if (err)
-			return_error(err);
+		/* If we have previously encountered an error, remove the action */
+		if (undo_err) {
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		} 
+		else
+			err = buffer_action_private_copy(entry->action, obj);
+
+		/* 
+		 * If the private copy failed remove the action and mark the undo_err.
+		 * However, if the caller doesn't want us to delete anything just return
+		 * an error.
+		 */
+		if (!undo_err && err) {
+			if (!del)
+				return_error(err);
+			undo_err = err;
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		}
 	}
 
-	/* Free the stored redo actions */
-	list_for_each(action_list_head(buf->redo_list)->next, node) {
+	/* 
+	 * Try to make private copies of redo actions starting from the newest one.
+	 * If a private copy of an action fails, remove that and all older actions
+	 * from the redo list.
+	 */
+	list_for_each_safe(action_list_head(buf->redo_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
-		err = buffer_action_private_copy(entry->action, obj);
-		if (err)
-			return_error(err);
+		/* If we have previously encountered an error, remove the action */
+		if (redo_err) {
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		} 
+		else
+			err = buffer_action_private_copy(entry->action, obj);
+
+		/* 
+		 * If the private copy failed remove the action and mark the undo_err.
+		 * However, if the caller doesn't want us to delete anything just return
+		 * an error.
+		 */
+		if (!redo_err && err) {
+			if (!del)
+				return_error(err);
+			redo_err = err;
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		}
 	}
+
+	if (undo_err)
+		return_error(undo_err);
+
+	if (redo_err)
+		return_error(redo_err);
 
 	return 0;
 }
@@ -557,7 +619,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		return_error(err);
 
 	/* Make private copies of data in undo/redo actions */
-	err = actions_make_private_copy(buf, fd_obj);
+	err = actions_make_private_copy(buf, fd_obj, 0);
 	if (err)
 		return_error(err);
 
