@@ -643,24 +643,25 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 	 * Remove actions from the start of the undo list (older ones) until
 	 * we reach the limit.
 	 */
-	struct list_node *node = action_list_head(buf->undo_list)->next;
-	struct list_node *node_next;
+	struct list_node *node;
+	struct list_node *tmp;
 
-	while (buf->undo_list_size > limit) {
-		node_next = node->next;
+  list_for_each_safe(action_list_head(buf->undo_list)->next, node, tmp) {
+    if (buf->undo_list_size <= limit)
+      break;
+
 		int err = list_delete_chain(node, node);
 		if (err)
 			return_error(err);
 
-        --buf->undo_list_size;
+    --buf->undo_list_size;
+
 		struct buffer_action_entry *del_entry = 
 			list_entry(node, struct buffer_action_entry, ln);
 
 		buffer_action_free(del_entry->action);
 		free(del_entry);
-
-		node = node_next;
-	}
+  }
 
 
 	return 0;
