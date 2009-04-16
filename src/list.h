@@ -48,6 +48,22 @@ extern "C" {
 			(node) = (tmp), (tmp) = (tmp)->next)
 
 /** 
+ * Reverse iterate safely through the nodes in a list.
+ *
+ * This macro should be used when nodes are going to be altered or
+ * deleted during the iteration.
+ * 
+ * @param last the list node to start from
+ * @param node a struct list_node pointer that will hold the current node in
+ *             each iteration
+ * @param tmp a struct list_node pointer that will be used internally for safe
+ *            iteration
+ */
+#define list_for_each_reverse_safe(last, node, tmp) \
+	for ((node) = (last), (tmp) = (node)->prev; (node) != (node)->prev; \
+			(node) = (tmp), (tmp) = (tmp)->prev)
+
+/** 
  * Iterate through the nodes in a list.
  *
  * If nodes are going to be altered or deleted during the iteration use
@@ -59,6 +75,19 @@ extern "C" {
  */
 #define list_for_each(first, node) \
 	for ((node) = (first); (node) != (node)->next; (node) = (node)->next)
+
+/** 
+ * Reverse iterate through the nodes in a list.
+ *
+ * If nodes are going to be altered or deleted during the iteration use
+ * list_for_each_reverse_safe().
+ * 
+ * @param last the list node to start from
+ * @param node a struct list_node pointer that will hold the current node in
+ *             each iteration
+ */
+#define list_for_each_reverse(last, node) \
+	for ((node) = (last); (node) != (node)->prev; (node) = (node)->prev)
 
 /**
  * Gets the entry containing a list node.
