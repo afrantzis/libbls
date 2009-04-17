@@ -52,6 +52,8 @@ struct buffer_options {
 
 	size_t undo_limit;
 	char *undo_limit_str;
+
+	char *undo_after_save;
 };
 
 /**

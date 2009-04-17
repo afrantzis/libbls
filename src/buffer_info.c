@@ -167,6 +167,21 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 
 			break;
 
+		case BLESS_BUF_UNDO_AFTER_SAVE:
+			if (val == NULL || (strcmp(val, "always") && strcmp(val, "never")
+					&& strcmp(val, "best_effort")))
+				return_error(EINVAL);
+			else {
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_after_save != NULL)
+					free(buf->options->undo_after_save);
+				buf->options->undo_after_save = dup;
+			}
+			break;
 		default:
 			break;
 	}
@@ -199,6 +214,10 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 
 		case BLESS_BUF_UNDO_LIMIT:
 			*val = buf->options->undo_limit_str;
+			break;
+
+		case BLESS_BUF_UNDO_AFTER_SAVE:
+			*val = buf->options->undo_after_save;
 			break;
 
 		default:

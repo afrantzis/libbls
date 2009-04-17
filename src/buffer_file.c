@@ -491,6 +491,13 @@ static int buffer_options_new(struct buffer_options **opts)
 		return_error(ENOMEM);
 	}
 
+	(*opts)->undo_after_save = strdup("best_effort");
+	if ((*opts)->undo_after_save == NULL) {
+		free((*opts)->undo_limit_str);
+		free((*opts)->tmp_dir);
+		return_error(ENOMEM);
+	}
+
 	return 0;
 }
 
@@ -618,10 +625,39 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (err)
 		return_error(err);
 
-	/* Make private copies of data in undo/redo actions */
-	err = actions_make_private_copy(buf, fd_obj, 0);
-	if (err)
-		return_error(err);
+	/* Make private copies of data in undo/redo actions. */
+	if (!strcmp(buf->options->undo_after_save, "always")) {
+		/* 
+		 * If the policy is "always" and we cannot safely keep the whole
+		 * action history, don't carry on with the save.
+		 */
+		err = actions_make_private_copy(buf, fd_obj, 0);
+		if (err) {
+			data_object_free(fd_obj);
+			return_error(err);
+		}
+	}
+	else if (!strcmp(buf->options->undo_after_save, "never")) {
+		/* If the policy is "never" just clear the undo/redo lists */
+		action_list_clear(buf->undo_list);
+		buf->undo_list_size = 0;
+
+		action_list_clear(buf->redo_list);
+		buf->redo_list_size = 0;
+	}
+	else if (!strcmp(buf->options->undo_after_save, "best_effort")) {
+		/* 
+		 * If the policy is "best_effort" try our best to make private copies,
+		 * but if we fail just carry on with the part of the action history
+		 * that we can safely use (if any).
+		 */
+		err = actions_make_private_copy(buf, fd_obj, 1);
+	}
+	else {
+		/* Invalid option value. We shouldn't get here, but just in case... */
+		data_object_free(fd_obj);
+		return_error(EINVAL);
+	}
 
 	/* 
 	 * Create the overlap graph and remove any cycles

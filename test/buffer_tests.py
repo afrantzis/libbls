@@ -1350,5 +1350,52 @@ class BufferTests(unittest.TestCase):
 		# Remove temporary file
 		os.remove(fd1_path)
 
+	def testUndoAfterSaveNeverOption(self):
+		"""Try to undo actions after having saved a buffer that has
+		the BLESS_BUF_UNDO_AFTER_SAVE option set to 'never'"""
+
+		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin",
+				os.O_RDWR)
+		
+		(err, src) = bless_buffer_source_file(fd1, None)
+		self.assertEqual(err, 0)
+
+		# Perform actions
+		err = bless_buffer_append(self.buf, src, 5, 5)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "67890")
+
+		err = bless_buffer_append(self.buf, src, 0, 5)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "6789012345")
+
+		err = bless_buffer_delete(self.buf, 3, 4)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "678345")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+		# Save
+		err = bless_buffer_set_option(self.buf,
+				BLESS_BUF_UNDO_AFTER_SAVE, "never");
+		self.assertEqual(err, 0)
+
+		# Save
+		err = bless_buffer_save(self.buf, fd1, None)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "678345")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		(err, can_redo) = bless_buffer_can_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_redo, 0)
+
+		# Remove temporary file
+		os.remove(fd1_path)
+
 if __name__ == '__main__':
 	unittest.main()
