@@ -637,23 +637,15 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 			return_error(err);
 		}
 	}
-	else if (!strcmp(buf->options->undo_after_save, "never")) {
-		/* If the policy is "never" just clear the undo/redo lists */
-		action_list_clear(buf->undo_list);
-		buf->undo_list_size = 0;
-
-		action_list_clear(buf->redo_list);
-		buf->redo_list_size = 0;
-	}
 	else if (!strcmp(buf->options->undo_after_save, "best_effort")) {
 		/* 
 		 * If the policy is "best_effort" try our best to make private copies,
 		 * but if we fail just carry on with the part of the action history
 		 * that we can safely use (if any).
 		 */
-		err = actions_make_private_copy(buf, fd_obj, 1);
+		actions_make_private_copy(buf, fd_obj, 1);
 	}
-	else {
+	else if (strcmp(buf->options->undo_after_save, "never")) {
 		/* Invalid option value. We shouldn't get here, but just in case... */
 		data_object_free(fd_obj);
 		return_error(EINVAL);
@@ -763,6 +755,15 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Use the new segcol in the buffer */
 	segcol_free(buf->segcol);
 	buf->segcol = segcol_tmp;
+
+	if (!strcmp(buf->options->undo_after_save, "never")) {
+		/* If the policy is "never" clear the undo/redo lists */
+		action_list_clear(buf->undo_list);
+		buf->undo_list_size = 0;
+
+		action_list_clear(buf->redo_list);
+		buf->redo_list_size = 0;
+	}
 
 	return 0;
 
