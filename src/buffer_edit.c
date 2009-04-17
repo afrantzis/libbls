@@ -160,7 +160,8 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 			goto fail;
 	}
 
-	redo_list_clear(buf);
+	action_list_clear(buf->redo_list);
+	buf->redo_list_size = 0;
 
 	return 0;
 
@@ -220,7 +221,8 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 			goto fail;
 	}
 
-	redo_list_clear(buf);
+	action_list_clear(buf->redo_list);
+	buf->redo_list_size = 0;
 
 	return 0;
 
@@ -276,7 +278,8 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 			goto fail;
 	}
 
-	redo_list_clear(buf);
+	action_list_clear(buf->redo_list);
+	buf->redo_list_size = 0;
 
 	return 0;
 

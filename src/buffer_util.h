@@ -34,6 +34,7 @@ extern "C" {
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
+#include "list.h"
 
 typedef int (segcol_foreach_func)(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data);
@@ -55,7 +56,7 @@ int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src);
 
 int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy);
 
-int redo_list_clear(bless_buffer_t *buf);
+int action_list_clear(struct list *action_list);
 
 #ifdef __cplusplus
 }

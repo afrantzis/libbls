@@ -162,7 +162,8 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 			 * clear the redo list.
 			 */
 			undo_list_enforce_limit(buf, 0);
-			redo_list_clear(buf);
+			action_list_clear(buf->redo_list);
+			buf->redo_list_size = 0;
 
 			break;
 

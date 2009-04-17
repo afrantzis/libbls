@@ -668,14 +668,17 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 }
 
 /** 
- * Clears the redo list's contents without freeing the list itself.
+ * Clears an action list's contents without freeing the list itself.
  * 
- * @param buf the bless_buffer_t
+ * @param action_list the action_list
  * 
  * @return the operation error code
  */
-int redo_list_clear(bless_buffer_t *buf)
+int action_list_clear(struct list *action_list)
 {
+	if (action_list == NULL)
+		return_error(EINVAL);
+
 	struct list_node *node;
 	struct list_node *tmp;
 
@@ -683,7 +686,7 @@ int redo_list_clear(bless_buffer_t *buf)
 	 * Use the safe iterator so that we can delete the current 
 	 * node from the list as we traverse it.
 	 */
-	list_for_each_safe(action_list_head(buf->redo_list)->next, node, tmp) {
+	list_for_each_safe(action_list_head(action_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
@@ -691,8 +694,6 @@ int redo_list_clear(bless_buffer_t *buf)
 		buffer_action_free(entry->action);
 		free(entry);
 	}
-
-	buf->redo_list_size = 0;
 
 	return 0;
 }
