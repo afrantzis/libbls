@@ -512,6 +512,7 @@ static int buffer_options_free(struct buffer_options *opts)
 {
 	free(opts->tmp_dir);
 	free(opts->undo_limit_str);
+	free(opts->undo_after_save);
 	free(opts);
 
 	return 0;
@@ -632,10 +633,8 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		 * action history, don't carry on with the save.
 		 */
 		err = actions_make_private_copy(buf, fd_obj, 0);
-		if (err) {
-			data_object_free(fd_obj);
-			return_error(err);
-		}
+		if (err)
+			goto fail1;
 	}
 	else if (!strcmp(buf->options->undo_after_save, "best_effort")) {
 		/* 
@@ -647,8 +646,8 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	}
 	else if (strcmp(buf->options->undo_after_save, "never")) {
 		/* Invalid option value. We shouldn't get here, but just in case... */
-		data_object_free(fd_obj);
-		return_error(EINVAL);
+		err = EINVAL;
+		goto fail1;
 	}
 
 	/* 
@@ -700,15 +699,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 	segment_t *fd_seg;
 	err = segment_new(&fd_seg, fd_obj, 0, segcol_size, data_object_update_usage);
-	if (err) {
-		segcol_free(segcol_tmp);
-		goto fail1;
-	}
+	if (err)
+		goto fail4;
 
 	err = segcol_append(segcol_tmp, fd_seg);
 	if (err) {
-		segcol_free(segcol_tmp);
-		goto fail1;
+		segment_free(fd_seg);
+		goto fail4;
 	}
 
 	/* 
@@ -717,13 +714,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 */
 	err = create_overlap_graph(&g, buf->segcol, fd_obj);
 	if (err)
-		goto fail1;
+		goto fail4;
 
 	/* Write the file segments to file in topological order */
 	struct list *vertices;
 	err = overlap_graph_get_vertices_topo(g, &vertices);
 	if (err)
-		goto fail2;
+		goto fail5;
 
 	first_node =
 		list_head(vertices, struct vertex_entry, ln)->next;
@@ -732,7 +729,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		struct vertex_entry *v = list_entry(node, struct vertex_entry, ln);
 		err = write_segment(fd, v->segment, v->mapping, v->self_loop_weight);
 		if (err)
-			goto fail4;
+			goto fail6;
 	}
 	
 	list_free(vertices, struct vertex_entry, ln);
@@ -741,14 +738,14 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Write the rest of the segments */
 	err = write_segcol_rest(fd, buf->segcol, fd_obj);
 	if (err)
-		goto fail1;
+		goto fail4;
 
 	/* Truncate file to final size (only if it is a resizable file) */
 	if (fd_resizable == 1) {
 		err = ftruncate(fd, segcol_size);
 		if (err == -1) {
 			err = errno;
-			goto fail1;
+			goto fail4;
 		}
 	}
 
@@ -777,9 +774,13 @@ fail1:
 
 	return_error(err);
 
-fail4:
+fail6:
 	list_free(vertices, struct vertex_entry, ln);
-	goto fail2;
+fail5:
+	overlap_graph_free(g);
+fail4:
+	segcol_free(segcol_tmp);
+	goto fail1;
 
 }
 

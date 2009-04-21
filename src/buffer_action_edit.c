@@ -323,13 +323,15 @@ int buffer_action_append_new(buffer_action_t **action, bless_buffer_t *buf,
 
 	/* Initialize implementation */
 	err = create_segment_from_source(&impl->seg, src, src_offset, length);
-	if (err)
-		return_error(err);
+	if (err) 
+		goto fail_segment;
 
 	impl->buf = buf;
 
 	return 0;
 
+fail_segment:
+	free(*action);
 fail:
 	free(impl);
 	return_error(err);
@@ -370,13 +372,15 @@ int buffer_action_insert_new(buffer_action_t **action, bless_buffer_t *buf,
 	/* Initialize implementation */
 	err = create_segment_from_source(&impl->seg, src, src_offset, length);
 	if (err)
-		goto fail;
+		goto fail_segment;
 
 	impl->buf = buf;
 	impl->offset = offset;
 
 	return 0;
 
+fail_segment:
+	free(*action);
 fail:
 	free(impl);
 	return_error(err);
