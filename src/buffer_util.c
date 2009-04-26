@@ -29,7 +29,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "buffer.h"
 #include "buffer_util.h"
+#include "buffer_internal.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -526,6 +528,172 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
 	/* TODO: Handle this better because the segcol is going to be corrupted */
 	if (err)
 		return_error(err);
+
+	return 0;
+}
+
+/** 
+ * Copies data from a segcol into another.
+ * 
+ * The dst and src segcol must not be the same.
+ *
+ * @param dst the segcol to copy data into
+ * @param offset the offset in the segcol to copy data into
+ * @param src the segcol to copy data from
+ * 
+ * @return the operation error code
+ */
+int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src)
+{
+	if (dst == NULL || src == NULL || offset < 0 || dst == src)
+		return_error(EINVAL);
+
+	off_t dst_size;
+	int err = segcol_get_size(dst, &dst_size);
+	if (err)
+		return_error(err);
+
+	segcol_iter_t *iter;
+	err = segcol_iter_new(src, &iter);
+	if (err)
+		return_error(err);
+
+	/* If the deleted data was beyond the end of file we must append it */
+	int use_append = (offset >= dst_size);
+
+	/* The offset of the last byte we re-added to the segcol */
+	off_t offset_reached = offset - 1;
+
+	int valid;
+
+	/* Re-add a copy of every segment to the segcol at its original position */
+	while (!segcol_iter_is_valid(iter, &valid) && valid) {
+		segment_t *seg;
+		off_t mapping;
+		segcol_iter_get_segment(iter, &seg);
+		segcol_iter_get_mapping(iter, &mapping);
+
+		segment_t *seg_copy;
+		segment_copy(seg, &seg_copy);
+
+		if (use_append)
+			err = segcol_append(dst, seg_copy);
+		else
+			err = segcol_insert(dst, offset + mapping, seg_copy);
+
+		if (err) {
+			segment_free(seg_copy);
+			goto fail;
+		}
+
+		offset_reached = offset + mapping - 1;
+
+		err = segcol_iter_next(iter);
+		if (err)
+			goto fail;
+	}
+
+	err = segcol_iter_free(iter);
+	if (err)
+		goto fail_iter_free;
+
+	return 0;
+
+fail:
+	segcol_iter_free(iter);
+fail_iter_free:
+	/* 
+	 * If we fail try to restore the previous state of the buffer by
+	 * deleting any segments we re-added.
+	 */
+	if (offset_reached >= offset)
+		segcol_delete(dst, NULL, offset, offset_reached - offset + 1);
+
+	return_error(err);
+}
+
+/**
+ * Enforces the undo limit on the undo list.
+ *
+ * After the operation the undo list contains at most the most recent
+ * buf->options->undo_limit actions. Additionally if ensure_vacancy == 1 the
+ * undo list contains space for at least one action (unless the undo limit is
+ * 0).
+ * 
+ * @param buf the bless_buffer_t
+ * @param ensure_vacancy whether to make sure that there is space for one
+ *                       additional action
+ * 
+ * @return the operation error code
+ */
+int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
+{
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	size_t limit = buf->options->undo_limit;
+	/* 
+	 * if we want to ensure vacancy of one action we must delete one more
+	 * existing action than we would normally do.
+	 */
+	if (limit != 0 && ensure_vacancy)
+		limit--;
+
+	/* 
+	 * Remove actions from the start of the undo list (older ones) until
+	 * we reach the limit.
+	 */
+	struct list_node *node;
+	struct list_node *tmp;
+
+  list_for_each_safe(action_list_head(buf->undo_list)->next, node, tmp) {
+    if (buf->undo_list_size <= limit)
+      break;
+
+		int err = list_delete_chain(node, node);
+		if (err)
+			return_error(err);
+
+    --buf->undo_list_size;
+
+		struct buffer_action_entry *del_entry = 
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_free(del_entry->action);
+		free(del_entry);
+  }
+
+
+	return 0;
+}
+
+/** 
+ * Clears an action list's contents without freeing the list itself.
+ * 
+ * @param action_list the action_list
+ * 
+ * @return the operation error code
+ */
+int action_list_clear(struct list *action_list)
+{
+	if (action_list == NULL)
+		return_error(EINVAL);
+
+	struct list_node *node;
+	struct list_node *tmp;
+
+	/* 
+	 * Use the safe iterator so that we can delete the current 
+	 * node from the list as we traverse it.
+	 */
+	list_for_each_safe(action_list_head(action_list)->next, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		list_delete_chain(node, node);
+		buffer_action_free(entry->action);
+		free(entry);
+	}
 
 	return 0;
 }

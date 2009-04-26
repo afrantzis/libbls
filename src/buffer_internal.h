@@ -29,12 +29,31 @@ extern "C" {
 #endif
 
 #include "segcol.h"
+#include "list.h"
+#include "buffer_action.h"
+
+/* Helper macros for action list */
+#define action_list_head(ptr) list_head((ptr), struct buffer_action_entry, ln)
+#define action_list_tail(ptr) list_tail((ptr), struct buffer_action_entry, ln)
+
+/** 
+ * Buffer action list entry.
+ */
+struct buffer_action_entry {
+	struct list_node ln;
+	buffer_action_t *action;
+};
 
 /** 
  * Buffer options struct
  */
 struct buffer_options {
 	char *tmp_dir;
+
+	size_t undo_limit;
+	char *undo_limit_str;
+
+	char *undo_after_save;
 };
 
 /**
@@ -43,6 +62,10 @@ struct buffer_options {
 struct bless_buffer {
 	segcol_t *segcol;
 	struct buffer_options *options;
+	struct list *undo_list;
+	struct list *redo_list;
+	size_t undo_list_size;
+	size_t redo_list_size;
 };
 
 #ifdef __cplusplus

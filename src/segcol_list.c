@@ -465,8 +465,15 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	 * This check is placed after the first find_seg_entry() so that the
 	 * validity of offset (if it is in range) is checked first.
 	 */
-	if (length == 0)
+	if (length == 0) {
+		/* Return an empty deleted segcol if the caller wants one */
+		if (deleted != NULL) {
+			err = segcol_list_new(deleted);
+			if (err)
+				return_error(err);
+		}
 		return 0;
+	}
 
 	err = find_seg_entry(segcol, &last_entry, &last_mapping,
 			offset + length - 1 * (length != 0));

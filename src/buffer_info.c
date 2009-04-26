@@ -28,14 +28,14 @@
 #include <string.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "buffer_util.h"
+#include "type_limits.h"
 
 #include "util.h"
 
 
 #pragma GCC visibility push(default)
 
-/* bless_buffer_can_{undo,redo} are not implemented yet */
-#pragma GCC visibility push(hidden)
 
 /**
  * Checks whether the last operation in a bless_buffer_t can be undone.
@@ -47,7 +47,14 @@
  */
 int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 {
-	return_error(ENOSYS);
+	if (buf == NULL || can_undo == NULL)
+		return_error(EINVAL);
+
+	struct list_node *first = action_list_head(buf->undo_list)->next;
+
+	*can_undo = !(first->next == first);
+
+	return 0;
 }
 
 /**
@@ -60,10 +67,15 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
  */
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 {
-	return_error(ENOSYS);
-}
+	if (buf == NULL || can_redo == NULL)
+		return_error(EINVAL);
 
-#pragma GCC visibility pop
+	struct list_node *first = action_list_head(buf->redo_list)->next;
+
+	*can_redo = !(first->next == first);
+
+	return 0;
+}
 
 /**
  * Gets the size of a bless_buffer_t.
@@ -112,6 +124,64 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 			}
 			break;
 
+		case BLESS_BUF_UNDO_LIMIT:
+			if (val == NULL)
+				return_error(EINVAL);
+			else if (!strcmp(val, "infinite")) {
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_limit_str != NULL)
+					free(buf->options->undo_limit_str);
+
+				buf->options->undo_limit_str = dup;
+				buf->options->undo_limit = __MAX(size_t);
+			}
+			else {
+				char *endptr;
+				size_t limit = strtoul(val, &endptr, 10);
+				if (*val == '\0' || *endptr != '\0')
+					return_error(EINVAL);
+
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_limit_str != NULL)
+					free(buf->options->undo_limit_str);
+
+				buf->options->undo_limit_str = dup;
+				buf->options->undo_limit = limit;
+			}
+
+			/* 
+			 * Make sure that the undo list size adheres to the new limit and
+			 * clear the redo list.
+			 */
+			undo_list_enforce_limit(buf, 0);
+			action_list_clear(buf->redo_list);
+			buf->redo_list_size = 0;
+
+			break;
+
+		case BLESS_BUF_UNDO_AFTER_SAVE:
+			if (val == NULL || (strcmp(val, "always") && strcmp(val, "never")
+					&& strcmp(val, "best_effort")))
+				return_error(EINVAL);
+			else {
+				char *dup = strdup(val);
+				if (dup == NULL)
+					return_error(ENOMEM);
+
+				/* Free old value and set new one */
+				if (buf->options->undo_after_save != NULL)
+					free(buf->options->undo_after_save);
+				buf->options->undo_after_save = dup;
+			}
+			break;
 		default:
 			break;
 	}
@@ -140,6 +210,14 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 	switch (opt) {
 		case BLESS_BUF_TMP_DIR:
 			*val = buf->options->tmp_dir;
+			break;
+
+		case BLESS_BUF_UNDO_LIMIT:
+			*val = buf->options->undo_limit_str;
+			break;
+
+		case BLESS_BUF_UNDO_AFTER_SAVE:
+			*val = buf->options->undo_after_save;
 			break;
 
 		default:

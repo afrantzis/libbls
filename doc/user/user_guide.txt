@@ -1,5 +1,5 @@
 =======================
-Libbls 0.1.1 user guide
+Libbls 0.2 user guide
 =======================
 
 :Authors: Alexandros Frantzis, Michael Iatrou
@@ -385,6 +385,39 @@ For example::
     if (err)
         ...
 
+Undoing and redoing operations
+------------------------------
+
+Libbls buffers have built-in undo-redo capabilities. The functions used to
+perform undo and redo are unsuprisingly named ``bless_buffer_undo`` and 
+``bless_buffer_redo``::
+
+    int bless_buffer_undo(bless_buffer_t *buf);
+
+    int bless_buffer_redo(bless_buffer_t *buf);
+
+There are two related functions that query if there are any actions to 
+undo or redo::
+
+    int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
+
+    int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
+
+As usual for a linear undo-redo scheme, when you edit the buffer the 
+list of actions that can be redone is cleared.
+
+The maximum number of actions that can be undone/redone is controlled
+by the ``BLESS_BUF_UNDO_LIMIT`` buffer option (see `Setting buffer options`_).
+The default value for this options is ``"infinite"`` which means that there
+is no undo limiting.
+
+Note that undo/redo capabilities incur a performance and memory overhead so if
+you don't need them it is recommended that you turn them off (set
+``BLESS_BUF_UNDO_LIMIT`` to ``"0"``).
+
+By default, libbls tries to retain as much as possible of undo/redo history
+after a save. This is controlled by the ``BLESS_BUF_UNDO_AFTER_SAVE`` buffer
+option (see `Setting buffer options`_).
 
 Reading data from the buffer
 ============================
@@ -434,6 +467,10 @@ memory is utilized first, followed by temporary files on disk, if memory is not
 sufficient. The directory used to store temporary files can be set using the
 ``BLESS_BUF_TMP_DIR`` option (see `Setting buffer options`_).
 
+By default, libbls tries to retain as much as possible of undo/redo history
+after a save. This is controlled by the ``BLESS_BUF_UNDO_AFTER_SAVE`` buffer
+option (see `Setting buffer options`_).
+
 An example of how to save a buffer::
 
     /* Assume "buf" is initialized and contains some data */
@@ -470,7 +507,22 @@ The options that are currently implemented are:
 
 BLESS_BUF_TMP_DIR
     The directory to store temporary files in (see `Saving the buffer contents
-    to a file`_). The default value is `/tmp`.
+    to a file`_). The default value is ``"/tmp"``.
+
+BLESS_BUF_UNDO_LIMIT
+    The maximum number of actions that can be undone or redone. Acceptable
+    values are strings representing natural numbers or ``"infinite"`` to
+    turn off undo limiting. A value of ``"0"`` turns off undo/redo
+    capabilities. The default value is ``"infinite"`` (no undo limiting).
+
+BLESS_BUF_UNDO_AFTER_SAVE
+    Whether to be able to undo/redo after saving a buffer. The acceptable
+    values are ``"always"``, ``"never"`` and ``"best_effort"``. If the value is
+    ``"always"`` a save won't be performed unless it is guaranteed that all
+    undo/redo actions can be safely performed after the save. A value of
+    ``"never"`` clears all undo redo actions after a successful save. If the
+    value is ``"best_effort"`` libbls does its best to keep as much history as
+    it can (eg what fits in memory). The default value is ``"best_effort"``.
 
 An example of setting a buffer option::
 

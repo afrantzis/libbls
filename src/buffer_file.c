@@ -39,6 +39,7 @@
 #include "list.h"
 #include "buffer_util.h"
 #include "util.h"
+#include "type_limits.h"
 
 
 #pragma GCC visibility push(default)
@@ -361,6 +362,109 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 	return 0;
 }
 
+
+/** 
+ * Makes private copies of buffer (undo/redo) action data that belong to
+ * a specific data object.
+ *
+ * This is done to ensure the integrity of the data in case the specified
+ * data object changes (eg a file during save).
+ *
+ * If 'del' is non-zero and a private copy of an action can not be made, that and
+ * older actions are removed from the undo/redo list. Otherwise in case a private
+ * copy fails an error is immediately returned.
+ *  
+ * @param buf the bless_buffer_t 
+ * @param obj the data_object_t the data must belong to
+ * @param del whether to delete any actions (and actions older than them) that
+ *            we cannot make private copies of.
+ * 
+ * @return the operation error code
+ */
+static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
+		int del)
+{
+	int err;
+	struct list_node *node;
+	struct list_node *tmp;
+	int undo_err = 0;
+	int redo_err = 0;
+
+	/* 
+	 * Try to make private copies of undo actions starting from the newest one.
+	 * If a private copy of an action fails, remove that and all older actions
+	 * from the undo list.
+	 */
+	list_for_each_reverse_safe(action_list_tail(buf->undo_list)->prev, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		/* If we have previously encountered an error, remove the action */
+		if (undo_err) {
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		} 
+		else
+			err = buffer_action_private_copy(entry->action, obj);
+
+		/* 
+		 * If the private copy failed remove the action and mark the undo_err.
+		 * However, if the caller doesn't want us to delete anything just return
+		 * an error.
+		 */
+		if (!undo_err && err) {
+			if (!del)
+				return_error(err);
+			undo_err = err;
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		}
+	}
+
+	/* 
+	 * Try to make private copies of redo actions starting from the newest one.
+	 * If a private copy of an action fails, remove that and all older actions
+	 * from the redo list.
+	 */
+	list_for_each_safe(action_list_head(buf->redo_list)->next, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		/* If we have previously encountered an error, remove the action */
+		if (redo_err) {
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		} 
+		else
+			err = buffer_action_private_copy(entry->action, obj);
+
+		/* 
+		 * If the private copy failed remove the action and mark the undo_err.
+		 * However, if the caller doesn't want us to delete anything just return
+		 * an error.
+		 */
+		if (!redo_err && err) {
+			if (!del)
+				return_error(err);
+			redo_err = err;
+			list_delete_chain(node, node);
+			buffer_action_free(entry->action);
+			free(entry);
+		}
+	}
+
+	if (undo_err)
+		return_error(undo_err);
+
+	if (redo_err)
+		return_error(redo_err);
+
+	return 0;
+}
+
 /** 
  * Creates a new buffer_options struct.
  * 
@@ -374,10 +478,25 @@ static int buffer_options_new(struct buffer_options **opts)
 	if (*opts == NULL)
 		return_error(ENOMEM);
 
+	/* Set default values for options */
 	(*opts)->tmp_dir = strdup("/tmp");
 	if ((*opts)->tmp_dir == NULL)
 		return_error(ENOMEM);
 
+	(*opts)->undo_limit = __MAX(size_t);
+
+	(*opts)->undo_limit_str = strdup("infinite");
+	if ((*opts)->undo_limit_str == NULL) {
+		free((*opts)->tmp_dir);
+		return_error(ENOMEM);
+	}
+
+	(*opts)->undo_after_save = strdup("best_effort");
+	if ((*opts)->undo_after_save == NULL) {
+		free((*opts)->undo_limit_str);
+		free((*opts)->tmp_dir);
+		return_error(ENOMEM);
+	}
 
 	return 0;
 }
@@ -392,6 +511,8 @@ static int buffer_options_new(struct buffer_options **opts)
 static int buffer_options_free(struct buffer_options *opts)
 {
 	free(opts->tmp_dir);
+	free(opts->undo_limit_str);
+	free(opts->undo_after_save);
 	free(opts);
 
 	return 0;
@@ -419,19 +540,38 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(ENOMEM);
 	
 	int err = segcol_list_new(&(*buf)->segcol);
-	if (err) {
-		free(buf);
-		return_error(err);
-	}
+	if (err)
+		goto fail_segcol;
 
 	err = buffer_options_new(&(*buf)->options);
-	if (err) {
-		segcol_free((*buf)->segcol);
-		free(buf);
-		return_error(err);
-	}
+	if (err)
+		goto fail_options;
+		
+	err = list_new(&(*buf)->undo_list, struct buffer_action_entry, ln);
+	if (err)
+		goto fail_undo;
+
+	(*buf)->undo_list_size = 0;
+
+	err = list_new(&(*buf)->redo_list, struct buffer_action_entry, ln);
+	if (err)
+		goto fail_redo;
+
+	(*buf)->redo_list_size = 0;
 
 	return 0;
+
+	/* Handle failures */
+fail_redo:
+	list_free((*buf)->undo_list, struct buffer_action_entry, ln);
+fail_undo:
+	buffer_options_free((*buf)->options);
+fail_options:
+	segcol_free((*buf)->segcol);
+fail_segcol:
+	free(buf);
+
+	return_error(err);
 }
 
 /**
@@ -486,6 +626,30 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (err)
 		return_error(err);
 
+	/* Make private copies of data in undo/redo actions. */
+	if (!strcmp(buf->options->undo_after_save, "always")) {
+		/* 
+		 * If the policy is "always" and we cannot safely keep the whole
+		 * action history, don't carry on with the save.
+		 */
+		err = actions_make_private_copy(buf, fd_obj, 0);
+		if (err)
+			goto fail1;
+	}
+	else if (!strcmp(buf->options->undo_after_save, "best_effort")) {
+		/* 
+		 * If the policy is "best_effort" try our best to make private copies,
+		 * but if we fail just carry on with the part of the action history
+		 * that we can safely use (if any).
+		 */
+		actions_make_private_copy(buf, fd_obj, 1);
+	}
+	else if (strcmp(buf->options->undo_after_save, "never")) {
+		/* Invalid option value. We shouldn't get here, but just in case... */
+		err = EINVAL;
+		goto fail1;
+	}
+
 	/* 
 	 * Create the overlap graph and remove any cycles
 	 */
@@ -535,15 +699,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 	segment_t *fd_seg;
 	err = segment_new(&fd_seg, fd_obj, 0, segcol_size, data_object_update_usage);
-	if (err) {
-		segcol_free(segcol_tmp);
-		goto fail1;
-	}
+	if (err)
+		goto fail4;
 
 	err = segcol_append(segcol_tmp, fd_seg);
 	if (err) {
-		segcol_free(segcol_tmp);
-		goto fail1;
+		segment_free(fd_seg);
+		goto fail4;
 	}
 
 	/* 
@@ -552,13 +714,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 */
 	err = create_overlap_graph(&g, buf->segcol, fd_obj);
 	if (err)
-		goto fail1;
+		goto fail4;
 
 	/* Write the file segments to file in topological order */
 	struct list *vertices;
 	err = overlap_graph_get_vertices_topo(g, &vertices);
 	if (err)
-		goto fail2;
+		goto fail5;
 
 	first_node =
 		list_head(vertices, struct vertex_entry, ln)->next;
@@ -567,7 +729,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		struct vertex_entry *v = list_entry(node, struct vertex_entry, ln);
 		err = write_segment(fd, v->segment, v->mapping, v->self_loop_weight);
 		if (err)
-			goto fail4;
+			goto fail6;
 	}
 	
 	list_free(vertices, struct vertex_entry, ln);
@@ -576,20 +738,29 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Write the rest of the segments */
 	err = write_segcol_rest(fd, buf->segcol, fd_obj);
 	if (err)
-		goto fail1;
+		goto fail4;
 
 	/* Truncate file to final size (only if it is a resizable file) */
 	if (fd_resizable == 1) {
 		err = ftruncate(fd, segcol_size);
 		if (err == -1) {
 			err = errno;
-			goto fail1;
+			goto fail4;
 		}
 	}
 
 	/* Use the new segcol in the buffer */
 	segcol_free(buf->segcol);
 	buf->segcol = segcol_tmp;
+
+	if (!strcmp(buf->options->undo_after_save, "never")) {
+		/* If the policy is "never" clear the undo/redo lists */
+		action_list_clear(buf->undo_list);
+		buf->undo_list_size = 0;
+
+		action_list_clear(buf->redo_list);
+		buf->redo_list_size = 0;
+	}
 
 	return 0;
 
@@ -603,9 +774,13 @@ fail1:
 
 	return_error(err);
 
-fail4:
+fail6:
 	list_free(vertices, struct vertex_entry, ln);
-	goto fail2;
+fail5:
+	overlap_graph_free(g);
+fail4:
+	segcol_free(segcol_tmp);
+	goto fail1;
 
 }
 
@@ -629,6 +804,28 @@ int bless_buffer_free(bless_buffer_t *buf)
 	err = buffer_options_free(buf->options);
 	if (err)
 		return_error(err);
+
+	/* Free the stored undo actions */
+	struct list_node *node;
+
+	list_for_each(action_list_head(buf->undo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		buffer_action_free(entry->action);
+	}
+
+	list_free(buf->undo_list, struct buffer_action_entry, ln);
+
+	/* Free the stored redo actions */
+	list_for_each(action_list_head(buf->redo_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry , ln);
+
+		buffer_action_free(entry->action);
+	}
+
+	list_free(buf->redo_list, struct buffer_action_entry, ln);
 
 	free(buf);
 

@@ -19,6 +19,8 @@
 #include "buffer_util.h"
 #include "list.h"
 #include "util.h"
+#include "buffer_action.h"
+#include "buffer_action_edit.h"
 %}
 
 %pointer_class (size_t, size_tp)
@@ -68,7 +70,7 @@
 %apply segment_t ** { segcol_t ** , segcol_iter_t **, data_object_t **, void **}
 %apply segment_t ** { bless_buffer_t **, bless_buffer_source_t ** }
 %apply segment_t ** { priority_queue_t **, overlap_graph_t **, disjoint_set_t ** }
-%apply segment_t ** { struct list **, char **}
+%apply segment_t ** { struct list **, char **, buffer_action_t **}
 
 
 /* Exception for void **: Append void * to return list without conversion */
@@ -375,4 +377,6 @@ void print_vertex_list(struct list *vertices, int fd)
 %include "../src/list.h"
 %include "../src/buffer_options.h"
 %include "../src/util.h"
+%include "../src/buffer_action.h"
+%include "../src/buffer_action_edit.h"
 

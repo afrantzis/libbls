@@ -24,12 +24,12 @@
  */
 
 #include <errno.h>
+#include <stdlib.h>
 #include "buffer.h"
 #include "buffer_internal.h"
+#include "buffer_action.h"
 #include "util.h"
 
-
-#pragma GCC visibility push(hidden)
 
 /**
  * Undoes the last operation in a bless_buffer_t.
@@ -40,8 +40,53 @@
  */
 int bless_buffer_undo(bless_buffer_t *buf)
 {
-	return_error(ENOSYS);
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	/* Make sure we can undo */
+	int can_undo;
+	int err = bless_buffer_can_undo(buf, &can_undo);
+	if (err)
+		return_error(err);
+
+	if (!can_undo)
+		return_error(EINVAL);
+
+	/* Get the last action from the undo list and undo it */
+	struct list_node *last = action_list_tail(buf->undo_list)->prev;
+
+	struct buffer_action_entry *entry = 
+		list_entry(last, struct buffer_action_entry, ln);
+
+	err = buffer_action_undo(entry->action);
+	if (err)
+		return_error(err);
+	
+	/* Remove the action from the undo list */
+	err = list_delete_chain(last, last);
+	if (err) {
+		/* If we can't remove the action, redo it and report error */
+		buffer_action_do(entry->action);
+		return_error(err);
+	}
+
+	--buf->undo_list_size;
+
+	/* Add the entry to the redo list */
+	err = list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
+	if (err) {
+		/* Add it back to the undo list and redo the action */
+		list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+		++buf->undo_list_size;
+		buffer_action_do(entry->action);
+		return_error(err);
+	}
+
+	++buf->redo_list_size;
+
+	return 0;
 }
+
 
 /**
  * Redoes the last undone operation in a bless_buffer_t.
@@ -52,8 +97,59 @@ int bless_buffer_undo(bless_buffer_t *buf)
  */
 int bless_buffer_redo(bless_buffer_t *buf)
 {
-	return_error(ENOSYS);
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	/* Make sure we can redo */
+	int can_redo;
+	int err = bless_buffer_can_redo(buf, &can_redo);
+	if (err)
+		return_error(err);
+
+	if (!can_redo)
+		return_error(EINVAL);
+
+	/* Get the last action from the redo list and do it */
+	struct list_node *last = action_list_tail(buf->redo_list)->prev;
+
+	struct buffer_action_entry *entry = 
+		list_entry(last, struct buffer_action_entry, ln);
+
+	err = buffer_action_do(entry->action);
+	if (err)
+		return_error(err);
+	
+	/* Remove the action from the redo list */
+	err = list_delete_chain(last, last);
+	if (err) {
+		/* If we can't remove the action, undo it and report error */
+		buffer_action_undo(entry->action);
+		return_error(err);
+	}
+
+	--buf->redo_list_size;
+
+	/* 
+	 * Add the entry to the undo list.
+	 * We don't need to check if we can indeed move the entry to the undo list
+	 * without surpassing the undo limit, because throughout the program we
+	 * maintain the undo-redo invariant (undo+redo actions <= undo_limit).
+	 */
+	err = list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+	if (err) {
+		/* Add it back to the redo list and undo the action */
+		list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
+		++buf->redo_list_size;
+		buffer_action_undo(entry->action);
+		return_error(err);
+	}
+
+	++buf->undo_list_size;
+
+	return 0;
 }
+
+#pragma GCC visibility push(hidden)
 
 /**
  * Marks the beginning of a multi-op.
