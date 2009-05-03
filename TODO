@@ -2,11 +2,6 @@
 
 * Implement support for progress callback functions in bless_buffer_save().
 
-* Add support for also using files as temporary storage when saving and we 
-  don't have enough memory.
-  See src/buffer_file.c: break_edge() 
-  and src/buffer_util.c: segcol_store_in_memory()
-
 * [In-progress] Create programs to check performance scaling and memory leaks
   in the library.
 
@@ -15,8 +10,6 @@
 * Implement bless_buffer_find(). Use Boyer-Moore algorithm for searching.
 
 == Large Sized Tasks ==
-
-* Implement undo/redo (and related functions) for buffers.
 
 * Use a more efficient data structure to implement the Segment Collection.
   See doc/devel/segcol_data_structure.txt for some ideas.
