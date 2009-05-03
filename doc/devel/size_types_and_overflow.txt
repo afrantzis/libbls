@@ -5,7 +5,7 @@ Alexandros Frantzis, 31 Oct 2008
 1. Data types for sizes
 -----------------------
 
-Libbls uses the two standard data types for representing sizes: off_t and
+libbls uses the two standard data types for representing sizes: off_t and
 size_t. The off_t type is used for the sizes of (bless_)buffers and objects that
 represent files. The size_t type is used for in-memory objects.
 

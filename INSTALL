@@ -1,7 +1,7 @@
 Building and installing libbls
 ================================
 
-Libbls uses the scons build system. To build libbls change into the
+libbls uses the scons build system. To build libbls change into the
 libbls directory and type::
 
     $ scons
