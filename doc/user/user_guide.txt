@@ -74,8 +74,8 @@ correct flags so that:
 In case of a typical libbls installation all three can be automated using
 pkg-config::
 
-    pkg-config bls-0.1 --cflags
-    pkg-config bls-0.1 --libs
+    pkg-config bls-X.Y --cflags
+    pkg-config bls-X.Y --libs
 
 Note that libbls versions are parallel installable. To build against another
 installed version of libbls just change the version in the pkg-config command.

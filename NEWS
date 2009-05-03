@@ -1,10 +1,15 @@
-libbls v0.1.1 20090402
+libbls v0.2.0 20090503
+----------------------
+
+* Added support for undo/redo operations
+
+libbls v0.1.1 20090204
 ----------------------
 
 * Added support for saving to block devices.
 * Fixed various memory leaks.
 
-libbls v0.1.0 20092901
+libbls v0.1.0 20090129
 ----------------------
 
 * Initial public release.
