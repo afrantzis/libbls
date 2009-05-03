@@ -1,7 +1,18 @@
 libbls v0.2.0 20090503
 ----------------------
 
-* Added support for undo/redo operations
+* Added support for undo/redo operations.
+* Added support for buffer options.
+* Added support for using files (in addition to memory) as temporary storage
+  when saving.
+* Implemented new API functions:
+    bless_buffer_undo
+	bless_buffer_redo
+	bless_buffer_can_undo
+	bless_buffer_can_redo
+	bless_buffer_get_option
+	bless_buffer_set_option
+
 
 libbls v0.1.1 20090204
 ----------------------
