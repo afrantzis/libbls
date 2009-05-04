@@ -190,12 +190,11 @@ env.Alias('doc', all_doc)
 ###############
 
 dist_files = scons_helpers.get_files('.',
-	exclude = ['build', '*.log', '.*', '*~', '*.pyc', '*.gz'])
+	exclude = ['build', 'html', '*.log', '.*', '*~', '*.pyc', '*.gz'])
 
 dist_archive = env.Archive('libbls-${lib_version}.tar.gz', dist_files)
 
 env.Alias('dist', dist_archive)
-env.Depends(dist_archive, all_doc)
 
 ########################
 # Benchmarking targets #
