@@ -12,8 +12,8 @@ env = Environment(ENV = os.environ)
 scons_helpers.register_builders(env)
 
 env['lib_major'] = '0'
-env['lib_minor'] = '1'
-env['lib_patch'] = '1'
+env['lib_minor'] = '2'
+env['lib_patch'] = '0'
 env['lib_version'] = '${lib_major}.${lib_minor}.${lib_patch}'
 
 env['lib_name_no_lib'] = 'bls-%s' % env.subst('${lib_major}.${lib_minor}')
@@ -145,7 +145,7 @@ install_run_link = lib_targets[1]
 install_dev_link = lib_targets[2]
 
 install_headers = env.Install('${destdir}${includedir}/bls',
-		['src/buffer.h','src/buffer_source.h'])
+		['src/buffer.h','src/buffer_source.h','src/buffer_options.h'])
 
 install_pkgconf = env.Install('${destdir}${libdir}/pkgconfig', pkgconf)
 
@@ -190,12 +190,11 @@ env.Alias('doc', all_doc)
 ###############
 
 dist_files = scons_helpers.get_files('.',
-	exclude = ['build', '*.log', '.*', '*~', '*.pyc', '*.gz'])
+	exclude = ['build', 'html', '*.log', '.*', '*~', '*.pyc', '*.gz'])
 
 dist_archive = env.Archive('libbls-${lib_version}.tar.gz', dist_files)
 
 env.Alias('dist', dist_archive)
-env.Depends(dist_archive, all_doc)
 
 ########################
 # Benchmarking targets #

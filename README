@@ -1,4 +1,4 @@
-Libbls - Efficient editable buffer library
+libbls - Efficient editable buffer library
 ==========================================
 
 libbls is a highly efficient, flexible and robust data manipulation library in
@@ -14,11 +14,10 @@ combining data from both memory and arbitrary sized chunks from files.
 A simple, intuitive and yet powerful API provides the infrastructure needed to
 develop scalable applications that handle large volumes of data. 
 
-Libbls is currently under heavy development and not API stable yet. However,
-its main features are in a very usable state, so don't hesitate to try it out
-and tell us what you think.
+libbls is under development. However, its main features are in usable state, so
+don't hesitate to try it out and tell us what you think.
 
-Libbls is distributed under the LGPL version 3 license (see COPYING and
+libbls is distributed under the LGPL version 3 license (see COPYING and
 COPYING.LESSER). If you find it useful, please let us know. 
 
 If you really, really like the project, and want to contribute to it, read

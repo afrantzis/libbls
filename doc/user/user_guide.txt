@@ -1,5 +1,5 @@
 =======================
-Libbls 0.2 user guide
+libbls 0.2 user guide
 =======================
 
 :Authors: Alexandros Frantzis, Michael Iatrou
@@ -36,7 +36,7 @@ doc/user/html in the libbls tarball.
 Building and installing libbls
 ================================
 
-Libbls uses the scons build system. To build libbls change into the libbls
+libbls uses the scons build system. To build libbls change into the libbls
 directory and type::
 
     $ scons
@@ -74,8 +74,8 @@ correct flags so that:
 In case of a typical libbls installation all three can be automated using
 pkg-config::
 
-    pkg-config bls-0.1 --cflags
-    pkg-config bls-0.1 --libs
+    pkg-config bls-X.Y --cflags
+    pkg-config bls-X.Y --libs
 
 Note that libbls versions are parallel installable. To build against another
 installed version of libbls just change the version in the pkg-config command.
@@ -183,7 +183,7 @@ Buffer sources
 Types of buffer sources
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-All data added to the buffer must come from some source.  Libbls abstracts
+All data added to the buffer must come from some source.  libbls abstracts
 these sources using the ``bless_buffer_source_t`` opaque type.
 
 There are currently two kinds of sources: memory sources and file sources. A
@@ -388,7 +388,7 @@ For example::
 Undoing and redoing operations
 ------------------------------
 
-Libbls buffers have built-in undo-redo capabilities. The functions used to
+libbls buffers have built-in undo-redo capabilities. The functions used to
 perform undo and redo are unsuprisingly named ``bless_buffer_undo`` and 
 ``bless_buffer_redo``::
 

@@ -1,10 +1,26 @@
-libbls v0.1.1 20090402
+libbls v0.2.0 20090504
+----------------------
+
+* Added support for undo/redo operations.
+* Added support for buffer options.
+* Added support for using files (in addition to memory) as temporary storage
+  when saving.
+* Implemented new API functions:
+    bless_buffer_undo
+	bless_buffer_redo
+	bless_buffer_can_undo
+	bless_buffer_can_redo
+	bless_buffer_get_option
+	bless_buffer_set_option
+
+
+libbls v0.1.1 20090204
 ----------------------
 
 * Added support for saving to block devices.
 * Fixed various memory leaks.
 
-libbls v0.1.0 20092901
+libbls v0.1.0 20090129
 ----------------------
 
 * Initial public release.

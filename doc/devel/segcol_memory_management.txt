@@ -159,7 +159,7 @@ concurrently.
 What libbls implements
 ========================
 
-Libbls currently uses immutable data objects and allows object sharing within
+libbls currently uses immutable data objects and allows object sharing within
 a single segcol. The segcol takes ownership of the data objects and usage
 counting to know when to free them.
 
