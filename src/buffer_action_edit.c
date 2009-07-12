@@ -541,7 +541,7 @@ static int buffer_action_append_to_event(buffer_action_t *action,
 	event_info->action_type = BLESS_BUFFER_ACTION_APPEND;
 	event_info->range_start = buf_size - seg_size;
 	event_info->range_length = seg_size;
-	event_info->save_filename = NULL;
+	event_info->save_fd = -1;
 
 	return 0;
 }
@@ -656,7 +656,7 @@ static int buffer_action_insert_to_event(buffer_action_t *action,
 	event_info->action_type = BLESS_BUFFER_ACTION_INSERT;
 	event_info->range_start = impl->offset;
 	event_info->range_length = seg_size;
-	event_info->save_filename = NULL;
+	event_info->save_fd = -1;
 
 	return 0;
 }
@@ -761,7 +761,7 @@ static int buffer_action_delete_to_event(buffer_action_t *action,
 	event_info->action_type = BLESS_BUFFER_ACTION_DELETE;
 	event_info->range_start = impl->offset;
 	event_info->range_length = impl->length;
-	event_info->save_filename = NULL;
+	event_info->save_fd = -1;
 
 	return 0;
 }

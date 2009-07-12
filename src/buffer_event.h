@@ -54,13 +54,13 @@ enum {
  * Information about a buffer event.
  */
 struct bless_buffer_event_info {
-	int event_type;      /**< The event type (BLESS_BUFFER_EVENT_*) */
-	int action_type;     /**< The action type (BLESS_BUFFER_ACTION_*) */
-	off_t range_start;   /**< The start of the range of the buffer that
+	int event_type;     /**< The event type (BLESS_BUFFER_EVENT_*) */
+	int action_type;    /**< The action type (BLESS_BUFFER_ACTION_*) */
+	off_t range_start;  /**< The start of the range of the buffer that
 							was affected by an event */
-	off_t range_length;  /**< The length of the range of the buffer that
+	off_t range_length; /**< The length of the range of the buffer that
 							was affected by an event */
-	char *save_filename; /**< The name of the file the buffer was saved to */
+	int save_fd;        /**< The descriptor of the file the buffer was saved to */
 };
 
 #endif
