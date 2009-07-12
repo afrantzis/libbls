@@ -558,6 +558,8 @@ int bless_buffer_new(bless_buffer_t **buf)
 		goto fail_redo;
 
 	(*buf)->redo_list_size = 0;
+	(*buf)->event_func = NULL;
+	(*buf)->event_user_data = NULL;
 
 	return 0;
 

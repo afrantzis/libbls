@@ -31,6 +31,7 @@ extern "C" {
 #include "segcol.h"
 #include "list.h"
 #include "buffer_action.h"
+#include "buffer.h"
 
 /* Helper macros for action list */
 #define action_list_head(ptr) list_head((ptr), struct buffer_action_entry, ln)
@@ -66,6 +67,9 @@ struct bless_buffer {
 	struct list *redo_list;
 	size_t undo_list_size;
 	size_t redo_list_size;
+	
+	bless_buffer_event_func_t *event_func;
+	void *event_user_data;
 };
 
 #ifdef __cplusplus

@@ -34,6 +34,7 @@ extern "C" {
 
 #include "buffer_source.h"
 #include "buffer_options.h"
+#include "buffer_event.h"
 
 /**
  * @defgroup buffer Buffer
@@ -59,6 +60,18 @@ typedef struct bless_buffer bless_buffer_t;
  * @return 1 if the operation must be cancelled, 0 otherwise
  */
 typedef int (bless_progress_func)(void *info);
+
+/** 
+ * Callback function called to report a buffer event.
+ *
+ * This function is set by bless_buffer_set_event_callback().
+ * 
+ * @param buf the bless_buffer_t responsible for this event
+ * @param info the event information
+ * @param user_data user data
+ */
+typedef void (bless_buffer_event_func_t)(bless_buffer_t *buf,
+		struct bless_buffer_event_info *info, void *user_data);
 
 /**
  * @name File Operations
@@ -135,6 +148,8 @@ int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 		bless_buffer_option_t opt);
 
+int bless_buffer_set_event_callback(bless_buffer_t *buf,
+		bless_buffer_event_func_t *func, void *user_data);
 /** @} */
 
 /** @} */

@@ -26,6 +26,7 @@
 #define _BUFFER_ACTION_H
 
 #include "data_object.h"
+#include "buffer_event.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,6 +54,9 @@ int buffer_action_do(buffer_action_t *action);
 int buffer_action_undo(buffer_action_t *action);
 
 int buffer_action_private_copy(buffer_action_t *action, data_object_t *dobj);
+
+int buffer_action_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info);
 
 int buffer_action_free(buffer_action_t *action);
 
