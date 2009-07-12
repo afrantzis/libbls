@@ -505,17 +505,17 @@ way the world may come to a horrific end (so don't do it!).
 
 The options that are currently implemented are:
 
-BLESS_BUF_TMP_DIR
+``BLESS_BUF_TMP_DIR``
     The directory to store temporary files in (see `Saving the buffer contents
     to a file`_). The default value is ``"/tmp"``.
 
-BLESS_BUF_UNDO_LIMIT
+``BLESS_BUF_UNDO_LIMIT``
     The maximum number of actions that can be undone or redone. Acceptable
     values are strings representing natural numbers or ``"infinite"`` to
     turn off undo limiting. A value of ``"0"`` turns off undo/redo
     capabilities. The default value is ``"infinite"`` (no undo limiting).
 
-BLESS_BUF_UNDO_AFTER_SAVE
+``BLESS_BUF_UNDO_AFTER_SAVE``
     Whether to be able to undo/redo after saving a buffer. The acceptable
     values are ``"always"``, ``"never"`` and ``"best_effort"``. If the value is
     ``"always"`` a save won't be performed unless it is guaranteed that all
@@ -541,3 +541,125 @@ An example of setting a buffer option::
         ...
 
     /* Don't change the string stored in "val"! */
+
+Monitoring buffer events
+========================
+
+It is sometimes useful to know when something interesting has happened
+to a ``bless_buffer_t``. The buffer has the ability to inform any interested
+parties by means of a callback function::
+
+    typedef void (bless_buffer_event_func_t)(
+        bless_buffer_t *buf,
+        struct bless_buffer_event_info *info,
+        void *user_data
+        );
+
+This callback function can be set using the ``bless_buffer_set_event_callback()``
+function::
+
+    int bless_buffer_set_event_callback(
+        bless_buffer_t *buf,
+        bless_buffer_event_func_t *func,
+        void *user_data
+        );
+
+Note that you can disable the callback function by setting it to NULL.
+
+When something interesting happens to the buffer the callback function is called
+with an appropriately filled ``struct bless_buffer_event_info``::
+
+    /**
+     * Information about a buffer event.
+     */
+    struct bless_buffer_event_info {
+        int event_type;     /**< The event type (BLESS_BUFFER_EVENT_*) */
+        int action_type;    /**< The action type (BLESS_BUFFER_ACTION_*) */
+        off_t range_start;  /**< The start of the range of the buffer that
+                              was affected by an event */
+        off_t range_length; /**< The length of the range of the buffer that
+                              was affected by an event */
+        int save_fd;        /**< The descriptor of the file the buffer was saved to */
+    };
+
+The currently implemented events that can be found in the ``event_type`` field
+are:
+
+``BLESS_BUFFER_EVENT_EDIT``
+	The buffer has been edited in some way. The ``action_type`` field gives
+	more information about the kind of editing (eg ``BLESS_BUFFER_INSERT``) and
+	the ``range_start`` and ``range_length`` contain the range of the buffer
+	that was affected by the editing operation.
+
+``BLESS_BUFFER_EVENT_UNDO``
+	The last buffer action has been undone. As with ``BLESS_BUFFER_EVENT_EDIT``
+	the ``action_type``, ``range_start`` and ``range_length`` fields give more
+	information about the undone action.
+	
+``BLESS_BUFFER_EVENT_REDO``
+	The last undone buffer action has been redone. As with
+	``BLESS_BUFFER_EVENT_EDIT`` the ``action_type``, ``range_start`` and
+	``range_length`` fields give more information about the redone action.
+
+``BLESS_BUFFER_EVENT_SAVE``
+	The buffer has been successfully saved to a file. The file descriptor of
+	the file is placed in the ``save_fd`` field. The contents of the other
+	fields should be ignored.
+
+``BLESS_BUFFER_EVENT_DESTROY``
+	The buffer is about to be destroyed (freed). No fields are valid for this event.
+
+The currently implemented actions for the ``action_type`` field are:
+
+``BLESS_BUFFER_ACTION_APPEND``
+
+``BLESS_BUFFER_ACTION_INSERT``
+
+``BLESS_BUFFER_ACTION_DELETE``
+
+An example of how to use the callback function::
+
+    void event_callback(bless_buffer_t *buf, struct bless_buffer_event_info *info,
+                        void *user_data)
+    {
+        switch(info->event_type) {
+            case BLESS_BUFFER_EVENT_EDIT:
+            case BLESS_BUFFER_EVENT_UNDO:
+            case BLESS_BUFFER_EVENT_REDO:
+                printf("Buffer [%p] changed at offset %lld\n", buf, info->range_start);
+                break;
+
+            case BLESS_BUFFER_EVENT_SAVE:
+                printf("Buffer [%p] has been save to fd=%d\n", buf, info->save_fd);
+                break;
+
+            case BLESS_BUFFER_EVENT_DESTROY:
+                printf("Buffer [%p] is about to be destroyed. Bye bye.\n", buf);
+                break;
+
+            default:
+                printf("Buffer [%p] has issued unexpected event %d\n", buf, info->event_type);
+                break;
+        }
+    }
+
+    int main(void)
+    {
+        bless_buffer_t *buf;
+        int err;
+
+        /* Initialize buffer... */
+
+        /* Enable event reporting */
+        err = bless_buffer_set_event_callback(buf, event_callback, NULL);
+        if (err)
+            ...
+
+        /* Use buffer... */
+
+        /* Disable event reporting */
+        err = bless_buffer_set_event_callback(buf, NULL, NULL);
+        if (err)
+            ...
+    }
+
