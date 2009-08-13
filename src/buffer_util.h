@@ -56,7 +56,7 @@ int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src);
 
 int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy);
 
-int action_list_clear(struct list *action_list);
+int action_list_clear(list_t *action_list);
 
 #ifdef __cplusplus
 }

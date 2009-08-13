@@ -35,7 +35,7 @@
 #include "segcol.h"
 #include "data_object.h"
 #include "data_object_memory.h"
-#include "util.h"
+#include "debug.h"
 
 
 /* Forward declarations */

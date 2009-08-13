@@ -35,6 +35,7 @@
 #include "data_object_internal.h"
 #include "data_object_file.h"
 #include "type_limits.h"
+#include "debug.h"
 #include "util.h"
 
 
@@ -228,6 +229,8 @@ int data_object_file_set_close_func(data_object_t *obj,
 static int data_object_file_get_data(data_object_t *obj, void **buf, 
 		off_t offset, off_t *length, data_object_flags flags)
 {
+	UNUSED_PARAM(flags);
+
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
 		return_error(EINVAL);
 

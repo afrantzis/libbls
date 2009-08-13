@@ -32,7 +32,7 @@
 #include "buffer_event.h"
 #include "type_limits.h"
 
-#include "util.h"
+#include "debug.h"
 
 
 #pragma GCC visibility push(default)
@@ -51,7 +51,7 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo)
 	if (buf == NULL || can_undo == NULL)
 		return_error(EINVAL);
 
-	struct list_node *first = action_list_head(buf->undo_list)->next;
+	struct list_node *first = list_head(buf->undo_list)->next;
 
 	*can_undo = !(first->next == first);
 
@@ -71,7 +71,7 @@ int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo)
 	if (buf == NULL || can_redo == NULL)
 		return_error(EINVAL);
 
-	struct list_node *first = action_list_head(buf->redo_list)->next;
+	struct list_node *first = list_head(buf->redo_list)->next;
 
 	*can_redo = !(first->next == first);
 

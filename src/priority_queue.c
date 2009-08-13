@@ -25,7 +25,7 @@
 
 #include "priority_queue.h"
 #include "type_limits.h"
-#include "util.h"
+#include "debug.h"
 
 #include <stdlib.h>
 #include <errno.h>

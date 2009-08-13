@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include "disjoint_set.h"
-#include "util.h"
+#include "debug.h"
 
 struct disjoint_set {
 	size_t *parent;

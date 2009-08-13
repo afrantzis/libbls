@@ -28,7 +28,7 @@
 
 #include "data_object.h"
 #include "data_object_internal.h"
-#include "util.h"
+#include "debug.h"
 
 struct data_object {
 	void *impl;

@@ -28,6 +28,7 @@
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "buffer_action.h"
+#include "debug.h"
 #include "util.h"
 
 
@@ -53,7 +54,7 @@ int bless_buffer_undo(bless_buffer_t *buf)
 		return_error(EINVAL);
 
 	/* Get the last action from the undo list and undo it */
-	struct list_node *last = action_list_tail(buf->undo_list)->prev;
+	struct list_node *last = list_tail(buf->undo_list)->prev;
 
 	struct buffer_action_entry *entry = 
 		list_entry(last, struct buffer_action_entry, ln);
@@ -73,10 +74,10 @@ int bless_buffer_undo(bless_buffer_t *buf)
 	--buf->undo_list_size;
 
 	/* Add the entry to the redo list */
-	err = list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
+	err = list_insert_before(list_tail(buf->redo_list), &entry->ln);
 	if (err) {
 		/* Add it back to the undo list and redo the action */
-		list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+		list_insert_before(list_tail(buf->undo_list), &entry->ln);
 		++buf->undo_list_size;
 		buffer_action_do(entry->action);
 		return_error(err);
@@ -123,7 +124,7 @@ int bless_buffer_redo(bless_buffer_t *buf)
 		return_error(EINVAL);
 
 	/* Get the last action from the redo list and do it */
-	struct list_node *last = action_list_tail(buf->redo_list)->prev;
+	struct list_node *last = list_tail(buf->redo_list)->prev;
 
 	struct buffer_action_entry *entry = 
 		list_entry(last, struct buffer_action_entry, ln);
@@ -148,10 +149,10 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	 * without surpassing the undo limit, because throughout the program we
 	 * maintain the undo-redo invariant (undo+redo actions <= undo_limit).
 	 */
-	err = list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+	err = list_insert_before(list_tail(buf->undo_list), &entry->ln);
 	if (err) {
 		/* Add it back to the redo list and undo the action */
-		list_insert_before(action_list_tail(buf->redo_list), &entry->ln);
+		list_insert_before(list_tail(buf->redo_list), &entry->ln);
 		++buf->redo_list_size;
 		buffer_action_undo(entry->action);
 		return_error(err);
@@ -191,6 +192,8 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_op(bless_buffer_t *buf)
 {
+	UNUSED_PARAM(buf);
+
 	return_error(ENOSYS);
 }
 
@@ -208,6 +211,8 @@ int bless_buffer_begin_multi_op(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_op(bless_buffer_t *buf)
 {
+	UNUSED_PARAM(buf);
+
 	return_error(ENOSYS);
 }
 

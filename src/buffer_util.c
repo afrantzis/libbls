@@ -38,6 +38,7 @@
 #include "data_object_memory.h"
 #include "data_object_file.h"
 #include "util.h"
+#include "debug.h"
 
 #include "type_limits.h"
 
@@ -252,7 +253,7 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		/* Get necessary data from the iterator */
 		segment_t *segment;
 		off_t mapping;
-		off_t read_start;
+		off_t read_start = 0; /* assign just to silence warnings */
 		off_t read_length;
 
 		err = get_data_from_iter(iter, &segment, &mapping, &read_start, 
@@ -306,6 +307,9 @@ fail:
 static int read_segment_func(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data)
 {
+	UNUSED_PARAM(segcol);
+	UNUSED_PARAM(mapping);
+
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
@@ -414,6 +418,9 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 static int store_segment_func(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data)
 {
+	UNUSED_PARAM(segcol);
+	UNUSED_PARAM(mapping);
+
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
@@ -646,7 +653,7 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 	struct list_node *node;
 	struct list_node *tmp;
 
-  list_for_each_safe(action_list_head(buf->undo_list)->next, node, tmp) {
+  list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
     if (buf->undo_list_size <= limit)
       break;
 
@@ -674,7 +681,7 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
  * 
  * @return the operation error code
  */
-int action_list_clear(struct list *action_list)
+int action_list_clear(list_t *action_list)
 {
 	if (action_list == NULL)
 		return_error(EINVAL);
@@ -686,7 +693,7 @@ int action_list_clear(struct list *action_list)
 	 * Use the safe iterator so that we can delete the current 
 	 * node from the list as we traverse it.
 	 */
-	list_for_each_safe(action_list_head(action_list)->next, node, tmp) {
+	list_for_each_safe(list_head(action_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
