@@ -4,9 +4,9 @@
  * This file is part of libbls.
  *
  * libbls is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option) any later
- * version.
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
  *
  * libbls is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -57,10 +57,11 @@ struct bless_buffer_event_info {
 	int event_type;     /**< The event type (BLESS_BUFFER_EVENT_*) */
 	int action_type;    /**< The action type (BLESS_BUFFER_ACTION_*) */
 	off_t range_start;  /**< The start of the range of the buffer that
-							was affected by an event */
+	                         was affected by an event */
 	off_t range_length; /**< The length of the range of the buffer that
-							was affected by an event */
-	int save_fd;        /**< The descriptor of the file the buffer was saved to */
+	                         was affected by an event */
+	int save_fd;        /**< The descriptor of the file the buffer was
+	                         saved to */
 };
 
-#endif
+#endif /* _BLESS_BUFFER_EVENT_H */
