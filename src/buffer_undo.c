@@ -29,6 +29,7 @@
 #include "buffer_internal.h"
 #include "buffer_action.h"
 #include "debug.h"
+#include "util.h"
 
 
 /**
@@ -191,6 +192,8 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_op(bless_buffer_t *buf)
 {
+	UNUSED_PARAM(buf);
+
 	return_error(ENOSYS);
 }
 
@@ -208,6 +211,8 @@ int bless_buffer_begin_multi_op(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_op(bless_buffer_t *buf)
 {
+	UNUSED_PARAM(buf);
+
 	return_error(ENOSYS);
 }
 

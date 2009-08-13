@@ -33,6 +33,7 @@
 #include "data_object_memory.h"
 #include "type_limits.h"
 #include "debug.h"
+#include "util.h"
 
 
 /* forward declerations */
@@ -135,6 +136,8 @@ int data_object_memory_set_free_func(data_object_t *obj,
 static int data_object_memory_get_data(data_object_t *obj, void **buf, 
 		off_t offset, off_t *length, data_object_flags flags)
 {
+	UNUSED_PARAM(flags);
+
 	if (obj == NULL || buf == NULL || length == NULL || offset < 0)
 		return_error(EINVAL);
 

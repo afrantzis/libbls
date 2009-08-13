@@ -253,7 +253,7 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		/* Get necessary data from the iterator */
 		segment_t *segment;
 		off_t mapping;
-		off_t read_start;
+		off_t read_start = 0; /* assign just to silence warnings */
 		off_t read_length;
 
 		err = get_data_from_iter(iter, &segment, &mapping, &read_start, 
@@ -307,6 +307,9 @@ fail:
 static int read_segment_func(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data)
 {
+	UNUSED_PARAM(segcol);
+	UNUSED_PARAM(mapping);
+
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
@@ -415,6 +418,9 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 static int store_segment_func(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data)
 {
+	UNUSED_PARAM(segcol);
+	UNUSED_PARAM(mapping);
+
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 

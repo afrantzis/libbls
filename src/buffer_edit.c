@@ -35,7 +35,7 @@
 #include "buffer_action.h"
 #include "buffer_action_edit.h"
 #include "buffer_event.h"
-
+#include "util.h"
 #include "debug.h"
 
 #pragma GCC visibility push(default)
@@ -59,6 +59,9 @@
 static int read_foreach_func(segcol_t *segcol, segment_t *seg,
 		off_t mapping, off_t read_start, off_t read_length, void *user_data)
 {
+	UNUSED_PARAM(segcol);
+	UNUSED_PARAM(mapping);
+
 	data_object_t *dobj;
 	segment_get_data(seg, (void **)&dobj);
 
@@ -379,6 +382,12 @@ int bless_buffer_read(bless_buffer_t *buf, off_t src_offset, void *dst,
 int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst,
 		off_t dst_offset, off_t length)
 {
+	UNUSED_PARAM(src);
+	UNUSED_PARAM(src_offset);
+	UNUSED_PARAM(dst);
+	UNUSED_PARAM(dst_offset);
+	UNUSED_PARAM(length);
+
 	return_error(ENOSYS);
 }
 
@@ -399,6 +408,13 @@ int bless_buffer_copy(bless_buffer_t *src, off_t src_offset, bless_buffer_t *dst
 int bless_buffer_find(bless_buffer_t *buf, off_t *match, off_t start_offset, 
 		void *data, size_t length, bless_progress_func *progress_func)
 {
+	UNUSED_PARAM(buf);
+	UNUSED_PARAM(match);
+	UNUSED_PARAM(start_offset);
+	UNUSED_PARAM(data);
+	UNUSED_PARAM(length);
+	UNUSED_PARAM(progress_func);
+
 	return_error(ENOSYS);
 }
 

@@ -39,6 +39,7 @@
 #include "list.h"
 #include "buffer_util.h"
 #include "debug.h"
+#include "util.h"
 #include "type_limits.h"
 
 
@@ -589,6 +590,8 @@ fail_segcol:
 int bless_buffer_save(bless_buffer_t *buf, int fd,
 		bless_progress_func *progress_func)
 {
+	UNUSED_PARAM(progress_func);
+
 	if (buf == NULL)
 		return_error(EINVAL);
 
