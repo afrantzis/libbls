@@ -32,7 +32,7 @@
 #include "buffer_event.h"
 #include "type_limits.h"
 
-#include "util.h"
+#include "debug.h"
 
 
 #pragma GCC visibility push(default)

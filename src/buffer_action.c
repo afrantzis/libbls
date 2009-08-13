@@ -28,7 +28,7 @@
 #include "data_object.h"
 #include "buffer_action.h"
 #include "buffer_action_internal.h"
-#include "util.h"
+#include "debug.h"
 
 struct buffer_action {
 	void *impl;

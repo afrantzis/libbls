@@ -36,7 +36,7 @@
 #include "buffer_action_edit.h"
 #include "buffer_event.h"
 
-#include "util.h"
+#include "debug.h"
 
 #pragma GCC visibility push(default)
 

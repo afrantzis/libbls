@@ -38,6 +38,7 @@
 #include "data_object_memory.h"
 #include "data_object_file.h"
 #include "util.h"
+#include "debug.h"
 
 #include "type_limits.h"
 

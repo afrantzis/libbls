@@ -28,7 +28,7 @@
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "buffer_action.h"
-#include "util.h"
+#include "debug.h"
 
 
 /**

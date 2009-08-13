@@ -32,7 +32,7 @@
 #include "data_object_internal.h"
 #include "data_object_memory.h"
 #include "type_limits.h"
-#include "util.h"
+#include "debug.h"
 
 
 /* forward declerations */

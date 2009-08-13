@@ -28,7 +28,7 @@
 #include "segcol.h"
 #include "segcol_internal.h"
 #include "type_limits.h"
-#include "util.h"
+#include "debug.h"
 
 struct segcol {
 	void *impl;

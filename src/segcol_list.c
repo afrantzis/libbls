@@ -30,7 +30,7 @@
 #include "segcol_list.h"
 #include "type_limits.h"
 #include "list.h"
-#include "util.h"
+#include "debug.h"
 
 struct segment_entry {
 	struct list_node ln;

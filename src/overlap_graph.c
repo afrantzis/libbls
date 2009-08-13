@@ -26,7 +26,7 @@
 #include "disjoint_set.h"
 #include "priority_queue.h"
 #include "list.h"
-#include "util.h"
+#include "debug.h"
 
 #include <errno.h>
 #include <sys/types.h>

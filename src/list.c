@@ -25,7 +25,7 @@
 #include "list.h"
 #include <errno.h>
 #include <stdlib.h>
-#include "util.h"
+#include "debug.h"
 
 /**
  * A doubly linked list

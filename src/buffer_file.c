@@ -38,7 +38,7 @@
 #include "overlap_graph.h"
 #include "list.h"
 #include "buffer_util.h"
-#include "util.h"
+#include "debug.h"
 #include "type_limits.h"
 
 

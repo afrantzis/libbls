@@ -26,7 +26,7 @@
 #include <errno.h>
 #include "segment.h"
 #include "type_limits.h"
-#include "util.h"
+#include "debug.h"
 
 struct segment {
 	void *data;
