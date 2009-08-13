@@ -73,9 +73,9 @@ int overlap_graph_add_segment(overlap_graph_t *g, segment_t *seg, off_t mapping)
 
 int overlap_graph_remove_cycles(overlap_graph_t *g);
 
-int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges);
+int overlap_graph_get_removed_edges(overlap_graph_t *g, list_t **edges);
 
-int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices);
+int overlap_graph_get_vertices_topo(overlap_graph_t *g, list_t **vertices);
 
 int overlap_graph_export_dot(overlap_graph_t *g, int fd);
 

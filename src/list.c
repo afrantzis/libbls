@@ -28,55 +28,41 @@
 #include "util.h"
 
 /**
+ * A doubly linked list
+ */
+struct list {
+	size_t ln_offset; /**< The offset of a node in an entry for this list */
+	struct list_node head; /**< The head node of the list */
+	struct list_node tail; /**< The tail node of the list */
+};
+
+/**
  * Creates a new doubly linked list.
  *
  * @param[out] list the created list
- * @param entry_size the size of each list entry
  * @param ln_offset the offset of the struct list_node in the list entries
  *
  * @return the operation error code
  */
-int _list_new(struct list **list, size_t entry_size, size_t ln_offset)
+int _list_new(list_t **list, size_t ln_offset)
 {
 	if (list == NULL)
 		return_error(EINVAL);
 
-	void *head;
-	void *tail;
+	list_t *l = malloc(sizeof **list);
+	if (l == NULL)
+		return_error(ENOMEM);
 
-	int err = _list_new_entry(&head, entry_size, ln_offset);
-	if (err)
-		return_error(err);
-
-	err = _list_new_entry(&tail, entry_size, ln_offset);
-	if (err) {
-		free(head);
-		return_error(err);
-	}
-
-	*list = malloc(sizeof **list);
-	if (*list == NULL) {
-		free(head);
-		free(tail);
-		return 0;
-	}
-	
-	/* Calculate pointers to list nodes */
-	struct list_node *head_ln =
-		(struct list_node *)((char *)head + ln_offset);
-
-	struct list_node *tail_ln =
-		(struct list_node *)((char *)tail + ln_offset);
+	l->ln_offset = ln_offset;
 
 	/* Connect head and tail nodes */
-	head_ln->next = tail_ln;
-	head_ln->prev = head_ln;
+	l->head.next = &l->tail;
+	l->head.prev = &l->head;
 
-	tail_ln->next = tail_ln;
-	tail_ln->prev = head_ln;
+	l->tail.next = &l->tail;
+	l->tail.prev = &l->head;;
 
-	(*list)->head = head;
-	(*list)->tail = tail;
+	*list = l;
 
 	return 0;
 }
@@ -91,7 +77,7 @@ int _list_new(struct list **list, size_t entry_size, size_t ln_offset)
  * 
  * @return the operation error code 
  */
-int _list_free(struct list *list, size_t ln_offset)
+int list_free(list_t *list)
 {
 	if (list == NULL)
 		return_error(EINVAL);
@@ -99,16 +85,38 @@ int _list_free(struct list *list, size_t ln_offset)
 	struct list_node *node;
 	struct list_node *tmp;
 
-	list_for_each_safe(_list_node(list->head, ln_offset)->next, node, tmp) {
-		void *entry = _list_entry(node, ln_offset);
+	list_for_each_safe(list->head.next, node, tmp) {
+		void *entry = _list_entry(node, list->ln_offset);
 		free(entry);
 	}
 
-	free(list->head);
-	free(list->tail);
 	free(list);
 
 	return 0;
+}
+
+/**
+ * Gets the head node of a list
+ *
+ * @param list pointer to the list
+ *
+ * @return a list_node pointer to the head node of the list
+ */
+struct list_node *list_head(list_t *list)
+{
+	return &list->head;
+}
+
+/**
+ * Gets the tail node of a list
+ *
+ * @param list pointer to the list
+ *
+ * @return a list_node pointer to the tail node of the list
+ */
+struct list_node *list_tail(list_t *list)
+{
+	return &list->tail;
 }
 
 /**
@@ -198,34 +206,6 @@ int list_delete_chain(struct list_node *first, struct list_node *last)
 
 	first->prev = NULL;
 	last->next = NULL;
-
-	return 0;
-}
-
-/**
- * Creates a new list entry.
- *
- * @param[out] entry the new list entry
- * @param entry_size the size of each list entry
- * @param ln_offset the offset of the struct list_node in the list entries
- *
- * @return the operation error code
- */
-int _list_new_entry(void **entry, size_t entry_size, size_t ln_offset)
-{
-	if (entry == NULL)
-		return_error(EINVAL);
-
-	*entry = calloc(1, entry_size);
-
-	if (*entry == NULL)
-		return_error(ENOMEM);
-
-	struct list_node *ln =
-		(struct list_node *)((unsigned char *)*entry + ln_offset);
-
-	ln->prev = NULL;
-	ln->next = NULL;
 
 	return 0;
 }

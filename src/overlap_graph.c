@@ -166,7 +166,7 @@ static int overlap_graph_add_edge(overlap_graph_t *g, size_t src_id, size_t dst_
  *
  * @return the operation error code
  */
-static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
+static int topo_visit(overlap_graph_t *g, size_t n, list_t *list)
 {
 	int err;
 
@@ -190,9 +190,9 @@ static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
 
 	/* Create a vertex entry */
 	struct vertex_entry *entry;
-	err = list_new_entry(&entry, struct vertex_entry, ln);
-	if (err)
-		return_error(err);
+	entry = malloc(sizeof(struct vertex_entry));
+	if (entry == NULL)
+		return_error(ENOMEM);
 
 	/* Fill in entry */
 	entry->segment = v->segment;
@@ -201,7 +201,7 @@ static int topo_visit(overlap_graph_t *g, size_t n, struct list *list)
 
 	/* Prepend the entry to the list */
 	struct list_node *head = 
-		list_head(list, struct vertex_entry, ln);
+		list_head(list);
 
 	list_insert_after(head, &entry->ln);
 
@@ -548,7 +548,7 @@ int overlap_graph_export_dot(overlap_graph_t *g, int fd)
  *
  * @return the operation error code
  */
-int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
+int overlap_graph_get_removed_edges(overlap_graph_t *g, list_t **edges)
 {
 	if (g == NULL || edges == NULL)
 		return_error(EINVAL);
@@ -573,9 +573,9 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 
 			/* Create a new edge_entry */
 			struct edge_entry *entry;
-			err = list_new_entry(&entry, struct edge_entry, ln);
-			if (err)
-				goto fail;
+			entry = malloc(sizeof(struct edge_entry));
+			if (entry == NULL)
+				return_error(ENOMEM);
 			
 			/* Fill entry */
 			entry->src = v->segment;
@@ -584,8 +584,7 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 			entry->weight = e->weight;
 
 			/* Append it to the list */
-			err = list_insert_before(list_tail(*edges, struct edge_entry, ln),
-					&entry->ln);
+			err = list_insert_before(list_tail(*edges), &entry->ln);
 			if (err)
 				goto fail;
 
@@ -596,7 +595,7 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, struct list **edges)
 	return 0;
 
 fail:
-	list_free(*edges, struct edge_entry, ln);
+	list_free(*edges);
 	return_error(err);
 }
 
@@ -611,7 +610,7 @@ fail:
  *
  * @return the operation error code
  */
-int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices)
+int overlap_graph_get_vertices_topo(overlap_graph_t *g, list_t **vertices)
 {
 	if (g == NULL || vertices == NULL)
 		return_error(EINVAL);
@@ -643,7 +642,7 @@ int overlap_graph_get_vertices_topo(overlap_graph_t *g, struct list **vertices)
 	return 0;
 
 fail:
-	list_free(*vertices, struct vertex_entry, ln);
+	list_free(*vertices);
 	return_error(err);
 }
 

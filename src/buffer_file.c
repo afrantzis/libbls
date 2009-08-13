@@ -395,7 +395,7 @@ static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
 	 * If a private copy of an action fails, remove that and all older actions
 	 * from the undo list.
 	 */
-	list_for_each_reverse_safe(action_list_tail(buf->undo_list)->prev, node, tmp) {
+	list_for_each_reverse_safe(list_tail(buf->undo_list)->prev, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
@@ -428,7 +428,7 @@ static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
 	 * If a private copy of an action fails, remove that and all older actions
 	 * from the redo list.
 	 */
-	list_for_each_safe(action_list_head(buf->redo_list)->next, node, tmp) {
+	list_for_each_safe(list_head(buf->redo_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
@@ -565,7 +565,7 @@ int bless_buffer_new(bless_buffer_t **buf)
 
 	/* Handle failures */
 fail_redo:
-	list_free((*buf)->undo_list, struct buffer_action_entry, ln);
+	list_free((*buf)->undo_list);
 fail_undo:
 	buffer_options_free((*buf)->options);
 fail_options:
@@ -666,14 +666,14 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		goto fail2;
 
 	/* Get a list of the edges that are not in the graph */
-	struct list *removed_edges;
+	list_t *removed_edges;
 	err = overlap_graph_get_removed_edges(g, &removed_edges);
 	if (err)
 		goto fail2;
 
 	/* Break each edge not in the graph */
 	struct list_node *first_node = 
-		list_head(removed_edges, struct edge_entry, ln)->next;
+		list_head(removed_edges)->next;
 	struct list_node *node;
 
 	list_for_each(first_node, node) {
@@ -684,7 +684,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 			goto fail3;
 	}
 
-	list_free(removed_edges, struct edge_entry, ln);
+	list_free(removed_edges);
 	overlap_graph_free(g);
 
 	/* 
@@ -719,13 +719,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		goto fail4;
 
 	/* Write the file segments to file in topological order */
-	struct list *vertices;
+	list_t *vertices;
 	err = overlap_graph_get_vertices_topo(g, &vertices);
 	if (err)
 		goto fail5;
 
 	first_node =
-		list_head(vertices, struct vertex_entry, ln)->next;
+		list_head(vertices)->next;
 
 	list_for_each(first_node, node) {
 		struct vertex_entry *v = list_entry(node, struct vertex_entry, ln);
@@ -734,7 +734,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 			goto fail6;
 	}
 	
-	list_free(vertices, struct vertex_entry, ln);
+	list_free(vertices);
 	overlap_graph_free(g);
 
 	/* Write the rest of the segments */
@@ -779,7 +779,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 /* Prevent memory leaks on failure */
 fail3:
-	list_free(removed_edges, struct edge_entry, ln);
+	list_free(removed_edges);
 fail2:
 	overlap_graph_free(g);
 fail1:
@@ -788,7 +788,7 @@ fail1:
 	return_error(err);
 
 fail6:
-	list_free(vertices, struct vertex_entry, ln);
+	list_free(vertices);
 fail5:
 	overlap_graph_free(g);
 fail4:
@@ -821,24 +821,24 @@ int bless_buffer_free(bless_buffer_t *buf)
 	/* Free the stored undo actions */
 	struct list_node *node;
 
-	list_for_each(action_list_head(buf->undo_list)->next, node) {
+	list_for_each(list_head(buf->undo_list)->next, node) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
 		buffer_action_free(entry->action);
 	}
 
-	list_free(buf->undo_list, struct buffer_action_entry, ln);
+	list_free(buf->undo_list);
 
 	/* Free the stored redo actions */
-	list_for_each(action_list_head(buf->redo_list)->next, node) {
+	list_for_each(list_head(buf->redo_list)->next, node) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
 		buffer_action_free(entry->action);
 	}
 
-	list_free(buf->redo_list, struct buffer_action_entry, ln);
+	list_free(buf->redo_list);
 
 	free(buf);
 

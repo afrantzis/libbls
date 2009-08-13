@@ -33,10 +33,6 @@ extern "C" {
 #include "buffer_action.h"
 #include "buffer.h"
 
-/* Helper macros for action list */
-#define action_list_head(ptr) list_head((ptr), struct buffer_action_entry, ln)
-#define action_list_tail(ptr) list_tail((ptr), struct buffer_action_entry, ln)
-
 /** 
  * Buffer action list entry.
  */
@@ -63,8 +59,8 @@ struct buffer_options {
 struct bless_buffer {
 	segcol_t *segcol;
 	struct buffer_options *options;
-	struct list *undo_list;
-	struct list *redo_list;
+	list_t *undo_list;
+	list_t *redo_list;
 	size_t undo_list_size;
 	size_t redo_list_size;
 	

@@ -646,7 +646,7 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 	struct list_node *node;
 	struct list_node *tmp;
 
-  list_for_each_safe(action_list_head(buf->undo_list)->next, node, tmp) {
+  list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
     if (buf->undo_list_size <= limit)
       break;
 
@@ -674,7 +674,7 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
  * 
  * @return the operation error code
  */
-int action_list_clear(struct list *action_list)
+int action_list_clear(list_t *action_list)
 {
 	if (action_list == NULL)
 		return_error(EINVAL);
@@ -686,7 +686,7 @@ int action_list_clear(struct list *action_list)
 	 * Use the safe iterator so that we can delete the current 
 	 * node from the list as we traverse it.
 	 */
-	list_for_each_safe(action_list_head(action_list)->next, node, tmp) {
+	list_for_each_safe(list_head(action_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 

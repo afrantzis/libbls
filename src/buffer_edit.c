@@ -91,14 +91,14 @@ static int undo_list_append(bless_buffer_t *buf, buffer_action_t *action)
 	/* Create a new buffer_action_entry */
 	struct buffer_action_entry *entry;
 
-	int err = list_new_entry(&entry, struct buffer_action_entry, ln);
-	if (err)
-		return_error(err);
+	entry = malloc(sizeof(struct buffer_action_entry));
+	if (entry == NULL)
+		return_error(ENOMEM);
 
 	entry->action = action;
 
 	/* Append it to the list */
-	err = list_insert_before(action_list_tail(buf->undo_list), &entry->ln);
+	int err = list_insert_before(list_tail(buf->undo_list), &entry->ln);
 	if (err) {
 		free(entry);
 		return_error(err);
