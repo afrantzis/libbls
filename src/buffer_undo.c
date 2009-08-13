@@ -84,6 +84,19 @@ int bless_buffer_undo(bless_buffer_t *buf)
 
 	++buf->redo_list_size;
 
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		struct bless_buffer_event_info event_info;
+
+		/* Fill in the event info structure for this action */
+		err = buffer_action_to_event(entry->action, &event_info);
+		if (err)
+			return_error(err);
+
+		event_info.event_type = BLESS_BUFFER_EVENT_UNDO;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
+
 	return 0;
 }
 
@@ -145,6 +158,19 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	}
 
 	++buf->undo_list_size;
+
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		struct bless_buffer_event_info event_info;
+
+		/* Fill in the event info structure for this action */
+		err = buffer_action_to_event(entry->action, &event_info);
+		if (err)
+			return_error(err);
+
+		event_info.event_type = BLESS_BUFFER_EVENT_REDO;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
 
 	return 0;
 }

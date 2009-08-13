@@ -145,7 +145,8 @@ install_run_link = lib_targets[1]
 install_dev_link = lib_targets[2]
 
 install_headers = env.Install('${destdir}${includedir}/bls',
-		['src/buffer.h','src/buffer_source.h','src/buffer_options.h'])
+		['src/buffer.h','src/buffer_source.h','src/buffer_options.h',
+		 'src/buffer_event.h'])
 
 install_pkgconf = env.Install('${destdir}${libdir}/pkgconfig', pkgconf)
 

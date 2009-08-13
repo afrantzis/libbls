@@ -135,6 +135,24 @@ int buffer_action_private_copy(buffer_action_t *action, data_object_t *dobj)
 }
 
 /** 
+ * Fills an event info structure describing a buffer_action_t.
+ * 
+ * @param action the action to describe
+ * @param[out] event_info the event info structure to fill in
+ * 
+ * @return the operation error code
+ */
+int buffer_action_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info)
+{
+	if (action == NULL || event_info == NULL)
+		return_error(EINVAL);
+
+	return (*action->funcs->to_event_func)(action, event_info);
+}
+
+
+/** 
  * Frees a buffer_action_t.
  * 
  * @param action the action to perform

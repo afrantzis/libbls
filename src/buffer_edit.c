@@ -34,6 +34,7 @@
 #include "type_limits.h"
 #include "buffer_action.h"
 #include "buffer_action_edit.h"
+#include "buffer_event.h"
 
 #include "util.h"
 
@@ -130,6 +131,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 		return_error(EINVAL);
 
 	buffer_action_t *action;
+	struct bless_buffer_event_info event_info;
 
 	/* Create an append action */
 	int err = buffer_action_append_new(&action, buf, src, src_offset, length);
@@ -142,6 +144,11 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	if (err)
 		goto fail;
 		
+	/* Fill in the event info structure for this action */
+	err = buffer_action_to_event(action, &event_info);
+	if (err)
+		goto fail;
+
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
 	 * undo limit is > 0).
@@ -162,6 +169,12 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
+
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		event_info.event_type = BLESS_BUFFER_EVENT_EDIT;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
 
 	return 0;
 
@@ -189,6 +202,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	/* Create an insert action */
 	buffer_action_t *action;
+	struct bless_buffer_event_info event_info;
 
 	int err = buffer_action_insert_new(&action, buf, offset, src, src_offset,
 			length);
@@ -202,6 +216,11 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		buffer_action_free(action);
 		return_error(err);
 	}
+
+	/* Fill in the event info structure for this action */
+	err = buffer_action_to_event(action, &event_info);
+	if (err)
+		goto fail;
 		
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
@@ -223,6 +242,12 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
+
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		event_info.event_type = BLESS_BUFFER_EVENT_EDIT;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
 
 	return 0;
 
@@ -247,6 +272,7 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 
 	/* Create a delete action */
 	buffer_action_t *action;
+	struct bless_buffer_event_info event_info;
 
 	int err = buffer_action_delete_new(&action, buf, offset, length);
 
@@ -260,6 +286,11 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 		return_error(err);
 	}
 		
+	/* Fill in the event info structure for this action */
+	err = buffer_action_to_event(action, &event_info);
+	if (err)
+		goto fail;
+
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
 	 * undo limit is > 0).
@@ -280,6 +311,12 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
+
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		event_info.event_type = BLESS_BUFFER_EVENT_EDIT;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
 
 	return 0;
 

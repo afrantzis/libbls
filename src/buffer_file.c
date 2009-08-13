@@ -558,6 +558,8 @@ int bless_buffer_new(bless_buffer_t **buf)
 		goto fail_redo;
 
 	(*buf)->redo_list_size = 0;
+	(*buf)->event_func = NULL;
+	(*buf)->event_user_data = NULL;
 
 	return 0;
 
@@ -760,6 +762,17 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 		action_list_clear(buf->redo_list);
 		buf->redo_list_size = 0;
+	}
+
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+        struct bless_buffer_event_info event_info;
+		event_info.event_type = BLESS_BUFFER_EVENT_SAVE;
+        event_info.action_type = BLESS_BUFFER_ACTION_NONE;
+        event_info.range_start = -1;
+        event_info.range_length = -1;
+        event_info.save_fd = fd;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
 	}
 
 	return 0;

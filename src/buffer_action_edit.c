@@ -51,18 +51,25 @@ static int buffer_action_append_do(buffer_action_t *action);
 static int buffer_action_append_undo(buffer_action_t *action);
 static int buffer_action_append_private_copy(buffer_action_t *action,
 		data_object_t *dobj);
+static int buffer_action_append_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info);
 static int buffer_action_append_free(buffer_action_t *action);
+
 
 static int buffer_action_insert_do(buffer_action_t *action);
 static int buffer_action_insert_undo(buffer_action_t *action);
 static int buffer_action_insert_private_copy(buffer_action_t *action,
 		data_object_t *dobj);
+static int buffer_action_insert_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info);
 static int buffer_action_insert_free(buffer_action_t *action);
 
 static int buffer_action_delete_do(buffer_action_t *action);
 static int buffer_action_delete_undo(buffer_action_t *action);
 static int buffer_action_delete_private_copy(buffer_action_t *action,
 		data_object_t *dobj);
+static int buffer_action_delete_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info);
 static int buffer_action_delete_free(buffer_action_t *action);
 
 /* Action functions */
@@ -70,6 +77,7 @@ static struct buffer_action_funcs buffer_action_append_funcs = {
 	.do_func = buffer_action_append_do,
 	.undo_func = buffer_action_append_undo,
 	.private_copy_func = buffer_action_append_private_copy,
+	.to_event_func = buffer_action_append_to_event,
 	.free_func = buffer_action_append_free
 };
 
@@ -77,6 +85,7 @@ static struct buffer_action_funcs buffer_action_insert_funcs = {
 	.do_func = buffer_action_insert_do,
 	.undo_func = buffer_action_insert_undo,
 	.private_copy_func = buffer_action_insert_private_copy,
+	.to_event_func = buffer_action_insert_to_event,
 	.free_func = buffer_action_insert_free
 };
 
@@ -84,6 +93,7 @@ static struct buffer_action_funcs buffer_action_delete_funcs = {
 	.do_func = buffer_action_delete_do,
 	.undo_func = buffer_action_delete_undo,
 	.private_copy_func = buffer_action_delete_private_copy,
+	.to_event_func = buffer_action_delete_to_event,
 	.free_func = buffer_action_delete_free
 };
 
@@ -513,6 +523,29 @@ static int buffer_action_append_private_copy(buffer_action_t *action,
 	return 0;
 }
 
+static int buffer_action_append_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info)
+{
+	if (action == NULL || event_info == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_append_impl *impl =
+		(struct buffer_action_append_impl *) buffer_action_get_impl(action);
+
+	off_t buf_size;
+	bless_buffer_get_size(impl->buf, &buf_size);
+
+	off_t seg_size;
+	segment_get_size(impl->seg, &seg_size);
+
+	event_info->action_type = BLESS_BUFFER_ACTION_APPEND;
+	event_info->range_start = buf_size - seg_size;
+	event_info->range_length = seg_size;
+	event_info->save_fd = -1;
+
+	return 0;
+}
+
 static int buffer_action_append_free(buffer_action_t *action)
 {
 	if (action == NULL)
@@ -608,6 +641,26 @@ static int buffer_action_insert_private_copy(buffer_action_t *action,
 	return 0;
 }
 
+static int buffer_action_insert_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info)
+{
+	if (action == NULL || event_info == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_insert_impl *impl =
+		(struct buffer_action_insert_impl *) buffer_action_get_impl(action);
+
+	off_t seg_size;
+	segment_get_size(impl->seg, &seg_size);
+
+	event_info->action_type = BLESS_BUFFER_ACTION_INSERT;
+	event_info->range_start = impl->offset;
+	event_info->range_length = seg_size;
+	event_info->save_fd = -1;
+
+	return 0;
+}
+
 static int buffer_action_insert_free(buffer_action_t *action)
 {
 	if (action == NULL)
@@ -692,6 +745,23 @@ static int buffer_action_delete_private_copy(buffer_action_t *action,
 	int err = segcol_inplace_private_copy(impl->deleted, cmp_dobj);
 	if (err)
 		return_error(err);
+
+	return 0;
+}
+
+static int buffer_action_delete_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info)
+{
+	if (action == NULL || event_info == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_delete_impl *impl =
+		(struct buffer_action_delete_impl *) buffer_action_get_impl(action);
+
+	event_info->action_type = BLESS_BUFFER_ACTION_DELETE;
+	event_info->range_start = impl->offset;
+	event_info->range_length = impl->length;
+	event_info->save_fd = -1;
 
 	return 0;
 }

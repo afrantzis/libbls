@@ -29,6 +29,7 @@
 #include "buffer.h"
 #include "buffer_internal.h"
 #include "buffer_util.h"
+#include "buffer_event.h"
 #include "type_limits.h"
 
 #include "util.h"
@@ -224,6 +225,30 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 			*val = NULL;
 			break;
 	}
+
+	return 0;
+}
+
+/** 
+ * Sets the callback function used to report buffer events.
+ *
+ * The callback function can be set to NULL to disable event
+ * reporting.
+ * 
+ * @param buf the bless_buffer_t to set the callback function of
+ * @param func the function to set
+ * @param user_data user data to be supplied to the callback function
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_set_event_callback(bless_buffer_t *buf,
+		bless_buffer_event_func_t *func, void *user_data)
+{
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	buf->event_func = func;
+	buf->event_user_data = user_data;
 
 	return 0;
 }

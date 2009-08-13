@@ -46,6 +46,8 @@ struct buffer_action_funcs {
 	int (*do_func)(buffer_action_t *action);
 	int (*undo_func)(buffer_action_t *action);
 	int (*private_copy_func)(buffer_action_t *action, data_object_t *obj);
+	int (*to_event_func)(buffer_action_t *action,
+			struct bless_buffer_event_info *event_info);
 	int (*free_func)(buffer_action_t *action);
 };
 
