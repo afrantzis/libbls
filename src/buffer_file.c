@@ -519,6 +519,46 @@ static int buffer_options_free(struct buffer_options *opts)
 	return 0;
 }
 
+/** 
+ * Frees a vertex list and its contents.
+ * 
+ * @param list the list to free
+ */
+static void free_vertex_list(list_t *list)
+{
+	struct list_node *node;
+	struct list_node *tmp;
+
+	list_for_each_safe(list_head(list)->next, node, tmp) {
+		struct vertex_entry *entry =
+			list_entry(node, struct vertex_entry, ln);
+
+		free(entry);
+	}
+
+	list_free(list);
+}
+
+/** 
+ * Frees an edge list and its contents.
+ * 
+ * @param list the list to free
+ */
+static void free_edge_list(list_t *list)
+{
+	struct list_node *node;
+	struct list_node *tmp;
+
+	list_for_each_safe(list_head(list)->next, node, tmp) {
+		struct edge_entry *entry =
+			list_entry(node, struct edge_entry, ln);
+
+		free(entry);
+	}
+
+	list_free(list);
+}
+
 /*****************/
 /* API functions */
 /*****************/
@@ -687,7 +727,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 			goto fail3;
 	}
 
-	list_free(removed_edges);
+	free_edge_list(removed_edges);
 	overlap_graph_free(g);
 
 	/* 
@@ -737,7 +777,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 			goto fail6;
 	}
 	
-	list_free(vertices);
+	free_vertex_list(vertices);
 	overlap_graph_free(g);
 
 	/* Write the rest of the segments */
@@ -782,7 +822,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 /* Prevent memory leaks on failure */
 fail3:
-	list_free(removed_edges);
+	free_edge_list(removed_edges);
 fail2:
 	overlap_graph_free(g);
 fail1:
@@ -791,7 +831,7 @@ fail1:
 	return_error(err);
 
 fail6:
-	list_free(vertices);
+	free_vertex_list(vertices);
 fail5:
 	overlap_graph_free(g);
 fail4:
@@ -823,22 +863,25 @@ int bless_buffer_free(bless_buffer_t *buf)
 
 	/* Free the stored undo actions */
 	struct list_node *node;
+	struct list_node *tmp;
 
-	list_for_each(list_head(buf->undo_list)->next, node) {
+	list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
 		buffer_action_free(entry->action);
+		free(entry);
 	}
 
 	list_free(buf->undo_list);
 
 	/* Free the stored redo actions */
-	list_for_each(list_head(buf->redo_list)->next, node) {
+	list_for_each_safe(list_head(buf->redo_list)->next, node, tmp) {
 		struct buffer_action_entry *entry =
 			list_entry(node, struct buffer_action_entry , ln);
 
 		buffer_action_free(entry->action);
+		free(entry);
 	}
 
 	list_free(buf->redo_list);

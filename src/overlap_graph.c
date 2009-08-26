@@ -595,8 +595,20 @@ int overlap_graph_get_removed_edges(overlap_graph_t *g, list_t **edges)
 	return 0;
 
 fail:
+	{
+	/* Clear the list and its contents */
+	struct list_node *node;
+	struct list_node *tmp;
+
+	list_for_each_safe(list_head(*edges)->next, node, tmp) {
+		struct edge_entry *entry = list_entry(node, struct edge_entry, ln);
+		free(entry);
+	}
+
 	list_free(*edges);
+
 	return_error(err);
+	}
 }
 
 /**
@@ -642,7 +654,19 @@ int overlap_graph_get_vertices_topo(overlap_graph_t *g, list_t **vertices)
 	return 0;
 
 fail:
+	{
+	/* Clear the list and its contents */
+	struct list_node *node;
+	struct list_node *tmp;
+
+	list_for_each_safe(list_head(*vertices)->next, node, tmp) {
+		struct vertex_entry *entry = list_entry(node, struct vertex_entry, ln);
+		free(entry);
+	}
+
 	list_free(*vertices);
+
 	return_error(err);
+	}
 }
 

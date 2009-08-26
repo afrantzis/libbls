@@ -277,12 +277,14 @@ static int segcol_list_free(segcol_t *segcol)
 		(struct segcol_list_impl *) segcol_get_impl(segcol);
 
 	struct list_node *node;
+	struct list_node *tmp;
 
 	/* free segments */
-	list_for_each(list_head(impl->list)->next, node) {
+	list_for_each_safe(list_head(impl->list)->next, node, tmp) {
 		struct segment_entry *snode = list_entry(node, struct segment_entry, ln);
 		if (snode->segment != NULL)
 			segment_free(snode->segment);
+		free(snode);
 	}
 
 	list_free(impl->list);

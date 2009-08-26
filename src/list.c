@@ -73,7 +73,6 @@ int _list_new(list_t **list, size_t ln_offset)
  * This function does not free the data stored in the list.
  * 
  * @param list the list to free 
- * @param ln_offset the offset of the struct list_node in the list entries
  * 
  * @return the operation error code 
  */
@@ -81,14 +80,6 @@ int list_free(list_t *list)
 {
 	if (list == NULL)
 		return_error(EINVAL);
-
-	struct list_node *node;
-	struct list_node *tmp;
-
-	list_for_each_safe(list->head.next, node, tmp) {
-		void *entry = _list_entry(node, list->ln_offset);
-		free(entry);
-	}
 
 	free(list);
 
