@@ -240,72 +240,25 @@ static int write_segment(int fd, segment_t *segment, off_t mapping, off_t overla
 	off_t nwrite = seg_size;
 
 	/* 
-	 * if segment overlaps with itself but has moved to a lower address there
-	 * is no need to do anything special. It will be written correctly by the
-	 * code outside the if (overlap > 0).
-	 *
-	 * However if it has not moved or has moved to a higher address special
-	 * actions must be taken.
+	 * If the segment overlaps with itself and has moved to a higher address we
+	 * must write it in a safe way (starting from the end). This is necessary
+	 * in order to avoid overwriting data in the file that we need for later
+	 * parts of the segment.
 	 */
 	if (overlap > 0 && mapping >= seg_start) {
 		/* if the segment has not moved at all, don't write anything */
 		if (mapping == seg_start)
 			return 0;
 
-		/* 
-		 * If the segment has moved to a higher address we will have something
-		 * like this:
-		 *
-		 * |----seg_size-----|
-		 * [AAAAA|BBBBB|CCCCC] Original File
-		 * ^     [AAAAA|BBBBB|CCCCC] Buffer
-		 * |     |--overlap--|
-		 * |     ^
-		 * |     mapping
-		 * seg_start
-		 *
-		 * The C's are the non-overlapping part and must be written first. C's
-		 * exist if the mapping is higher than seg_start. 
-		 *
-		 * Then if there is a B part it must be written next because if we
-		 * write the A's first, the B's in the file will be overwritten and we
-		 * won't be able to write them next. The B's part exists if the length
-		 * of the A's part (seg_size - overlap) is less than the overlap.
-		 *
-		 * The A's are written by the code outside the if.
-		 */
-		if (mapping > seg_start) {
-			/* Write the C's part */
-			err = write_data_object(dobj, seg_start + overlap, 
-					seg_size - overlap, fd, mapping + overlap);
-			if (err)
-				return_error(err);
-
-			/* The A's part size (assuming B's do not exist) */
-			nwrite = overlap;
-
-			/* Write the B's part if it exists */
-			if (seg_size - overlap < overlap) {
-				err = write_data_object(dobj, seg_start + seg_size - overlap,
-						2 * overlap - seg_size, fd,
-						mapping + (seg_size - overlap));
-				if (err)
-					return_error(err);
-
-				/* Adjust size of A's part */
-				nwrite -= 2 * overlap - seg_size;
-			}
-
-		}
+		err = write_data_object_safe(dobj, seg_start, nwrite, fd, mapping);
+		if (err)
+			return_error(err);
 	}
-
-	/* 
-	 * Write the segment (or the A's part if the segment
-	 * overlaps with itself and has moved to a higher address).
-	 */
-	err = write_data_object(dobj, seg_start, nwrite, fd, mapping);
-	if (err)
-		return_error(err);
+	else {
+		err = write_data_object(dobj, seg_start, nwrite, fd, mapping);
+		if (err)
+			return_error(err);
+	}
 
 	return 0;
 }

@@ -44,6 +44,9 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 		int fd, off_t file_offset);
 
+int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
+		int fd, off_t file_offset);
+
 int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		segcol_foreach_func *func, void *user_data);
 
