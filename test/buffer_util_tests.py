@@ -2,6 +2,7 @@ import unittest
 from ctypes import create_string_buffer
 from ctypes import c_char_p
 import os
+import tempfile
 from libbls import *
 
 def get_file_fd(name):
@@ -47,7 +48,97 @@ class BufferUtilTests(unittest.TestCase):
 		self.assertEqual(read_data.value, from_python)
 
 		data_object_free(data_obj)
+
+	def testWriteDataObject(self):
+		"Write to a file from a large (> block size) data object"
+
+		(tmp_fd, tmp_path) = tempfile.mkstemp();
+
+		fd = get_file_fd("buffer_tests.py")
+
+		# Read data using python functions
+		f = os.fdopen(fd)
+
+		from_python = f.read()
+
+		# Write data using write_data_object
+		(err, data_obj) = data_object_file_new(fd)
+		self.assertEqual(err, 0)
+
+		err = write_data_object(data_obj, 2, len(from_python) - 4, tmp_fd, 0)
+		self.assertEqual(err, 0)
+
+		os.close(tmp_fd)
+
+		tmp_f = open(tmp_path)
+		self.assert_(tmp_f is not None)
+		from_python_tmp = tmp_f.read()
+
+		self.assertEqual(from_python_tmp, from_python[2:-2])
+
+		os.remove(tmp_path)
+		data_object_free(data_obj)
 	
+	def testWriteDataObjectSafeSmall(self):
+		"Write in a safe way to a file from a small (<= block size) data object"
+
+		(tmp_fd, tmp_path) = tempfile.mkstemp();
+
+		fd = get_file_fd("buffer_test_file1.bin")
+
+		# Read data using python functions
+		f = os.fdopen(fd)
+
+		from_python = f.read()
+
+		# Write data using write_data_object
+		(err, data_obj) = data_object_file_new(fd)
+		self.assertEqual(err, 0)
+
+		err = write_data_object_safe(data_obj, 1, len(from_python) - 2, tmp_fd, 0)
+		self.assertEqual(err, 0)
+
+		os.close(tmp_fd)
+
+		tmp_f = open(tmp_path)
+		self.assert_(tmp_f is not None)
+		from_python_tmp = tmp_f.read()
+
+		self.assertEqual(from_python_tmp, from_python[1:-1])
+
+		os.remove(tmp_path)
+		data_object_free(data_obj)
+
+	def testWriteDataObjectSafeLarge(self):
+		"Write in a safe way to a file from a large (> block size) data object"
+
+		(tmp_fd, tmp_path) = tempfile.mkstemp();
+
+		fd = get_file_fd("buffer_tests.py")
+
+		# Read data using python functions
+		f = os.fdopen(fd)
+
+		from_python = f.read()
+
+		# Write data using write_data_object
+		(err, data_obj) = data_object_file_new(fd)
+		self.assertEqual(err, 0)
+
+		err = write_data_object_safe(data_obj, 2, len(from_python) - 4, tmp_fd, 0)
+		self.assertEqual(err, 0)
+
+		os.close(tmp_fd)
+
+		tmp_f = open(tmp_path)
+		self.assert_(tmp_f is not None)
+		from_python_tmp = tmp_f.read()
+
+		self.assertEqual(from_python_tmp, from_python[2:-2])
+
+		os.remove(tmp_path)
+		data_object_free(data_obj)
+
 	def create_buffer(self):
 		"Create a buffer used in testSegcolStore*"
 

@@ -92,6 +92,11 @@ int read_data_object(data_object_t *dobj, off_t offset, void *mem, off_t length)
 /**
  * Writes data from a data object to a file.
  *
+ * Use write_data_object_safe() instead of this function when writing to
+ * the same file that the data object is associated with and there is an
+ * overlap between the original data object range and the range we are
+ * writing it to.
+ *
  * @param dobj the data object to read from
  * @param offset the offset in the data object to read from
  * @param length the number of bytes to read
@@ -128,6 +133,72 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 			offset += nbytes;
 		length -= nbytes;
 	}
+
+	return 0;
+}
+
+/**
+ * Writes data from a data object to a file in a safe way.
+ *
+ * Use this function instead of write_data_object() when writing to the
+ * same file that the data object is associated with and there is an
+ * overlap between the original data object range and the range we are
+ * writing it to.
+ *
+ * @param dobj the data object to read from
+ * @param offset the offset in the data object to read from
+ * @param length the number of bytes to read
+ * @param fd the file descriptor to write the data to
+ * @param file_offset the offset in the file to write the data
+ *
+ * @return the operation error code
+ */
+int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
+		int fd, off_t file_offset)
+{
+	void *data = malloc(4096);
+	if (data == NULL)
+		return_error(ENOMEM);
+
+	off_t nread = 0;
+
+	/* Try to start at the last multiple of 4096 contained in the range */
+	off_t start_offset = offset + length - (offset + length) % 4096;
+
+	if (start_offset < offset)
+		start_offset = offset;
+
+	while (nread < length) {
+		off_t nbytes = (offset + length) - nread - start_offset;
+		if (nbytes > 4096)
+			nbytes = 4096;
+
+		/* Read a chunk from the data object */
+		int err = read_data_object(dobj, start_offset, data, nbytes);
+		if (err) {
+			free(data);
+			return_error(err);
+		}
+
+		/* Write the chunk to the final position in the file */
+		off_t s = lseek(fd, file_offset + start_offset - offset, SEEK_SET);
+		ssize_t nwritten = write(fd, data, (ssize_t)nbytes);
+		if (nwritten < (ssize_t)nbytes) {
+			free(data);
+			return_error(errno);
+		}
+
+		/* Move backwards */
+		start_offset -= 4096;
+		/* See read_data_object() about this check */
+		if (__MAX(off_t) - nread >= nbytes)
+			nread += nbytes;
+
+		if (start_offset < offset)
+			start_offset = offset;
+	}
+
+	free(data);
 
 	return 0;
 }
