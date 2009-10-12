@@ -662,28 +662,30 @@ class BufferTests(unittest.TestCase):
 		"""Save a buffer that contains two self overlaps one unmoved and one 
 		moved to higher offsets"""
 
-		(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
-		
-		(err, fd1_src) = bless_buffer_source_file(fd1, None)
-		self.assertEqual(err, 0)
+		# Check all possible higher offset overlaps
+		for i in range(7):
+			(fd1, fd1_path) = get_tmp_copy_file_fd("buffer_test_file1.bin", os.O_RDWR)
+			
+			(err, fd1_src) = bless_buffer_source_file(fd1, None)
+			self.assertEqual(err, 0)
 
-		fd2 = get_file_fd("buffer_test_file2.bin")
-		
-		(err, fd2_src) = bless_buffer_source_file(fd2, None)
-		self.assertEqual(err, 0)
+			fd2 = get_file_fd("buffer_test_file2.bin")
+			
+			(err, fd2_src) = bless_buffer_source_file(fd2, None)
+			self.assertEqual(err, 0)
 
-		segment_desc = [(fd1_src, 0, 3), (fd2_src, 0, 3), (fd1_src, 3, 7)]
+			segment_desc = [(fd1_src, 0, 3), (fd2_src, 0, i), (fd1_src, 3, 7)]
+			self.check_save(fd1, segment_desc, "123" + "abcdefgh"[0:i] + "4567890")
+			bless_buffer_delete(self.buf, 0, bless_buffer_get_size(self.buf)[1])
 
-		self.check_save(fd1, segment_desc, "123abc4567890")
+			err = bless_buffer_source_unref(fd1_src)
+			self.assertEqual(err, 0)
 
-		err = bless_buffer_source_unref(fd1_src)
-		self.assertEqual(err, 0)
+			err = bless_buffer_source_unref(fd2_src)
+			self.assertEqual(err, 0)
 
-		err = bless_buffer_source_unref(fd2_src)
-		self.assertEqual(err, 0)
-
-		# Remove temporary file
-		os.remove(fd1_path)
+			# Remove temporary file
+			os.remove(fd1_path)
 
 	def testSaveSelfOverlapLower(self):
 		"""Save a buffer that contains two self overlaps one unmoved and one 
