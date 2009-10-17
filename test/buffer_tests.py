@@ -67,6 +67,18 @@ class BufferTests(unittest.TestCase):
 
 		self.assertEqual(expected_data, read_data.value)
 
+	def check_undo_redo(self, undo_list):
+		"""Checks if the buffer contains the buffer contains the expected
+		data after performing undo and redo operations"""
+		for (action ,expected) in undo_list:
+			if action == "undo":
+				err = bless_buffer_undo(self.buf)
+			elif action == "redo":
+				err = bless_buffer_redo(self.buf)
+
+			self.assertEqual(err, 0)
+			self.check_buffer(self.buf, expected)
+
 	def undo_redo_mix(self, expected_after_redo, expected_after_undo):
 		"Redo, then undo, then redo again"
 
@@ -932,6 +944,8 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
+
+
 		
 	def testBufferUndo(self):
 		"Undo buffer actions"
@@ -947,25 +961,15 @@ class BufferTests(unittest.TestCase):
 		self.fill_buffer_for_undo()
 
 		# Start undoing
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de")
+		undo_expected = [
+				("undo", "de"),
+				("undo", "defg234abc56789"),
+				("undo", "234abc56789"),
+				("undo", "01234abc56789"),
+				("undo", "0123456789")
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
-		
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "01234abc56789")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "0123456789")
+		self.check_undo_redo(undo_expected)
 
 		err = bless_buffer_undo(self.buf)
 		self.assertEqual(err, 0)
@@ -1026,13 +1030,12 @@ class BufferTests(unittest.TestCase):
 
 		self.fill_buffer_for_undo()
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de")
+		undo_expected = [
+				("undo", "de"),
+				("undo", "defg234abc56789"),
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		(err, can_redo) = bless_buffer_can_redo(self.buf)
 		self.assertEqual(err, 0)
@@ -1047,21 +1050,14 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(can_redo, 0)
 		
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
+		undo_expected = [
+				("undo", "defg234abc56789"),
+				("redo", "defg2!@34abc56789"),
+				("undo", "defg234abc56789"),
+				("undo", "234abc56789"),
+				]
 
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg2!@34abc56789")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		err = bless_buffer_delete(self.buf, 0, 6)
 		self.assertEqual(err, 0)
@@ -1072,17 +1068,13 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(can_redo, 0)
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		undo_expected = [
+				("undo", "234abc56789"),
+				("redo", "56789"),
+				("undo", "234abc56789"),
+				]
 
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "56789")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		err = bless_buffer_append(self.buf, src, 3, 6)
 		self.assertEqual(err, 0)
@@ -1147,13 +1139,12 @@ class BufferTests(unittest.TestCase):
 		self.fill_buffer_for_undo()
 
 		# Undo some actions
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de")
+		undo_expected = [
+				("undo", "de"),
+				("undo", "defg234abc56789"),
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
+		self.check_undo_redo(undo_expected)
 		
 		(err, can_undo) = bless_buffer_can_undo(self.buf)
 		self.assertEqual(err, 0)
@@ -1175,17 +1166,13 @@ class BufferTests(unittest.TestCase):
 		self.fill_buffer_for_undo()
 
 		# Undo some actions
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de")
+		undo_expected = [
+				("undo", "de"),
+				("undo", "defg234abc56789"),
+				("undo", "234abc56789"),
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
-		
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		# Set undo limit
 		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '1')
@@ -1195,9 +1182,11 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(can_redo, 0)
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "01234abc56789")
+		undo_expected = [
+				("undo", "01234abc56789")
+				]
+
+		self.check_undo_redo(undo_expected)
 
 		(err, can_undo) = bless_buffer_can_undo(self.buf)
 		self.assertEqual(err, 0)
@@ -1218,29 +1207,23 @@ class BufferTests(unittest.TestCase):
 		self.fill_buffer_for_undo()
 
 		# Undo some actions
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de")
+		undo_expected = [
+				("undo", "de"),
+				("undo", "defg234abc56789"),
+				("undo", "234abc56789"),
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "defg234abc56789")
-		
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		# Set undo limit
 		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '2')
 		self.assertEqual(err, 0)
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "01234abc56789")
-
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		undo_expected = [
+				("undo", "01234abc56789"),
+				("redo", "234abc56789"),
+				]
+		self.check_undo_redo(undo_expected)
 
 		# Increase undo limit
 		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '4')
@@ -1271,21 +1254,14 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Only the last 4 actions should be available
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234ab#$c89!@")
+		undo_expected = [
+				("undo", "234ab#$c89!@"),
+				("undo", "234ab#$c56789!@"),
+				("undo", "234abc56789!@"),
+				("undo", "234abc56789")
+				]
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234ab#$c56789!@")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789!@")
-
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "234abc56789")
+		self.check_undo_redo(undo_expected)
 
 		(err, can_undo) = bless_buffer_can_undo(self.buf)
 		self.assertEqual(err, 0)
@@ -1322,32 +1298,28 @@ class BufferTests(unittest.TestCase):
 		self.check_buffer(self.buf, "678345")
 
 		# Undo 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "6789012345")
+		undo_expected = [
+				("undo", "6789012345"),
+				("undo", "67890")
+				]
+
+		self.check_undo_redo(undo_expected)
 
 		err = bless_buffer_undo(self.buf)
 		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "67890")
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
 		(err, size) = bless_buffer_get_size(self.buf)
 		self.assertEqual(err, 0)
 		self.assertEqual(size, 0)
 
 		# Redo
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "67890")
+		redo_expected = [
+				("redo", "67890"),
+				("redo", "6789012345"),
+				("redo", "678345"),
+				]
 
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "6789012345")
-
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "678345")
+		self.check_undo_redo(redo_expected)
 
 		# Remove temporary file
 		os.remove(fd1_path)
@@ -1438,32 +1410,28 @@ class BufferTests(unittest.TestCase):
 
 		# We should be able to Undo/Redo normally regardless of the
 		# BLESS_BUF_UNDO_AFTER_SAVE = "never" option because the save failed
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "6789012345")
+		undo_expected = [
+				("undo", "6789012345"),
+				("undo", "67890")
+				]
+
+		self.check_undo_redo(undo_expected)
 
 		err = bless_buffer_undo(self.buf)
 		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "67890")
 
-		err = bless_buffer_undo(self.buf)
-		self.assertEqual(err, 0)
 		(err, size) = bless_buffer_get_size(self.buf)
 		self.assertEqual(err, 0)
 		self.assertEqual(size, 0)
 
 		# Redo
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "67890")
+		redo_expected = [
+				("redo", "67890"),
+				("redo", "6789012345"),
+				("redo", "678345"),
+				]
 
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "6789012345")
-
-		err = bless_buffer_redo(self.buf)
-		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "678345")
+		self.check_undo_redo(redo_expected)
 
 		# Remove temporary file
 		os.remove(fd1_path)
