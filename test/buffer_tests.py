@@ -1436,5 +1436,81 @@ class BufferTests(unittest.TestCase):
 		# Remove temporary file
 		os.remove(fd1_path)
 
+	def testMultiAction(self):
+		"Group multiple actions in one and try to undo and redo the group"
+
+		data = "0123456789abcdefghij" 
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		# Add data
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 1)
+
+		err = bless_buffer_insert(self.buf, 5, src, 10, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		# Begin a multi action
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, 0, 2);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_insert(self.buf, 0, src, 13, 4);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_delete(self.buf, 2, 13);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		# End the multi action
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 0, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de123")
+
+		undo_expected = [
+				("undo", "de"),
+				("undo", "01234abc56789"),
+				("undo", "0123456789"),
+				]
+
+		self.check_undo_redo(undo_expected)
+
+		err = bless_buffer_undo(buf)
+		self.assertEqual(err, 0)
+
+		(err, buf_size) = bless_buffer_get_size(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(buf_size, 0)
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		# Redo the actions
+		undo_expected = [
+				("redo", "0123456789"),
+				("redo", "01234abc56789"),
+				("redo", "de"),
+				("redo", "de123"),
+				]
+
+		self.check_undo_redo(undo_expected)
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
 if __name__ == '__main__':
 	unittest.main()

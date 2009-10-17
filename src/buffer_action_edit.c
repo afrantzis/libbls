@@ -72,6 +72,14 @@ static int buffer_action_delete_to_event(buffer_action_t *action,
 		struct bless_buffer_event_info *event_info);
 static int buffer_action_delete_free(buffer_action_t *action);
 
+static int buffer_action_multi_do(buffer_action_t *action);
+static int buffer_action_multi_undo(buffer_action_t *action);
+static int buffer_action_multi_private_copy(buffer_action_t *action,
+		data_object_t *dobj);
+static int buffer_action_multi_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info);
+static int buffer_action_multi_free(buffer_action_t *action);
+
 /* Action functions */
 static struct buffer_action_funcs buffer_action_append_funcs = {
 	.do_func = buffer_action_append_do,
@@ -97,6 +105,14 @@ static struct buffer_action_funcs buffer_action_delete_funcs = {
 	.free_func = buffer_action_delete_free
 };
 
+static struct buffer_action_funcs buffer_action_multi_funcs = {
+	.do_func = buffer_action_multi_do,
+	.undo_func = buffer_action_multi_undo,
+	.private_copy_func = buffer_action_multi_private_copy,
+	.to_event_func = buffer_action_multi_to_event,
+	.free_func = buffer_action_multi_free
+};
+
 /* Action implementations */
 struct buffer_action_append_impl {
 	bless_buffer_t *buf;
@@ -114,6 +130,16 @@ struct buffer_action_delete_impl {
 	off_t offset;
 	off_t length;
 	segcol_t *deleted;
+};
+
+struct buffer_action_multi_entry {
+	struct list_node ln;
+	buffer_action_t *action;
+};
+
+struct buffer_action_multi_impl {
+	bless_buffer_t *buf;
+	list_t *action_list;
 };
 
 /********************
@@ -439,6 +465,77 @@ fail:
 	return_error(err);
 }
 
+/** 
+ * Creates a new multi buffer_action_t.
+ * 
+ * @param [out] action the created buffer_action_t
+ * 
+ * @return the operation error code
+ */
+int buffer_action_multi_new(buffer_action_t **action)
+{
+	if (action == NULL)
+		return_error(EINVAL);
+
+	/* Allocate memory for implementation */
+	struct buffer_action_multi_impl *impl =
+		malloc(sizeof(struct buffer_action_multi_impl));
+	
+	if (impl == NULL)
+		return_error(EINVAL);
+
+	/* Create buffer_action_t */
+	int err = buffer_action_create_impl(action, impl,
+			&buffer_action_multi_funcs);
+	if (err) {
+		free(impl);
+		return_error(err);
+	}
+
+	/* Initialize implementation */
+	err = list_new(&impl->action_list, struct buffer_action_multi_entry, ln);
+	if (err) {
+		free(impl);
+		return_error(err);
+	}
+
+	return 0;
+}
+
+/** 
+ * Adds a new action to a multi action.
+ * 
+ * @param multi_action the multi action to add an action to
+ * @param new_action the new action to add
+ * 
+ * @return the operation error code
+ */
+int buffer_action_multi_add(buffer_action_t *multi_action, buffer_action_t *new_action)
+{
+	if (multi_action == NULL || new_action == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(multi_action);
+
+	/* Create entry to hold new action */
+	struct buffer_action_multi_entry *entry =
+		malloc(sizeof(struct buffer_action_multi_entry));
+	
+	if (entry == NULL)
+		return_error(EINVAL);
+
+	entry->action = new_action;
+
+	/* Append entry to multi action list */
+	int err = list_insert_before(list_tail(impl->action_list), &entry->ln);
+	if (err) {
+		free(entry);
+		return_error(err);
+	}
+
+	return 0;
+}
 
 /********************
  * Append Functions *
@@ -778,6 +875,153 @@ static int buffer_action_delete_free(buffer_action_t *action)
 		int err = segcol_free(impl->deleted);
 		if (err)
 			return err;
+	}
+
+	free(impl);
+
+	return 0;
+}
+
+/*******************
+ * Multi Functions *
+ *******************/
+
+static int buffer_action_multi_do(buffer_action_t *action)
+{
+	if (action == NULL)
+		return_error(EINVAL);
+
+	int err = 0;
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
+
+	struct list_node *node;
+	list_for_each(list_head(impl->action_list)->next, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_t *a = entry->action;
+
+		err = buffer_action_do(a);
+		if (err)
+			break;
+	}
+
+	if (err) {
+		struct list_node *start = node->prev;
+		list_for_each_reverse(start, node) {
+			struct buffer_action_entry *entry =
+				list_entry(node, struct buffer_action_entry, ln);
+
+			buffer_action_t *a = entry->action;
+
+			buffer_action_undo(a);
+		}
+		return_error(err);
+	}
+
+	return 0;
+}
+
+static int buffer_action_multi_undo(buffer_action_t *action)
+{
+	if (action == NULL)
+		return_error(EINVAL);
+
+	int err = 0;
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
+
+	struct list_node *node;
+	list_for_each_reverse(list_tail(impl->action_list)->prev, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_t *a = entry->action;
+
+		err = buffer_action_undo(a);
+		if (err)
+			break;
+	}
+
+	if (err) {
+		struct list_node *start = node->next;
+		list_for_each(start, node) {
+			struct buffer_action_entry *entry =
+				list_entry(node, struct buffer_action_entry, ln);
+
+			buffer_action_t *a = entry->action;
+
+			buffer_action_do(a);
+		}
+		return_error(err);
+	}
+
+	return 0;
+}
+
+static int buffer_action_multi_private_copy(buffer_action_t *action,
+		data_object_t *cmp_dobj)
+{
+	if (action == NULL || cmp_dobj == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
+
+	struct list_node *node;
+	list_for_each_reverse(list_tail(impl->action_list)->prev, node) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_t *a = entry->action;
+
+		int err = buffer_action_private_copy(a, cmp_dobj);
+		if (err)
+			return_error(err);
+	}
+
+	return 0;
+}
+
+static int buffer_action_multi_to_event(buffer_action_t *action,
+		struct bless_buffer_event_info *event_info)
+{
+	if (action == NULL || event_info == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
+
+	event_info->action_type = BLESS_BUFFER_ACTION_MULTI;
+	event_info->range_start = -1;
+	event_info->range_length = -1;
+	event_info->save_fd = -1;
+
+	return 0;
+}
+
+static int buffer_action_multi_free(buffer_action_t *action)
+{
+	if (action == NULL)
+		return_error(EINVAL);
+
+	struct buffer_action_multi_impl *impl =
+		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
+
+	/* Free contained actions */
+	struct list_node *node;
+	struct list_node *tmp;
+	list_for_each_safe(list_head(impl->action_list)->next, node, tmp) {
+		struct buffer_action_entry *entry =
+			list_entry(node, struct buffer_action_entry, ln);
+
+		buffer_action_t *a = entry->action;
+
+		buffer_action_free(a);
+		free(entry);
 	}
 
 	free(impl);

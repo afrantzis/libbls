@@ -176,21 +176,20 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	return 0;
 }
 
-#pragma GCC visibility push(hidden)
 
 /**
- * Marks the beginning of a multi-op.
+ * Marks the beginning of a multi-action.
  *
- * A multi-op is a compound operation consisting of multiple
- * simple operations. In terms of undo-redo it is treated as
- * a single operation.
+ * A multi-action is a compound action consisting of multiple
+ * simple actions. In terms of undo-redo it is treated as
+ * a single action.
  *
- * @param buf the bless_buffer_t on which following operations
- *            are to be treated as part of a single operation
+ * @param buf the bless_buffer_t on which following actions
+ *            are to be treated as part of a single action
  * 
  * @return the operation error code
  */
-int bless_buffer_begin_multi_op(bless_buffer_t *buf)
+int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 {
 	UNUSED_PARAM(buf);
 
@@ -198,23 +197,21 @@ int bless_buffer_begin_multi_op(bless_buffer_t *buf)
 }
 
 /**
- * Marks the end of a multi-op.
+ * Marks the beginning of a multi-action.
  *
- * A multi-op is a compound operation consisting of multiple
- * simple operations. In terms of undo-redo it is treated as
- * a single operation.
+ * A multi-action is a compound action consisting of multiple
+ * simple actions. In terms of undo-redo it is treated as
+ * a single action.
  *
- * @param buf the bless_buffer_t on which following operations will
- *            stop to be treated as part of a single operation
+ * @param buf the bless_buffer_t on which following actions will
+ *            stop being treated as part of a single action
  *
  * @return the operation error code
  */
-int bless_buffer_end_multi_op(bless_buffer_t *buf)
+int bless_buffer_end_multi_action(bless_buffer_t *buf)
 {
 	UNUSED_PARAM(buf);
 
 	return_error(ENOSYS);
 }
-
-#pragma GCC visibility pop
 
