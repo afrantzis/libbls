@@ -88,7 +88,7 @@ Error handling
 
 Every function in the API returns an integer that represents the error code of
 the operation that was performed. An error code of ``0`` means that the
-operation completed succesfully. Any other value 
+operation completed successfully. Any other value 
 means that the operation failed. To get the string representation of an error
 code use the function ``strerror()`` from the system header ``string.h``.
 
@@ -257,7 +257,7 @@ resources::
      * (Actually, we cannot free them anyway because they point to
      *  a static string)
      */
-    err = bless_buffer_source_memory(&mem_source, smem, 14, NULL);
+    err = bless_buffer_source_memory(&smem_source, smem, 14, NULL);
     if (err)
         ...
     
@@ -419,6 +419,84 @@ By default, libbls tries to retain as much as possible of undo/redo history
 after a save. This is controlled by the ``BLESS_BUF_UNDO_AFTER_SAVE`` buffer
 option (see `Setting buffer options`_).
 
+Grouping multiple buffer actions
+--------------------------------
+
+It is sometimes useful to be able to consider multiple buffer actions as one
+single action in terms of undoing and redoing. For example, deleting all 0x0d
+bytes from a file may be considered a single high-level action that is atomically
+done or undone.
+
+To support such use cases, libbls provides the
+``bless_buffer_begin_multi_action()``, and ``bless_buffer_end_multi_action()``
+functions::
+
+    int bless_buffer_begin_multi_action(bless_buffer_t *buf);
+
+    int bless_buffer_end_multi_action(bless_buffer_t *buf);
+
+Every buffer edit action (append, insert or delete) that is performed between
+calls to ``bless_buffer_begin_multi_action()`` and
+``bless_buffer_end_multi_action()`` is considered part of the same single
+multi-action. When undoing or redoing this multi-action all simple actions that
+comprise it are undone or redone.
+
+Actions that are part of a multi-action do not cause an event to be emitted
+when they are performed (see `Monitoring buffer events`_). A single
+BLESS_BUFFER_EVENT_EDIT event with action of BLESS_BUFFER_ACTION_MULTI is
+emitted when the function ``bless_buffer_end_multi_action()`` is called.
+
+An example of how to group multiple actions::
+
+    /* Assume "buf" is initialized and contains some data */
+    bless_buffer_t *buf; 
+
+    /* Assume "source" points to a valid data source */
+    bless_buffer_source_t *source;
+
+    int err;
+
+    /*
+     * Begin multi action. All edit actions are considered part of
+     * a single compound action until we end the multi action.
+     */
+    err = bless_buffer_begin_multi_action(buf);
+    if (err)
+        ...
+
+    err = bless_buffer_delete(buf, 2, 1);
+    if (err)
+        ...
+
+    err = bless_buffer_append(buf, source, 0, 10);
+    if (err)
+        ...
+
+    err = bless_buffer_insert(buf, 6, source, 13, 2);
+    if (err)
+        ...
+
+    /* End multi action */
+    err = bless_buffer_end_multi_action(buf);
+    if (err)
+        ...
+
+    /* 
+     * After the undo the buffer is in its initial state (before the
+     * first delete action).
+     */
+    err = bless_buffer_undo(buf);
+    if (err)
+        ...
+
+    /* 
+     * After the redo the buffer is back to its final state (after the
+     * last insert action).
+     */
+    err = bless_buffer_redo(buf);
+    if (err)
+        ...
+
 Reading data from the buffer
 ============================
 
@@ -452,14 +530,14 @@ The whole buffer contents can be saved to a user-provided file by using the
 
  int bless_buffer_save(bless_buffer_t *buf, int fd, bless_progress_func *func)
 
-The file descriptor ``fd`` must be opened with write permission.
+The file descriptor ``fd`` must be opened with both read and write permissions.
 
 *[Progress callback not implemented yet, details may change]*
 The ``func`` function, if it is not NULL, is periodically called from within the
 save function to report the progress of the save operation. Its return value is
 checked by the save function to determine if the save should continue or not.
 Note, that the save function is free to ignore the cancel request if that would
-leave the saved file in an incosistent state.
+leave the saved file in an inconsistent state.
 
 Note that in some situations, if the buffer contains data from the target file
 of the save operation, additional temporary storage space may be needed. Main
@@ -586,28 +664,28 @@ The currently implemented events that can be found in the ``event_type`` field
 are:
 
 ``BLESS_BUFFER_EVENT_EDIT``
-	The buffer has been edited in some way. The ``action_type`` field gives
-	more information about the kind of editing (eg ``BLESS_BUFFER_INSERT``) and
-	the ``range_start`` and ``range_length`` contain the range of the buffer
-	that was affected by the editing operation.
+    The buffer has been edited in some way. The ``action_type`` field gives
+    more information about the kind of editing (eg ``BLESS_BUFFER_INSERT``) and
+    the ``range_start`` and ``range_length`` contain the range of the buffer
+    that was affected by the editing operation.
 
 ``BLESS_BUFFER_EVENT_UNDO``
-	The last buffer action has been undone. As with ``BLESS_BUFFER_EVENT_EDIT``
-	the ``action_type``, ``range_start`` and ``range_length`` fields give more
-	information about the undone action.
-	
+    The last buffer action has been undone. As with ``BLESS_BUFFER_EVENT_EDIT``
+    the ``action_type``, ``range_start`` and ``range_length`` fields give more
+    information about the undone action.
+    
 ``BLESS_BUFFER_EVENT_REDO``
-	The last undone buffer action has been redone. As with
-	``BLESS_BUFFER_EVENT_EDIT`` the ``action_type``, ``range_start`` and
-	``range_length`` fields give more information about the redone action.
-
+    The last undone buffer action has been redone. As with
+    ``BLESS_BUFFER_EVENT_EDIT`` the ``action_type``, ``range_start`` and
+    ``range_length`` fields give more information about the redone action.
+    
 ``BLESS_BUFFER_EVENT_SAVE``
-	The buffer has been successfully saved to a file. The file descriptor of
-	the file is placed in the ``save_fd`` field. The contents of the other
-	fields should be ignored.
-
+    The buffer has been successfully saved to a file. The file descriptor of
+    the file is placed in the ``save_fd`` field. The contents of the other
+    fields should be ignored.
+    
 ``BLESS_BUFFER_EVENT_DESTROY``
-	The buffer is about to be destroyed (freed). No fields are valid for this event.
+    The buffer is about to be destroyed (freed). No fields are valid for this event.
 
 The currently implemented actions for the ``action_type`` field are:
 
@@ -616,6 +694,8 @@ The currently implemented actions for the ``action_type`` field are:
 ``BLESS_BUFFER_ACTION_INSERT``
 
 ``BLESS_BUFFER_ACTION_DELETE``
+
+``BLESS_BUFFER_ACTION_MULTI``
 
 An example of how to use the callback function::
 
