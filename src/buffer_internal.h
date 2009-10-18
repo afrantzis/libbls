@@ -63,6 +63,7 @@ struct bless_buffer {
 	list_t *redo_list;
 	size_t undo_list_size;
 	size_t redo_list_size;
+	buffer_action_t *multi_action;
 	
 	bless_buffer_event_func_t *event_func;
 	void *event_user_data;

@@ -26,8 +26,10 @@
 #include <errno.h>
 #include <stdlib.h>
 #include "buffer.h"
+#include "buffer_util.h"
 #include "buffer_internal.h"
 #include "buffer_action.h"
+#include "buffer_action_edit.h"
 #include "debug.h"
 #include "util.h"
 
@@ -191,13 +193,43 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 {
-	UNUSED_PARAM(buf);
+	if (buf == NULL)
+		return_error(EINVAL);
 
-	return_error(ENOSYS);
+	/* 
+	 * Make sure that the undo list has space for one action (provided the
+	 * undo limit is > 0).
+	 */
+	int err = undo_list_enforce_limit(buf, 1);
+	if (err)
+		return_error(err);
+
+	/* 
+	 * If we have space in the undo list to append the action.
+	 * Then only case we won't have space is when the undo limit is 0.
+	 */
+	if (buf->undo_list_size >= buf->options->undo_limit)
+		return 0;
+
+	/* Create the multi action that will hold the actions */
+	err = buffer_action_multi_new(&buf->multi_action);
+	if (err)
+		return_error(err);
+
+	err = undo_list_append(buf, buf->multi_action);
+	if (err) {
+		buffer_action_free(buf->multi_action);
+		return_error(err);
+	}
+
+	action_list_clear(buf->redo_list);
+	buf->redo_list_size = 0;
+
+	return 0;
 }
 
 /**
- * Marks the beginning of a multi-action.
+ * Marks the end of a multi-action.
  *
  * A multi-action is a compound action consisting of multiple
  * simple actions. In terms of undo-redo it is treated as
@@ -210,8 +242,28 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_action(bless_buffer_t *buf)
 {
-	UNUSED_PARAM(buf);
+	if (buf == NULL)
+		return_error(EINVAL);
 
-	return_error(ENOSYS);
+	struct bless_buffer_event_info event_info;
+
+	/* Fill in the event info structure for this action */
+	int err = buffer_action_to_event(buf->multi_action, &event_info);
+	if (err)
+		return_error(err);
+		
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		event_info.event_type = BLESS_BUFFER_EVENT_EDIT;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
+
+	/* 
+	 * Mark multi_action as NULL to signify that we are not currently
+	 * in multi action mode.
+	 */
+	buf->multi_action = NULL;
+
+	return 0;
 }
 

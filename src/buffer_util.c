@@ -32,6 +32,7 @@
 #include "buffer.h"
 #include "buffer_util.h"
 #include "buffer_internal.h"
+#include "buffer_action.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -776,3 +777,36 @@ int action_list_clear(list_t *action_list)
 	return 0;
 }
 
+/** 
+ * Appends a buffer_action_t to the undo list of a buffer.
+ * 
+ * @param buf the bless_buffer_t to append to
+ * @param action the action to append
+ * 
+ * @return the operation error code
+ */
+int undo_list_append(bless_buffer_t *buf, buffer_action_t *action)
+{
+	if (buf == NULL || action == NULL)
+		return_error(EINVAL);
+
+	/* Create a new buffer_action_entry */
+	struct buffer_action_entry *entry;
+
+	entry = malloc(sizeof(struct buffer_action_entry));
+	if (entry == NULL)
+		return_error(ENOMEM);
+
+	entry->action = action;
+
+	/* Append it to the list */
+	int err = list_insert_before(list_tail(buf->undo_list), &entry->ln);
+	if (err) {
+		free(entry);
+		return_error(err);
+	}
+
+	++buf->undo_list_size;
+
+	return 0;
+}

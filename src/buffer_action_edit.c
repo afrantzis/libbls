@@ -132,11 +132,6 @@ struct buffer_action_delete_impl {
 	segcol_t *deleted;
 };
 
-struct buffer_action_multi_entry {
-	struct list_node ln;
-	buffer_action_t *action;
-};
-
 struct buffer_action_multi_impl {
 	bless_buffer_t *buf;
 	list_t *action_list;
@@ -493,7 +488,7 @@ int buffer_action_multi_new(buffer_action_t **action)
 	}
 
 	/* Initialize implementation */
-	err = list_new(&impl->action_list, struct buffer_action_multi_entry, ln);
+	err = list_new(&impl->action_list, struct buffer_action_entry, ln);
 	if (err) {
 		free(impl);
 		return_error(err);
@@ -519,8 +514,8 @@ int buffer_action_multi_add(buffer_action_t *multi_action, buffer_action_t *new_
 		(struct buffer_action_multi_impl *) buffer_action_get_impl(multi_action);
 
 	/* Create entry to hold new action */
-	struct buffer_action_multi_entry *entry =
-		malloc(sizeof(struct buffer_action_multi_entry));
+	struct buffer_action_entry *entry =
+		malloc(sizeof(struct buffer_action_entry));
 	
 	if (entry == NULL)
 		return_error(EINVAL);
@@ -991,9 +986,6 @@ static int buffer_action_multi_to_event(buffer_action_t *action,
 {
 	if (action == NULL || event_info == NULL)
 		return_error(EINVAL);
-
-	struct buffer_action_multi_impl *impl =
-		(struct buffer_action_multi_impl *) buffer_action_get_impl(action);
 
 	event_info->action_type = BLESS_BUFFER_ACTION_MULTI;
 	event_info->range_start = -1;

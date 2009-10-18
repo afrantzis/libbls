@@ -1478,7 +1478,7 @@ class BufferTests(unittest.TestCase):
 
 		err = bless_buffer_append(self.buf, src, 0, 3);
 		self.assertEqual(err, 0)
-		self.check_buffer(self.buf, "de123")
+		self.check_buffer(self.buf, "de012")
 
 		undo_expected = [
 				("undo", "de"),
@@ -1488,7 +1488,7 @@ class BufferTests(unittest.TestCase):
 
 		self.check_undo_redo(undo_expected)
 
-		err = bless_buffer_undo(buf)
+		err = bless_buffer_undo(self.buf)
 		self.assertEqual(err, 0)
 
 		(err, buf_size) = bless_buffer_get_size(self.buf)
@@ -1504,7 +1504,7 @@ class BufferTests(unittest.TestCase):
 				("redo", "0123456789"),
 				("redo", "01234abc56789"),
 				("redo", "de"),
-				("redo", "de123"),
+				("redo", "de012"),
 				]
 
 		self.check_undo_redo(undo_expected)
