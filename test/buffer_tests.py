@@ -1512,5 +1512,119 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
 
+	def testMultiActionUndoLimitOne(self):
+		"Change the undo limit to 1 while in multi-action mode"
+
+		data = "0123456789abcdefghij" 
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		# Add data
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 1)
+
+		err = bless_buffer_insert(self.buf, 5, src, 10, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		# Begin a multi action
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, 0, 2);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '1')
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert(self.buf, 0, src, 13, 4);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_delete(self.buf, 2, 13);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		# End the multi action
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		undo_expected = [
+				("undo", "01234abc56789"),
+				("redo", "de"),
+				("undo", "01234abc56789"),
+				]
+
+		self.check_undo_redo(undo_expected)
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
+	def testMultiActionUndoLimitZero(self):
+		"Change the undo limit to zero while in multi-action mode"
+
+		data = "0123456789abcdefghij" 
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		# Add data
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "0123456789")
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 1)
+
+		err = bless_buffer_insert(self.buf, 5, src, 10, 3);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "01234abc56789")
+
+		# Begin a multi action
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, 0, 2);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234abc56789")
+
+		err = bless_buffer_set_option(self.buf, BLESS_BUF_UNDO_LIMIT, '0')
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_insert(self.buf, 0, src, 13, 4);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "defg234abc56789")
+
+		err = bless_buffer_delete(self.buf, 2, 13);
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "de")
+
+		# End the multi action
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		(err, can_undo) = bless_buffer_can_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(can_undo, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertNotEqual(err, 0)
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
 if __name__ == '__main__':
 	unittest.main()

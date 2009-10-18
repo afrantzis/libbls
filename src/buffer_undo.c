@@ -193,7 +193,7 @@ int bless_buffer_redo(bless_buffer_t *buf)
  */
 int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 {
-	if (buf == NULL)
+	if (buf == NULL || buf->multi_action_mode == 1)
 		return_error(EINVAL);
 
 	/* 
@@ -225,6 +225,9 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
 
+	/* We are now in multi action mode */
+	buf->multi_action_mode = 1;
+
 	return 0;
 }
 
@@ -242,15 +245,25 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_action(bless_buffer_t *buf)
 {
-	if (buf == NULL)
+	if (buf == NULL || buf->multi_action_mode == 0)
 		return_error(EINVAL);
 
+	int err = 0;
 	struct bless_buffer_event_info event_info;
 
-	/* Fill in the event info structure for this action */
-	int err = buffer_action_to_event(buf->multi_action, &event_info);
-	if (err)
-		return_error(err);
+	if (buf->multi_action != NULL) {
+		/* Fill in the event info structure for this action */
+		err = buffer_action_to_event(buf->multi_action, &event_info);
+		if (err)
+			return_error(err);
+	}
+	else {
+		/* Create a dummy event info structure */
+		event_info.action_type = BLESS_BUFFER_ACTION_MULTI;
+		event_info.range_start = -1;
+		event_info.range_length = -1;
+		event_info.save_fd = -1;
+	}
 		
 	/* Call event callback if supplied by the user */
 	if (buf->event_func != NULL) {
@@ -258,10 +271,8 @@ int bless_buffer_end_multi_action(bless_buffer_t *buf)
 		(*buf->event_func)(buf, &event_info, buf->event_user_data);
 	}
 
-	/* 
-	 * Mark multi_action as NULL to signify that we are not currently
-	 * in multi action mode.
-	 */
+	/* We are now in normal action mode */
+	buf->multi_action_mode = 0;
 	buf->multi_action = NULL;
 
 	return 0;

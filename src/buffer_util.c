@@ -725,23 +725,29 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 	struct list_node *node;
 	struct list_node *tmp;
 
-  list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
-    if (buf->undo_list_size <= limit)
-      break;
+	list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
+		if (buf->undo_list_size <= limit)
+			break;
 
 		int err = list_delete_chain(node, node);
 		if (err)
 			return_error(err);
 
-    --buf->undo_list_size;
+		--buf->undo_list_size;
 
 		struct buffer_action_entry *del_entry = 
 			list_entry(node, struct buffer_action_entry, ln);
 
 		buffer_action_free(del_entry->action);
 		free(del_entry);
-  }
+	}
 
+	/* 
+	 * If the limit is zero, the current multi action (if any) has been
+	 * freed, so we must unset the multi_action pointer in the buffer.
+	 */
+	if (limit == 0)
+		buf->multi_action = NULL;
 
 	return 0;
 }

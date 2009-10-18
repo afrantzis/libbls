@@ -117,10 +117,13 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	 * If we are in multi action mode, just add the action to the multi
 	 * action and return.
 	 */
-	if (buf->multi_action != NULL) {
-		err = buffer_action_multi_add(buf->multi_action, action);
-		if (err)
-			goto fail;
+	if (buf->multi_action_mode) {
+		/* We may not have an action if the undo limit is 0 */
+		if (buf->multi_action != NULL) {
+			err = buffer_action_multi_add(buf->multi_action, action);
+			if (err)
+				goto fail;
+		}
 		return 0;
 	}
 
@@ -202,10 +205,13 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	 * If we are in multi action mode, just add the action to the multi
 	 * action and return.
 	 */
-	if (buf->multi_action != NULL) {
-		err = buffer_action_multi_add(buf->multi_action, action);
-		if (err)
-			goto fail;
+	if (buf->multi_action_mode) {
+		/* We may not have an action if the undo limit is 0 */
+		if (buf->multi_action != NULL) {
+			err = buffer_action_multi_add(buf->multi_action, action);
+			if (err)
+				goto fail;
+		}
 		return 0;
 	}
 
@@ -283,10 +289,13 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	 * If we are in multi action mode, just add the action to the multi
 	 * action and return.
 	 */
-	if (buf->multi_action != NULL) {
-		err = buffer_action_multi_add(buf->multi_action, action);
-		if (err)
-			goto fail;
+	if (buf->multi_action_mode) {
+		/* We may not have an action if the undo limit is 0 */
+		if (buf->multi_action != NULL) {
+			err = buffer_action_multi_add(buf->multi_action, action);
+			if (err)
+				goto fail;
+		}
 		return 0;
 	}
 		

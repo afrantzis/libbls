@@ -553,6 +553,7 @@ int bless_buffer_new(bless_buffer_t **buf)
 
 	(*buf)->redo_list_size = 0;
 	(*buf)->multi_action = NULL;
+	(*buf)->multi_action_mode = 0;
 	(*buf)->event_func = NULL;
 	(*buf)->event_user_data = NULL;
 
