@@ -207,7 +207,7 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 
 	/* 
 	 * If we have space in the undo list to append the action.
-	 * Then only case we won't have space is when the undo limit is 0.
+	 * The only case we won't have space is when the undo limit is 0.
 	 */
 	if (buf->undo_list_size >= buf->options->undo_limit)
 		return 0;
@@ -252,6 +252,7 @@ int bless_buffer_end_multi_action(bless_buffer_t *buf)
 	int err = 0;
 	struct bless_buffer_event_info event_info;
 
+	/* We may not have a multi_action if the undo limit is 0 */
 	if (buf->multi_action != NULL) {
 		/* Fill in the event info structure for this action */
 		err = buffer_action_to_event(buf->multi_action, &event_info);
