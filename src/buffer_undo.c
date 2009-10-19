@@ -33,6 +33,7 @@
 #include "debug.h"
 #include "util.h"
 
+#pragma GCC visibility push(default)
 
 /**
  * Undoes the last operation in a bless_buffer_t.
@@ -278,3 +279,4 @@ int bless_buffer_end_multi_action(bless_buffer_t *buf)
 	return 0;
 }
 
+#pragma GCC visibility pop
