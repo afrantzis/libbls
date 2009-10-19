@@ -31,6 +31,7 @@ extern "C" {
 
 #include <sys/types.h>
 #include "buffer.h"
+#include "buffer_action.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -60,6 +61,8 @@ int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src);
 int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy);
 
 int action_list_clear(list_t *action_list);
+
+int undo_list_append(bless_buffer_t *buf, buffer_action_t *action);
 
 #ifdef __cplusplus
 }

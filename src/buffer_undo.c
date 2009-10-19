@@ -26,11 +26,14 @@
 #include <errno.h>
 #include <stdlib.h>
 #include "buffer.h"
+#include "buffer_util.h"
 #include "buffer_internal.h"
 #include "buffer_action.h"
+#include "buffer_action_edit.h"
 #include "debug.h"
 #include "util.h"
 
+#pragma GCC visibility push(default)
 
 /**
  * Undoes the last operation in a bless_buffer_t.
@@ -176,45 +179,105 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	return 0;
 }
 
-#pragma GCC visibility push(hidden)
 
 /**
- * Marks the beginning of a multi-op.
+ * Marks the beginning of a multi-action.
  *
- * A multi-op is a compound operation consisting of multiple
- * simple operations. In terms of undo-redo it is treated as
- * a single operation.
+ * A multi-action is a compound action consisting of multiple
+ * simple actions. In terms of undo-redo it is treated as
+ * a single action.
  *
- * @param buf the bless_buffer_t on which following operations
- *            are to be treated as part of a single operation
+ * @param buf the bless_buffer_t on which following actions
+ *            are to be treated as part of a single action
  * 
  * @return the operation error code
  */
-int bless_buffer_begin_multi_op(bless_buffer_t *buf)
+int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 {
-	UNUSED_PARAM(buf);
+	if (buf == NULL || buf->multi_action_mode == 1)
+		return_error(EINVAL);
 
-	return_error(ENOSYS);
+	/* 
+	 * Make sure that the undo list has space for one action (provided the
+	 * undo limit is > 0).
+	 */
+	int err = undo_list_enforce_limit(buf, 1);
+	if (err)
+		return_error(err);
+
+	/* 
+	 * If we have space in the undo list to append the action.
+	 * The only case we won't have space is when the undo limit is 0.
+	 */
+	if (buf->undo_list_size >= buf->options->undo_limit)
+		return 0;
+
+	/* Create the multi action that will hold the actions */
+	err = buffer_action_multi_new(&buf->multi_action);
+	if (err)
+		return_error(err);
+
+	err = undo_list_append(buf, buf->multi_action);
+	if (err) {
+		buffer_action_free(buf->multi_action);
+		return_error(err);
+	}
+
+	action_list_clear(buf->redo_list);
+	buf->redo_list_size = 0;
+
+	/* We are now in multi action mode */
+	buf->multi_action_mode = 1;
+
+	return 0;
 }
 
 /**
- * Marks the end of a multi-op.
+ * Marks the end of a multi-action.
  *
- * A multi-op is a compound operation consisting of multiple
- * simple operations. In terms of undo-redo it is treated as
- * a single operation.
+ * A multi-action is a compound action consisting of multiple
+ * simple actions. In terms of undo-redo it is treated as
+ * a single action.
  *
- * @param buf the bless_buffer_t on which following operations will
- *            stop to be treated as part of a single operation
+ * @param buf the bless_buffer_t on which following actions will
+ *            stop being treated as part of a single action
  *
  * @return the operation error code
  */
-int bless_buffer_end_multi_op(bless_buffer_t *buf)
+int bless_buffer_end_multi_action(bless_buffer_t *buf)
 {
-	UNUSED_PARAM(buf);
+	if (buf == NULL || buf->multi_action_mode == 0)
+		return_error(EINVAL);
 
-	return_error(ENOSYS);
+	int err = 0;
+	struct bless_buffer_event_info event_info;
+
+	/* We may not have a multi_action if the undo limit is 0 */
+	if (buf->multi_action != NULL) {
+		/* Fill in the event info structure for this action */
+		err = buffer_action_to_event(buf->multi_action, &event_info);
+		if (err)
+			return_error(err);
+	}
+	else {
+		/* Create a dummy event info structure */
+		event_info.action_type = BLESS_BUFFER_ACTION_MULTI;
+		event_info.range_start = -1;
+		event_info.range_length = -1;
+		event_info.save_fd = -1;
+	}
+		
+	/* Call event callback if supplied by the user */
+	if (buf->event_func != NULL) {
+		event_info.event_type = BLESS_BUFFER_EVENT_EDIT;
+		(*buf->event_func)(buf, &event_info, buf->event_user_data);
+	}
+
+	/* We are now in normal action mode */
+	buf->multi_action_mode = 0;
+	buf->multi_action = NULL;
+
+	return 0;
 }
 
 #pragma GCC visibility pop
-

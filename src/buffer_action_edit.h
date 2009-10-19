@@ -53,6 +53,10 @@ int buffer_action_insert_new(buffer_action_t **action, bless_buffer_t *buf,
 int buffer_action_delete_new(buffer_action_t **action, bless_buffer_t *buf,
 		off_t offset, off_t length);
 
+int buffer_action_multi_new(buffer_action_t **action);
+int buffer_action_multi_add(buffer_action_t *multi_action,
+		buffer_action_t *new_action);
+
 /** @} */
 
 /** @} */

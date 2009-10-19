@@ -88,7 +88,7 @@ int bless_buffer_free(bless_buffer_t *buf);
 
 /** @} */
 /**
- * @name Edit Operations
+ * @name Edit Actions
  *
  * @{
  */
@@ -123,11 +123,9 @@ int bless_buffer_undo(bless_buffer_t *buf);
 
 int bless_buffer_redo(bless_buffer_t *buf);
 
-/* Not yet implemented
-int bless_buffer_begin_multi_op(bless_buffer_t *buf);
+int bless_buffer_begin_multi_action(bless_buffer_t *buf);
 
-int bless_buffer_end_multi_op(bless_buffer_t *buf);
-*/
+int bless_buffer_end_multi_action(bless_buffer_t *buf);
 
 /** @} */
 /**

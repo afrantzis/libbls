@@ -48,6 +48,7 @@ enum {
 	BLESS_BUFFER_ACTION_APPEND, /**< Append action */
 	BLESS_BUFFER_ACTION_INSERT, /**< Insert action */
 	BLESS_BUFFER_ACTION_DELETE, /**< Delete action */
+	BLESS_BUFFER_ACTION_MULTI,  /**< Multi action */
 };
 
 /**

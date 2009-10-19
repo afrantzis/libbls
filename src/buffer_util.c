@@ -32,6 +32,7 @@
 #include "buffer.h"
 #include "buffer_util.h"
 #include "buffer_internal.h"
+#include "buffer_action.h"
 #include "segcol.h"
 #include "segment.h"
 #include "data_object.h"
@@ -724,23 +725,29 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 	struct list_node *node;
 	struct list_node *tmp;
 
-  list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
-    if (buf->undo_list_size <= limit)
-      break;
+	list_for_each_safe(list_head(buf->undo_list)->next, node, tmp) {
+		if (buf->undo_list_size <= limit)
+			break;
 
 		int err = list_delete_chain(node, node);
 		if (err)
 			return_error(err);
 
-    --buf->undo_list_size;
+		--buf->undo_list_size;
 
 		struct buffer_action_entry *del_entry = 
 			list_entry(node, struct buffer_action_entry, ln);
 
 		buffer_action_free(del_entry->action);
 		free(del_entry);
-  }
+	}
 
+	/* 
+	 * If the limit is zero, the current multi action (if any) has been
+	 * freed, so we must unset the multi_action pointer in the buffer.
+	 */
+	if (limit == 0)
+		buf->multi_action = NULL;
 
 	return 0;
 }
@@ -776,3 +783,36 @@ int action_list_clear(list_t *action_list)
 	return 0;
 }
 
+/** 
+ * Appends a buffer_action_t to the undo list of a buffer.
+ * 
+ * @param buf the bless_buffer_t to append to
+ * @param action the action to append
+ * 
+ * @return the operation error code
+ */
+int undo_list_append(bless_buffer_t *buf, buffer_action_t *action)
+{
+	if (buf == NULL || action == NULL)
+		return_error(EINVAL);
+
+	/* Create a new buffer_action_entry */
+	struct buffer_action_entry *entry;
+
+	entry = malloc(sizeof(struct buffer_action_entry));
+	if (entry == NULL)
+		return_error(ENOMEM);
+
+	entry->action = action;
+
+	/* Append it to the list */
+	int err = list_insert_before(list_tail(buf->undo_list), &entry->ln);
+	if (err) {
+		free(entry);
+		return_error(err);
+	}
+
+	++buf->undo_list_size;
+
+	return 0;
+}
