@@ -206,11 +206,13 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 		return_error(err);
 
 	/* 
-	 * If we have space in the undo list to append the action.
-	 * The only case we won't have space is when the undo limit is 0.
+	 * If the undo limit is 0 we cannot append this action. Just change
+	 * into multi_action mode and return.
 	 */
-	if (buf->undo_list_size >= buf->options->undo_limit)
+	if (buf->undo_list_size >= buf->options->undo_limit) {
+		buf->multi_action_mode = 1;
 		return 0;
+	}
 
 	/* Create the multi action that will hold the actions */
 	err = buffer_action_multi_new(&buf->multi_action);
