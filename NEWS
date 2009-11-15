@@ -1,3 +1,13 @@
+libbls v0.3.0 20091115
+----------------------
+
+* Added callback mechanism for monitoring buffer related events.
+* Added support for grouping multiple actions into one undoable/redoable action.
+* Implemented new API functions:
+    bless_buffer_set_event_callback
+    bless_buffer_begin_multi_action
+    bless_buffer_end_multi_action
+
 libbls v0.2.0 20090504
 ----------------------
 
@@ -7,12 +17,11 @@ libbls v0.2.0 20090504
   when saving.
 * Implemented new API functions:
     bless_buffer_undo
-	bless_buffer_redo
-	bless_buffer_can_undo
-	bless_buffer_can_redo
-	bless_buffer_get_option
-	bless_buffer_set_option
-
+    bless_buffer_redo
+    bless_buffer_can_undo
+    bless_buffer_can_redo
+    bless_buffer_get_option
+    bless_buffer_set_option
 
 libbls v0.1.1 20090204
 ----------------------
@@ -25,16 +34,15 @@ libbls v0.1.0 20090129
 
 * Initial public release.
 * Implemented API functions:
-	bless_buffer_new
-	bless_buffer_free
-	bless_buffer_save
-	bless_buffer_append
-	bless_buffer_insert
-	bless_buffer_delete
-	bless_buffer_read
-	bless_buffer_get_size
-	bless_buffer_source_file
-	bless_buffer_source_memory
-	bless_buffer_source_unref
-
+    bless_buffer_new
+    bless_buffer_free
+    bless_buffer_save
+    bless_buffer_append
+    bless_buffer_insert
+    bless_buffer_delete
+    bless_buffer_read
+    bless_buffer_get_size
+    bless_buffer_source_file
+    bless_buffer_source_memory
+    bless_buffer_source_unref
 

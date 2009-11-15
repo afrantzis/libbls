@@ -12,7 +12,7 @@ env = Environment(ENV = os.environ)
 scons_helpers.register_builders(env)
 
 env['lib_major'] = '0'
-env['lib_minor'] = '2'
+env['lib_minor'] = '3'
 env['lib_patch'] = '0'
 env['lib_version'] = '${lib_major}.${lib_minor}.${lib_patch}'
 

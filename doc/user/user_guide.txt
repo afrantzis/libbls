@@ -1,5 +1,5 @@
 =======================
-libbls 0.2 user guide
+libbls 0.3 user guide
 =======================
 
 :Authors: Alexandros Frantzis, Michael Iatrou
