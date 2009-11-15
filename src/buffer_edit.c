@@ -124,6 +124,9 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 			if (err)
 				goto fail;
 		}
+		else
+			buffer_action_free(action);
+
 		return 0;
 	}
 
@@ -142,13 +145,15 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	/* 
 	 * If we have space in the undo list to append the action.
-	 * Then only case we won't have space is when the undo limit is 0.
+	 * The only case we won't have space is when the undo limit is 0.
 	 */
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
 			goto fail;
 	}
+	else
+		buffer_action_free(action);
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
@@ -212,6 +217,9 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 			if (err)
 				goto fail;
 		}
+		else
+			buffer_action_free(action);
+
 		return 0;
 	}
 
@@ -230,13 +238,15 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	/* 
 	 * If we have space in the undo list to append the action.
-	 * Then only case we won't have space is when the undo limit is 0.
+	 * The only case we won't have space is when the undo limit is 0.
 	 */
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
 			goto fail;
 	}
+	else
+		buffer_action_free(action);
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
@@ -296,6 +306,9 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 			if (err)
 				goto fail;
 		}
+		else
+			buffer_action_free(action);
+
 		return 0;
 	}
 		
@@ -314,13 +327,15 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 
 	/* 
 	 * If we have space in the undo list to append the action.
-	 * Then only case we won't have space is when the undo limit is 0.
+	 * The only case we won't have space is when the undo limit is 0.
 	 */
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
 			goto fail;
 	}
+	else
+		buffer_action_free(action);
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
