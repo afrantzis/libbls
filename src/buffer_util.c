@@ -183,6 +183,11 @@ int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
 
 		/* Write the chunk to the final position in the file */
 		off_t s = lseek(fd, file_offset + start_offset - offset, SEEK_SET);
+		if (s != file_offset + start_offset - offset) {
+			free(data);
+			return_error(errno);
+		}
+		
 		ssize_t nwritten = write(fd, data, (ssize_t)nbytes);
 		if (nwritten < (ssize_t)nbytes) {
 			free(data);
