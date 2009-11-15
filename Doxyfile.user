@@ -92,11 +92,17 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 INPUT                  = ./src/
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = buffer*.c \
-                         buffer*.h
+FILE_PATTERNS          = buffer.h \
+                         buffer_edit.c \
+                         buffer_event.h \
+                         buffer_file.c \
+                         buffer_info.c \
+                         buffer_options.h \
+                         buffer_source.c \
+                         buffer_source.h \
+                         buffer_undo.c
 RECURSIVE              = YES
-EXCLUDE                = ./src/buffer_internal.h ./src/buffer_util.c \
-                         ./src/buffer_util.h
+EXCLUDE                = 
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       = 
 EXCLUDE_SYMBOLS        = 
