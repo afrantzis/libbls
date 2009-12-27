@@ -3,17 +3,28 @@ import distutils
 
 Import('env')
 
-env = env.Clone(SWIGFLAGS = ['-python'])
+bindings = " ".join(ARGUMENTS.get('bindings', '').split(','))
 
-source = Glob('*.i')
 libs = []
 
-for f in source:
-	(fn, ext) = os.path.splitext(os.path.basename(f.get_path()))
-	l = env.SharedLibrary(fn, [f], LIBS = ['$lib_name_no_lib'],
-			LIBPATH = '#build/src', 
-			CPPPATH=['$PYTHON_INCLUDE_PATH', '../src'], SHLIBPREFIX='_')
+if 'lua' in bindings:
+	l = env.SharedLibrary('bless_buffer.so', ['bless_buffer_lua.c'],
+			LIBS = ['$lib_name_no_lib'], LIBPATH = '#build/src',
+			CPPPATH = ['$lua_CPPPATH', '../src'], SHLIBPREFIX = ' ')
+
 	libs.append(l)
+	
+if 'python' in bindings or 'test' in BUILD_TARGETS:
+	env = env.Clone(SWIGFLAGS = ['-python'])
+
+	source = Glob('*.i')
+
+	for f in source:
+		(fn, ext) = os.path.splitext(os.path.basename(f.get_path()))
+		l = env.SharedLibrary(fn, [f], LIBS = ['$lib_name_no_lib'],
+				LIBPATH = '#build/src', 
+				CPPPATH=['$PYTHON_INCLUDE_PATH', '../src'], SHLIBPREFIX='_')
+		libs.append(l)
 
 
 Return('libs')

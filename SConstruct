@@ -35,7 +35,7 @@ run_conf = not env.GetOption('clean') and not env.GetOption('help')
 run_conf = run_conf and not 'dist' in BUILD_TARGETS
 
 if run_conf == True:
-	conf = Configure(env)
+	conf = Configure(env, custom_tests = scons_helpers.get_configure_tests())
 
 	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h',
 		'sys/types.h', 'fcntl.h']
@@ -61,6 +61,14 @@ if run_conf == True:
 		if conf.CheckFunc(func):
 			env.Append(CCFLAGS='-DHAVE_%s' % func.upper())
 	
+	pkgs = ['lua5.1']
+	for pkg in pkgs:
+		if conf.CheckPKG(pkg):
+			tmp_env = Environment()
+			tmp_env.ParseConfig('pkg-config --cflags --libs %s' % pkg)
+			env['lua_CPPPATH'] = tmp_env['CPPPATH']
+			env['lua_LIBS'] = tmp_env['LIBS']
+			
 	env = conf.Finish()
 
 ####################################
@@ -122,12 +130,13 @@ env_release = env.Clone()
 env_release.Append(CCFLAGS='-fvisibility=hidden')
 lib_release = env_release.SConscript('src/SConscript', build_dir='build/src-release/',
 	duplicate=0, exports={'env':env_release})
-
+	
 bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings',
 		duplicate=0, exports=['env'])
-
+		
 pkgconf = env.Template('${lib_name_no_lib}.pc', 'bls.pc.in') 
 
+env.Alias('bindings', bindings)
 env.Alias('lib', lib_release)
 Depends(bindings, lib)
 
@@ -217,7 +226,8 @@ Usage: scons [target] [options].
 === Targets ===
 
 lib: Builds library (default).
-install: Installs library
+install: Installs library.
+bindings: Builds bindings.
 test: Runs library tests.
 doc: Creates library documentation.
 benchmark: Run some benchmarks.
@@ -255,11 +265,16 @@ debug = 0|1 [default = 0]
 lfs = 0|1 [default = 1]
     Build with LFS (large file) support.
 	eg scons lfs=0
+	
+bindings = LIST
+    Build bindings for the specified languages. Available languages
+    are 'lua' and 'python'.
+    eg scons bindings bindings=lua
 
 === Testing options ===
 
 tests = LIST
-   Run tests for only the selected modules.for (by default all 
+   Run tests for only the selected modules (by default all 
    tests are run).
        eg scons debug=1 test tests=segment,buffer
 
