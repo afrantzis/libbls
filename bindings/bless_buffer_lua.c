@@ -308,6 +308,14 @@ static int buffer_lua_new(lua_State *L)
 	
 	lua_pushnumber(L, err);
 	push_buffer(L, buf);
+	
+	/* Associate an environment table containing a reference count */
+	lua_newtable(L);
+	lua_pushliteral(L, "refcount");
+	lua_pushinteger(L, 0);
+	lua_rawset(L, -3);
+	
+	lua_setfenv(L, -2);
 
 	return 2;
 }
@@ -528,8 +536,16 @@ static int buffer_lua_get_size(lua_State *L)
 static int buffer_lua_gc(lua_State *L)
 {
 	bless_buffer_t *buf = to_buffer(L, 1);
-	if (buf != NULL)
-		bless_buffer_free(buf);
+	if (buf != NULL) {
+		/* Get reference count */
+		lua_getfenv(L, 1);
+		lua_pushliteral(L, "refcount");
+		lua_rawget(L, -2);
+		int ref = lua_tointeger(L, -1);
+		
+		if (ref == 0)
+			bless_buffer_free(buf);
+	}
 	
 	return 0;
 }
