@@ -5,7 +5,7 @@ Import('env')
 
 bindings = " ".join(ARGUMENTS.get('bindings', '').split(','))
 
-libs = []
+libs = {}
 
 if 'lua' in bindings:
 	l = env.SharedLibrary('bless_buffer_${lib_major}_${lib_minor}.so', ['bless_buffer_lua.c'],
@@ -13,7 +13,7 @@ if 'lua' in bindings:
 			CPPFLAGS = ['-DLIBBLS_VERSION_MAJOR=${lib_major}', '-DLIBBLS_VERSION_MINOR=${lib_minor}'],
 			CPPPATH = ['$lua_CPPPATH', '../src'], SHLIBPREFIX = ' ')
 
-	libs.append(l)
+	libs['lua'] = l
 	
 if 'python' in bindings or 'test' in BUILD_TARGETS:
 	env = env.Clone(SWIGFLAGS = ['-python'])
@@ -25,7 +25,7 @@ if 'python' in bindings or 'test' in BUILD_TARGETS:
 		l = env.SharedLibrary(fn, [f], LIBS = ['$lib_name_no_lib'],
 				LIBPATH = '#build/src', 
 				CPPPATH=['$PYTHON_INCLUDE_PATH', '../src'], SHLIBPREFIX='_')
-		libs.append(l)
+		libs['python'] = l
 
 
 Return('libs')

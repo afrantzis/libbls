@@ -131,14 +131,16 @@ env_release.Append(CCFLAGS='-fvisibility=hidden')
 lib_release = env_release.SConscript('src/SConscript', build_dir='build/src-release/',
 	duplicate=0, exports={'env':env_release})
 	
+# bindings is a dict of bindings to build
 bindings = env.SConscript('bindings/SConscript', build_dir='build/bindings',
 		duplicate=0, exports=['env'])
+bindings_list = bindings.values()
 		
 pkgconf = env.Template('${lib_name_no_lib}.pc', 'bls.pc.in') 
 
-env.Alias('bindings', bindings)
+env.Alias('bindings', bindings_list)
 env.Alias('lib', lib_release)
-Depends(bindings, lib)
+Depends(bindings_list, lib)
 
 env.Default([lib_release, pkgconf])
 
@@ -166,6 +168,10 @@ if install_links != 'no':
 if install_links == 'yes':
 	install_targets += install_dev_link
 
+if 'lua' in bindings:
+	install_lua_bindings = env.Install('${destdir}${libdir}/lua/5.1', bindings['lua'])
+	install_targets = [install_lua_bindings]
+
 env.Alias('install', install_targets)
 env.AlwaysBuild(install_targets)
 
@@ -177,7 +183,7 @@ tests = env.SConscript('test/SConscript', build_dir='build/tests', duplicate=1, 
 
 AlwaysBuild(tests)
 env.Alias('test', tests)
-Depends(tests, bindings)
+Depends(tests, bindings_list)
 
 #########################
 # Documentation targets #
