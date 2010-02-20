@@ -9,6 +9,10 @@ def register_builders(env):
 	register_archive_builder(env)
 	register_localsymlink_builder(env)
 
+def get_configure_tests():
+	return { 'CheckPKGConfig' : CheckPKGConfig,
+		     'CheckPKG' : CheckPKG }
+
 class AtTemplate(Template):
 	delimiter = '@';
 
@@ -196,4 +200,14 @@ def install_versioned_library(target_dir, source, soname, env):
 	
 	return [lib, lnk1, lnk2]
 
+def CheckPKGConfig(context, version):
+	context.Message( 'Checking for pkg-config... ' )
+	ret = context.TryAction('pkg-config --atleast-pkgconfig-version=%s' % version)[0]
+	context.Result( ret )
+	return ret
 
+def CheckPKG(context, name):
+	context.Message( 'Checking for %s... ' % name )
+	ret = context.TryAction('pkg-config --exists \'%s\'' % name)[0]
+	context.Result( ret )
+	return ret
