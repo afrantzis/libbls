@@ -590,10 +590,13 @@ static const luaL_reg buffer_meta[] = {
 	{0, 0}
 };
 
+#define LUAOPEN_BLESS_BUFFER_AGAIN(MAJOR, MINOR) luaopen_bless_buffer_##MAJOR##_##MINOR
+#define LUAOPEN_BLESS_BUFFER(MAJOR, MINOR) LUAOPEN_BLESS_BUFFER_AGAIN(MAJOR, MINOR)
+
 /*
  * Register the bless_buffer bindings
  */
-LUALIB_API int luaopen_bless_buffer(lua_State *L)
+LUALIB_API int LUAOPEN_BLESS_BUFFER(LIBBLS_VERSION_MAJOR, LIBBLS_VERSION_MINOR)(lua_State *L)
 {
 	int bless_table_exists = 0;
 	

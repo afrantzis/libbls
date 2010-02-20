@@ -8,8 +8,9 @@ bindings = " ".join(ARGUMENTS.get('bindings', '').split(','))
 libs = []
 
 if 'lua' in bindings:
-	l = env.SharedLibrary('bless_buffer.so', ['bless_buffer_lua.c'],
+	l = env.SharedLibrary('bless_buffer_${lib_major}_${lib_minor}.so', ['bless_buffer_lua.c'],
 			LIBS = ['$lib_name_no_lib'], LIBPATH = '#build/src',
+			CPPFLAGS = ['-DLIBBLS_VERSION_MAJOR=${lib_major}', '-DLIBBLS_VERSION_MINOR=${lib_minor}'],
 			CPPPATH = ['$lua_CPPPATH', '../src'], SHLIBPREFIX = ' ')
 
 	libs.append(l)
