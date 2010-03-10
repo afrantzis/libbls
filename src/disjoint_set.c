@@ -96,21 +96,22 @@ int disjoint_set_new(disjoint_set_t **ds, size_t size)
 	if (ds == NULL)
 		return_error(EINVAL);
 
+	int err = 0;
+
 	disjoint_set_t *p = malloc(sizeof *p);
 	if (p == NULL)
 		return_error(ENOMEM);
 
 	p->parent = malloc(size * sizeof *p->parent);
 	if (p->parent == NULL) {
-		free(p);
-		return_error(ENOMEM);
+		err = ENOMEM;
+		goto_error(err, on_error_parent);
 	}
 
 	p->rank = calloc(size, sizeof *p->rank);
 	if (p->rank == NULL) {
-		free(p->parent);
-		free(p);
-		return_error(ENOMEM);
+		err = ENOMEM;
+		goto_error(err, on_error_rank);
 	}
 
 	p->size = size;
@@ -122,6 +123,12 @@ int disjoint_set_new(disjoint_set_t **ds, size_t size)
 	*ds = p;
 
 	return 0;
+
+on_error_rank:
+	free(p->parent);
+on_error_parent:
+	free(p);
+	return err;
 }
 
 /** 

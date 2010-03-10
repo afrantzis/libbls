@@ -384,18 +384,16 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 	 * below to efficiently check whether two nodes are connected. Initially
 	 * all nodes are disconnected.
 	 */
-	disjoint_set_t *ds;
+	disjoint_set_t *ds = NULL;
 	int err = disjoint_set_new(&ds, g->size);
 	if (err)
 		return_error(err);
 
 	/* Create a max priority queue and add all the edges. */
-	priority_queue_t *pq;
+	priority_queue_t *pq = NULL;
 	err = priority_queue_new(&pq, g->size);
-	if (err) {
-		disjoint_set_free(ds);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, out);
 
 	/* For every vertex... */ 
 	size_t i;
@@ -411,7 +409,7 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 			e->removed = 1;
 			err = priority_queue_add(pq, e, e->weight, NULL);
 			if (err)
-				goto out;
+				goto_error(err, out);
 			e = e->next;
 		}
 	}
@@ -425,16 +423,17 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 		struct edge *e;
 		err = priority_queue_remove_max(pq, (void **)&e);
 		if (err)
-			goto out;
+			goto_error(err, out);
 
 		size_t set1;
 		size_t set2;
 		err = disjoint_set_find(ds, &set1, e->src_id);
 		if (err)
-			goto out;
+			goto_error(err, out);
+
 		err = disjoint_set_find(ds, &set2, e->dst_id);
 		if (err)
-			goto out;
+			goto_error(err, out);
 
 		/* 
 		 * If the edge cannot form a *directed cycle* add it. At this point we
@@ -463,7 +462,7 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 			/* Mark the nodes as connected */
 			err = disjoint_set_union(ds, e->src_id, e->dst_id);
 			if (err)
-				goto out;
+				goto_error(err, out);
 			/* Increase the number of incoming edges of the destination */
 			g->vertices[e->dst_id].in_degree += 1;
 			/* Increase the number of outgoing edges of the source */
@@ -472,17 +471,11 @@ int overlap_graph_remove_cycles(overlap_graph_t *g)
 		}
 	}
 
-	priority_queue_free(pq);
-	disjoint_set_free(ds);
-
-	return 0;
-
 out:
-	priority_queue_free(pq);
+	if (pq != NULL) priority_queue_free(pq);
+	if (ds != NULL) disjoint_set_free(ds);
 
-	disjoint_set_free(ds);
-
-	return_error(err);
+	return err;
 }
 
 /**

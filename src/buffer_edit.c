@@ -108,10 +108,8 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	/* Perform action */
 	err = buffer_action_do(action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_do);
 		
 	/* 
 	 * If we are in multi action mode, just add the action to the multi
@@ -122,7 +120,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 		if (buf->multi_action != NULL) {
 			err = buffer_action_multi_add(buf->multi_action, action);
 			if (err)
-				goto fail;
+				goto_error(err, on_error_other);
 		}
 		else
 			buffer_action_free(action);
@@ -133,7 +131,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	/* Fill in the event info structure for this action */
 	err = buffer_action_to_event(action, &event_info);
 	if (err)
-		goto fail;
+		goto_error(err, on_error_other);
 
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
@@ -141,7 +139,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	 */
 	err = undo_list_enforce_limit(buf, 1);
 	if (err)
-		goto fail;
+		goto_error(err, on_error_other);
 
 	/* 
 	 * If we have space in the undo list to append the action.
@@ -150,7 +148,7 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
-			goto fail;
+			goto_error(err, on_error_other);
 	}
 	else
 		buffer_action_free(action);
@@ -166,10 +164,11 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 
 	return 0;
 
-fail:
+on_error_other:
 	buffer_action_undo(action);
+on_error_do:
 	buffer_action_free(action);
-	return_error(err);
+	return err;
 }
 
 /**
@@ -195,16 +194,13 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	int err = buffer_action_insert_new(&action, buf, offset, src, src_offset,
 			length);
-
 	if (err)
 		return_error(err);
 
 	/* Perform action */
 	err = buffer_action_do(action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_do);
 
 	/* 
 	 * If we are in multi action mode, just add the action to the multi
@@ -215,7 +211,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		if (buf->multi_action != NULL) {
 			err = buffer_action_multi_add(buf->multi_action, action);
 			if (err)
-				goto fail;
+				goto_error(err, on_error_other);
 		}
 		else
 			buffer_action_free(action);
@@ -226,15 +222,15 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	/* Fill in the event info structure for this action */
 	err = buffer_action_to_event(action, &event_info);
 	if (err)
-		goto fail;
-		
+		goto_error(err, on_error_other);
+
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
 	 * undo limit is > 0).
 	 */
 	err = undo_list_enforce_limit(buf, 1);
 	if (err)
-		goto fail;
+		goto_error(err, on_error_other);
 
 	/* 
 	 * If we have space in the undo list to append the action.
@@ -243,7 +239,7 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
-			goto fail;
+			goto_error(err, on_error_other);
 	}
 	else
 		buffer_action_free(action);
@@ -259,10 +255,11 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 
 	return 0;
 
-fail:
+on_error_other:
 	buffer_action_undo(action);
+on_error_do:
 	buffer_action_free(action);
-	return_error(err);
+	return err;
 }
 
 /**
@@ -284,16 +281,13 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	struct bless_buffer_event_info event_info;
 
 	int err = buffer_action_delete_new(&action, buf, offset, length);
-
 	if (err)
 		return_error(err);
 
 	/* Perform action */
 	err = buffer_action_do(action);
-	if (err) {
-		buffer_action_free(action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_do);
 
 	/* 
 	 * If we are in multi action mode, just add the action to the multi
@@ -304,18 +298,18 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 		if (buf->multi_action != NULL) {
 			err = buffer_action_multi_add(buf->multi_action, action);
 			if (err)
-				goto fail;
+				goto_error(err, on_error_other);
 		}
 		else
 			buffer_action_free(action);
 
 		return 0;
 	}
-		
+
 	/* Fill in the event info structure for this action */
 	err = buffer_action_to_event(action, &event_info);
 	if (err)
-		goto fail;
+		goto_error(err, on_error_other);
 
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
@@ -323,7 +317,7 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	 */
 	err = undo_list_enforce_limit(buf, 1);
 	if (err)
-		goto fail;
+		goto_error(err, on_error_other);
 
 	/* 
 	 * If we have space in the undo list to append the action.
@@ -332,7 +326,7 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 	if (buf->undo_list_size < buf->options->undo_limit) {
 		err = undo_list_append(buf, action);
 		if (err)
-			goto fail;
+			goto_error(err, on_error_other);
 	}
 	else
 		buffer_action_free(action);
@@ -348,10 +342,11 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 
 	return 0;
 
-fail:
+on_error_other:
 	buffer_action_undo(action);
+on_error_do:
 	buffer_action_free(action);
-	return_error(err);
+	return err;
 }
 
 /**

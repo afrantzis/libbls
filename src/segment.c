@@ -62,19 +62,19 @@ int segment_new(segment_t **seg, void *data, off_t start, off_t size,
 
 	int err = segment_set_data(segp, data, data_usage_func);
 	if (err)
-		goto fail;
+		goto_error(err, on_error);
 
 	err = segment_set_range(segp, start, size);
 	if (err)
-		goto fail;
+		goto_error(err, on_error);
 
 	*seg = segp;
 
 	return 0;
 
-fail:
+on_error:
 	free(segp);
-	return_error(err);
+	return err;
 }
 
 /**
@@ -168,7 +168,6 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 
 	err = segment_new(seg1, data, start + split_index, size - split_index,
 			seg->data_usage_func);
-
 	if (err)
 		return_error(err);
 
@@ -177,17 +176,14 @@ int segment_split(segment_t *seg, segment_t **seg1, off_t split_index)
 		segment_clear(seg);
 	else {
 		err = segment_set_range(seg, start, split_index);
-		if (err)
-			goto fail;
+		if (err) {
+			segment_free(*seg1);
+			*seg1 = NULL;
+			return_error(err);
+		}
 	}
 
 	return 0;
-
-fail:
-	segment_free(*seg1);
-	*seg1 = NULL;
-
-	return_error(err);
 }
 
 /** 

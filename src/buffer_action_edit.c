@@ -168,19 +168,19 @@ static int create_segment_from_source(segment_t **seg,
 	off_t dobj_size;
 	err = data_object_get_size(dobj, &dobj_size);
 	if (err)
-		goto fail;
+		goto_error(err, on_error);
 
 	if (src_offset + length - 1 * (length != 0) >= dobj_size) {
 		err = EINVAL;
-		goto fail;
+		goto_error(err, on_error);
 	}
 
 	return 0;
 
-fail:
+on_error:
 	/* No need to free obj, this is handled by segment_free */
 	segment_free(*seg);
-	return_error(err);
+	return err;
 }
 
 /** 
@@ -217,6 +217,7 @@ static int segment_inplace_private_copy(segment_t *seg, data_object_t *cmp_dobj)
 	err = segment_get_start(seg, &seg_start);
 	if (err)
 		return_error(err);
+
 	err = segment_get_size(seg, &seg_size);
 	if (err)
 		return_error(err);
@@ -228,41 +229,41 @@ static int segment_inplace_private_copy(segment_t *seg, data_object_t *cmp_dobj)
 
 	data_object_t *new_dobj;
 	err = data_object_memory_new(&new_dobj, new_data, seg_size);
-	if (err) {
-		free(new_data);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_new);
 
 	/* Set the data object's free function */
 	err = data_object_memory_set_free_func(new_dobj, free);
-	if (err) {
-		free(new_data);
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_set_free_func);
 
 	/* Copy the data to the new object and setup the segment */
 	err = read_data_object(seg_dobj, seg_start, new_data, seg_size);
-	if (err) {
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	new_data = NULL;
+	if (err)
+		goto_error(err, on_error_read);
 
 	err = segment_set_range(seg, 0, seg_size);
-	if (err) {
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_set_range);
 
 	err = segment_set_data(seg, new_dobj, data_object_update_usage);
-	if (err) {
-		segment_set_range(seg, seg_start, seg_size);
-		data_object_free(new_dobj);
-		return_error(err);
-	}
-
+	if (err)
+		goto_error(err, on_error_set_data);
 
 	return 0;
+
+on_error_set_data:
+	segment_set_range(seg, seg_start, seg_size);
+on_error_set_range:
+on_error_read:
+on_error_set_free_func:
+	data_object_free(new_dobj);
+on_error_new:
+	if (new_data != NULL)
+		free(new_data);
+
+	return err;
 }
 
 /** 
@@ -281,6 +282,7 @@ static int segment_inplace_private_copy(segment_t *seg, data_object_t *cmp_dobj)
 static int segcol_inplace_private_copy(segcol_t *segcol, data_object_t *cmp_dobj)
 {
 	segcol_iter_t *iter;
+
 	int err = segcol_iter_new(segcol, &iter);
 	if (err)
 		return_error(err);
@@ -295,26 +297,21 @@ static int segcol_inplace_private_copy(segcol_t *segcol, data_object_t *cmp_dobj
 
 		err = segcol_iter_get_segment(iter, &seg);
 		if (err)
-			goto fail;
+			goto_error(err, out);
 
 		/* Make private copy of segment data (if they belong to cmp_dobj) */
 		err = segment_inplace_private_copy(seg, cmp_dobj);
 		if (err)
-			goto fail;
+			goto_error(err, out);
 
 		err = segcol_iter_next(iter);
 		if (err)
-			goto fail;
-
+			goto_error(err, out);
 	}
 
+out:
 	segcol_iter_free(iter);
-
-	return 0;
-
-fail:
-	segcol_iter_free(iter);
-	return_error(err);
+	return err;
 }
 
 /****************
@@ -348,24 +345,23 @@ int buffer_action_append_new(buffer_action_t **action, bless_buffer_t *buf,
 	/* Create buffer_action_t */
 	int err = buffer_action_create_impl(action, impl,
 			&buffer_action_append_funcs);
-
 	if (err)
-		goto fail;
+		goto_error(err, on_error_impl);
 
 	/* Initialize implementation */
 	err = create_segment_from_source(&impl->seg, src, src_offset, length);
-	if (err) 
-		goto fail_segment;
+	if (err)
+		goto_error(err, on_error_segment);
 
 	impl->buf = buf;
 
 	return 0;
 
-fail_segment:
+on_error_segment:
 	free(*action);
-fail:
+on_error_impl:
 	free(impl);
-	return_error(err);
+	return err;
 }
 
 /** 
@@ -396,25 +392,24 @@ int buffer_action_insert_new(buffer_action_t **action, bless_buffer_t *buf,
 	/* Create buffer_action_t */
 	int err = buffer_action_create_impl(action, impl,
 			&buffer_action_insert_funcs);
-
 	if (err)
-		goto fail;
+		goto_error(err, on_error_impl);
 
 	/* Initialize implementation */
 	err = create_segment_from_source(&impl->seg, src, src_offset, length);
 	if (err)
-		goto fail_segment;
+		goto_error(err, on_error_segment);
 
 	impl->buf = buf;
 	impl->offset = offset;
 
 	return 0;
 
-fail_segment:
+on_error_segment:
 	free(*action);
-fail:
+on_error_impl:
 	free(impl);
-	return_error(err);
+	return err;
 }
 
 /** 
@@ -443,9 +438,8 @@ int buffer_action_delete_new(buffer_action_t **action, bless_buffer_t *buf,
 	/* Create buffer_action_t */
 	int err = buffer_action_create_impl(action, impl,
 			&buffer_action_delete_funcs);
-
 	if (err)
-		goto fail;
+		goto_error(err, on_error);
 
 	/* Initialize implementation */
 	impl->buf = buf;
@@ -455,9 +449,9 @@ int buffer_action_delete_new(buffer_action_t **action, bless_buffer_t *buf,
 
 	return 0;
 
-fail:
+on_error:
 	free(impl);
-	return_error(err);
+	return err;
 }
 
 /** 
@@ -482,19 +476,19 @@ int buffer_action_multi_new(buffer_action_t **action)
 	/* Create buffer_action_t */
 	int err = buffer_action_create_impl(action, impl,
 			&buffer_action_multi_funcs);
-	if (err) {
-		free(impl);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	/* Initialize implementation */
 	err = list_new(&impl->action_list, struct buffer_action_entry, ln);
-	if (err) {
-		free(impl);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	return 0;
+
+on_error:
+	free(impl);
+	return err;
 }
 
 /** 
@@ -558,14 +552,12 @@ static int buffer_action_append_do(buffer_action_t *action)
 
 	/* Append segment to the segcol */
 	err = segcol_append(sc, seg);
-	if (err) 
-		goto fail;
+	if (err) {
+		segment_free(seg);
+		return_error(err);
+	}
 
 	return 0;
-
-fail:
-	segment_free(seg);
-	return_error(err);
 }
 
 static int buffer_action_append_undo(buffer_action_t *action)
@@ -593,7 +585,7 @@ static int buffer_action_append_undo(buffer_action_t *action)
 
 	/* Delete range from the segcol */
 	err = segcol_delete(sc, NULL, segcol_size - seg_size, seg_size);
-	if (err) 
+	if (err)
 		return_error(err);
 
 	return 0;
@@ -681,13 +673,12 @@ static int buffer_action_insert_do(buffer_action_t *action)
 
 	/* Append segment to the segcol */
 	err = segcol_insert(sc, impl->offset, seg);
-	if (err) 
-		goto fail;
+	if (err) {
+		segment_free(seg);
+		return_error(err);
+	}
 
 	return 0;
-fail:
-	segment_free(seg);
-	return_error(err);
 }
 
 static int buffer_action_insert_undo(buffer_action_t *action)
@@ -711,7 +702,7 @@ static int buffer_action_insert_undo(buffer_action_t *action)
 
 	/* Delete range from the segcol */
 	err = segcol_delete(sc, NULL, impl->offset, seg_size);
-	if (err) 
+	if (err)
 		return_error(err);
 
 	return 0;
@@ -789,7 +780,6 @@ static int buffer_action_delete_do(buffer_action_t *action)
 	segcol_t *deleted;
 	int err = segcol_delete(impl->buf->segcol, &deleted, impl->offset,
 			impl->length);
-
 	if (err)
 		return_error(err);
 
@@ -869,7 +859,7 @@ static int buffer_action_delete_free(buffer_action_t *action)
 	if (impl->deleted != NULL) {
 		int err = segcol_free(impl->deleted);
 		if (err)
-			return err;
+			return_error(err);
 	}
 
 	free(impl);

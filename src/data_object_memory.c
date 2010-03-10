@@ -93,7 +93,6 @@ int data_object_memory_new(data_object_t **obj, void *data, size_t size)
 
 	/* Create data_object_t */
 	int err = data_object_create_impl(obj, impl, &data_object_memory_funcs);
-
 	if (err) {
 		free(impl);
 		return_error(err);

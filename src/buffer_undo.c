@@ -68,23 +68,15 @@ int bless_buffer_undo(bless_buffer_t *buf)
 	
 	/* Remove the action from the undo list */
 	err = list_delete_chain(last, last);
-	if (err) {
-		/* If we can't remove the action, redo it and report error */
-		buffer_action_do(entry->action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_delete);
 
 	--buf->undo_list_size;
 
 	/* Add the entry to the redo list */
 	err = list_insert_before(list_tail(buf->redo_list), &entry->ln);
-	if (err) {
-		/* Add it back to the undo list and redo the action */
-		list_insert_before(list_tail(buf->undo_list), &entry->ln);
-		++buf->undo_list_size;
-		buffer_action_do(entry->action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_insert);
 
 	++buf->redo_list_size;
 
@@ -102,6 +94,16 @@ int bless_buffer_undo(bless_buffer_t *buf)
 	}
 
 	return 0;
+
+on_error_insert:
+	/* Add it back to the undo list */
+	list_insert_before(list_tail(buf->undo_list), &entry->ln);
+	++buf->undo_list_size;
+on_error_delete:
+	/* If we can't remove the action, redo it */
+	buffer_action_do(entry->action);
+	return err;
+
 }
 
 
@@ -138,11 +140,8 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	
 	/* Remove the action from the redo list */
 	err = list_delete_chain(last, last);
-	if (err) {
-		/* If we can't remove the action, undo it and report error */
-		buffer_action_undo(entry->action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_delete);
 
 	--buf->redo_list_size;
 
@@ -153,13 +152,8 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	 * maintain the undo-redo invariant (undo+redo actions <= undo_limit).
 	 */
 	err = list_insert_before(list_tail(buf->undo_list), &entry->ln);
-	if (err) {
-		/* Add it back to the redo list and undo the action */
-		list_insert_before(list_tail(buf->redo_list), &entry->ln);
-		++buf->redo_list_size;
-		buffer_action_undo(entry->action);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_insert);
 
 	++buf->undo_list_size;
 
@@ -177,6 +171,15 @@ int bless_buffer_redo(bless_buffer_t *buf)
 	}
 
 	return 0;
+
+on_error_insert:
+	/* Add it back to the redo list */
+	list_insert_before(list_tail(buf->redo_list), &entry->ln);
+	++buf->redo_list_size;
+on_error_delete:
+	/* If we can't remove the action, undo it */
+	buffer_action_undo(entry->action);
+	return err;
 }
 
 

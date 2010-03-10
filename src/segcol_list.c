@@ -392,9 +392,9 @@ static int segcol_list_insert(segcol_t *segcol, off_t offset, segment_t *seg)
 
 	/* check if a split is actually needed or we just have to prepend 
 	 * the new segment */
-	if (split_index == 0) {
+	if (split_index == 0)
 		list_insert_before(&pentry->ln, &qentry->ln);
-	} else {
+	else {
 		segment_t *rseg;
 		err = segment_split(pseg, &rseg, split_index);
 		if (err)
@@ -494,12 +494,14 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	struct segment_entry *entry_b;
 
 	entry_a = malloc(sizeof(struct segment_entry));
-	if (entry_a == NULL)
-		return_error(ENOMEM);
+	if (entry_a == NULL) {
+		err = ENOMEM;
+		goto_error(err, on_error_mem_entry_a);
+	}
 	entry_b = malloc(sizeof(struct segment_entry));
 	if (entry_b == NULL) {
-		free(entry_a);
-		return_error(ENOMEM);
+		err = ENOMEM;
+		goto_error(err, on_error_mem_entry_b);
 	}
 
 	/* 
@@ -535,7 +537,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		segment_t *tmp_seg;
 		err = segment_split(first_entry->segment, &tmp_seg, offset - first_mapping);
 		if (err)
-			goto fail_first_entry;
+			goto_error(err, on_error_first_entry);
 
 		entry_a->segment = first_entry->segment;
 		first_entry->segment = tmp_seg;
@@ -567,7 +569,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 		err = segment_split(last_entry->segment, &tmp_seg,
 				offset + length - last_mapping - last_seg_dec);
 		if (err)
-			goto fail_last_entry;
+			goto_error(err, on_error_last_entry);
 
 		entry_b->segment = tmp_seg;
 	} else {
@@ -589,7 +591,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
 	segcol_t *deleted_tmp;
 	err = segcol_list_new(&deleted_tmp);
 	if (err)
-		goto fail_segcol_new_deleted;
+		goto_error(err, on_error_segcol_new);
 
 	struct segcol_list_impl *deleted_impl = 
 		(struct segcol_list_impl *) segcol_get_impl(deleted_tmp);
@@ -614,7 +616,7 @@ static int segcol_list_delete(segcol_t *segcol, segcol_t **deleted, off_t
  * Handle failures so that the segcol is in its expected state
  * after a failure and there are no memory leaks.
  */
-fail_segcol_new_deleted:
+on_error_segcol_new:
 	if (entry_b != NULL)
 		list_delete_chain(&entry_b->ln, &entry_b->ln);
 
@@ -625,20 +627,20 @@ fail_segcol_new_deleted:
 		segment_merge(last_entry->segment, entry_b->segment);
 		free(entry_b->segment);
 	}
-fail_last_entry:
+on_error_last_entry:
 	if (entry_a != NULL) {
 		segment_merge(entry_a->segment, first_entry->segment);
 		free(first_entry->segment);
 		first_entry->segment = entry_a->segment; 
 	}
-fail_first_entry:
+on_error_first_entry:
 	list_insert_before(&entry_b_next->ln, &last_entry->ln);
 	list_insert_after(&entry_a_prev->ln, &first_entry->ln);
-
-	free(entry_a);
-	free(entry_b);
-
-	return_error(err);
+	if (entry_b != NULL) free(entry_b);
+on_error_mem_entry_b:
+	if (entry_a != NULL) free(entry_a);
+on_error_mem_entry_a:
+	return err;
 }
 
 static int segcol_list_find(segcol_t *segcol, segcol_iter_t **iter, off_t offset)

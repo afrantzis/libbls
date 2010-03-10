@@ -83,8 +83,9 @@ static int reserve_disk_space(int fd, off_t size)
 {
 #ifdef HAVE_POSIX_FALLOCATE
 	int err = posix_fallocate(fd, 0, size);
-	if (err)  
+	if (err)
 		return_error(err);
+
 	return 0;
 #else
 	off_t cur_size = lseek(fd, 0, SEEK_END);
@@ -302,18 +303,17 @@ static int write_segcol_rest(int fd, segcol_t *segcol, data_object_t *fd_obj)
 			off_t mapping;
 			segcol_iter_get_mapping(iter, &mapping);
 			err = write_segment(fd, seg, mapping, 0);
-			if (err) {
-				segcol_iter_free(iter);
-				return_error(err);
-			}
+			if (err)
+				goto_error(err, out);
 		}
 
 		segcol_iter_next(iter);
 	}
 
+out:
 	segcol_iter_free(iter);
 
-	return 0;
+	return err;
 }
 
 
@@ -428,31 +428,44 @@ static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
  */
 static int buffer_options_new(struct buffer_options **opts)
 {
-	*opts = malloc(sizeof(**opts));
-	if (*opts == NULL)
+	int err = 0;
+
+	struct buffer_options *o = malloc(sizeof(**opts));
+	if (o == NULL)
 		return_error(ENOMEM);
 
 	/* Set default values for options */
-	(*opts)->tmp_dir = strdup("/tmp");
-	if ((*opts)->tmp_dir == NULL)
-		return_error(ENOMEM);
-
-	(*opts)->undo_limit = __MAX(size_t);
-
-	(*opts)->undo_limit_str = strdup("infinite");
-	if ((*opts)->undo_limit_str == NULL) {
-		free((*opts)->tmp_dir);
-		return_error(ENOMEM);
+	o->tmp_dir = strdup("/tmp");
+	if (o->tmp_dir == NULL) {
+		err = ENOMEM;
+		goto_error(err, on_error_mem_tmp_dir);
 	}
 
-	(*opts)->undo_after_save = strdup("best_effort");
-	if ((*opts)->undo_after_save == NULL) {
-		free((*opts)->undo_limit_str);
-		free((*opts)->tmp_dir);
-		return_error(ENOMEM);
+	o->undo_limit = __MAX(size_t);
+
+	o->undo_limit_str = strdup("infinite");
+	if (o->undo_limit_str == NULL) {
+		err = ENOMEM;
+		goto_error(err, on_error_mem_undo_limit_str);
 	}
+
+	o->undo_after_save = strdup("best_effort");
+	if (o->undo_after_save == NULL)	{
+		err = ENOMEM;
+		goto_error(err, on_error_mem_undo_after_save);
+	}
+
+	*opts = o;
 
 	return 0;
+
+on_error_mem_undo_after_save:
+	free(o->undo_limit_str);
+on_error_mem_undo_limit_str:
+	free(o->tmp_dir);
+on_error_mem_tmp_dir:
+	free(o);
+	return err;
 }
 
 /** 
@@ -529,27 +542,26 @@ int bless_buffer_new(bless_buffer_t **buf)
 		return_error(EINVAL);
 
 	*buf = malloc(sizeof **buf);
-
 	if (*buf == NULL)
 		return_error(ENOMEM);
 	
 	int err = segcol_list_new(&(*buf)->segcol);
 	if (err)
-		goto fail_segcol;
+		goto_error(err, on_error_segcol);
 
 	err = buffer_options_new(&(*buf)->options);
 	if (err)
-		goto fail_options;
+		goto_error(err, on_error_options);
 		
 	err = list_new(&(*buf)->undo_list, struct buffer_action_entry, ln);
 	if (err)
-		goto fail_undo;
+		goto_error(err, on_error_undo);
 
 	(*buf)->undo_list_size = 0;
 
 	err = list_new(&(*buf)->redo_list, struct buffer_action_entry, ln);
 	if (err)
-		goto fail_redo;
+		goto_error(err, on_error_redo);
 
 	(*buf)->redo_list_size = 0;
 	(*buf)->multi_action = NULL;
@@ -559,17 +571,17 @@ int bless_buffer_new(bless_buffer_t **buf)
 
 	return 0;
 
-	/* Handle failures */
-fail_redo:
+	/* Handle errors */
+on_error_redo:
 	list_free((*buf)->undo_list);
-fail_undo:
+on_error_undo:
 	buffer_options_free((*buf)->options);
-fail_options:
+on_error_options:
 	segcol_free((*buf)->segcol);
-fail_segcol:
+on_error_segcol:
 	free(buf);
 
-	return_error(err);
+	return err;
 }
 
 /**
@@ -613,7 +625,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (fd_resizable == 1) {
 		err = reserve_disk_space(fd, segcol_size); 
 		if (err)
-			return_error(err); 
+			return_error(err);
 	} else { 
 		off_t fd_size = lseek(fd, 0, SEEK_END);
 		if (fd_size < segcol_size)
@@ -634,12 +646,12 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		 */
 		err = actions_make_private_copy(buf, fd_obj, 0);
 		if (err)
-			goto fail1;
+			goto_error(err, on_error_1);
 	}
 	else if (!strcmp(buf->options->undo_after_save, "best_effort")) {
 		/* 
 		 * If the policy is "best_effort" try our best to make private copies,
-		 * but if we fail just carry on with the part of the action history
+		 * but if we on_error_ just carry on with the part of the action history
 		 * that we can safely use (if any).
 		 */
 		actions_make_private_copy(buf, fd_obj, 1);
@@ -647,7 +659,8 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	else if (strcmp(buf->options->undo_after_save, "never")) {
 		/* Invalid option value. We shouldn't get here, but just in case... */
 		err = EINVAL;
-		goto fail1;
+		if (err)
+			goto_error(err, on_error_1);
 	}
 
 	/* 
@@ -656,18 +669,18 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	overlap_graph_t *g;
 	err = create_overlap_graph(&g, buf->segcol, fd_obj);
 	if (err)
-		goto fail1;
+		goto_error(err, on_error_1);
 
 	/* Remove cycles from the graph */
 	err = overlap_graph_remove_cycles(g);
 	if (err)
-		goto fail2;
+		goto_error(err, on_error_2);
 
 	/* Get a list of the edges that are not in the graph */
 	list_t *removed_edges;
 	err = overlap_graph_get_removed_edges(g, &removed_edges);
 	if (err)
-		goto fail2;
+		goto_error(err, on_error_2);
 
 	/* Break each edge not in the graph */
 	struct list_node *first_node = 
@@ -679,7 +692,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 		err = break_edge(buf->segcol, e, buf->options->tmp_dir);
 		if (err)
-			goto fail3;
+			goto_error(err, on_error_3);
 	}
 
 	free_edge_list(removed_edges);
@@ -689,23 +702,24 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 * Create new segcol and put in the fd_obj. We do this here (instead of
 	 * after having saved the data) so that any memory allocation errors
 	 * don't leave the user with a changed file. This is in the spirit that
-	 * when a function fails it should do its best to retain the state that
+	 * when a function on_error_s it should do its best to retain the state that
 	 * existed before it was called.
 	 */
 	segcol_t *segcol_tmp;
 	err = segcol_list_new(&segcol_tmp);
 	if (err)
-		goto fail1;
+		goto_error(err, on_error_1);
 
 	segment_t *fd_seg;
 	err = segment_new(&fd_seg, fd_obj, 0, segcol_size, data_object_update_usage);
 	if (err)
-		goto fail4;
+		goto_error(err, on_error_4);
 
 	err = segcol_append(segcol_tmp, fd_seg);
 	if (err) {
 		segment_free(fd_seg);
-		goto fail4;
+		if (err)
+			goto_error(err, on_error_4);
 	}
 
 	/* 
@@ -714,13 +728,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 */
 	err = create_overlap_graph(&g, buf->segcol, fd_obj);
 	if (err)
-		goto fail4;
+		goto_error(err, on_error_4);
 
 	/* Write the file segments to file in topological order */
 	list_t *vertices;
 	err = overlap_graph_get_vertices_topo(g, &vertices);
 	if (err)
-		goto fail5;
+		goto_error(err, on_error_5);
 
 	first_node =
 		list_head(vertices)->next;
@@ -729,7 +743,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		struct vertex_entry *v = list_entry(node, struct vertex_entry, ln);
 		err = write_segment(fd, v->segment, v->mapping, v->self_loop_weight);
 		if (err)
-			goto fail6;
+			goto_error(err, on_error_6);
 	}
 	
 	free_vertex_list(vertices);
@@ -738,14 +752,14 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Write the rest of the segments */
 	err = write_segcol_rest(fd, buf->segcol, fd_obj);
 	if (err)
-		goto fail4;
+		goto_error(err, on_error_4);
 
 	/* Truncate file to final size (only if it is a resizable file) */
 	if (fd_resizable == 1) {
 		err = ftruncate(fd, segcol_size);
 		if (err == -1) {
 			err = errno;
-			goto fail4;
+			goto_error(err, on_error_4);
 		}
 	}
 
@@ -775,23 +789,23 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 	return 0;
 
-/* Prevent memory leaks on failure */
-fail3:
+/* Prevent memory leaks on on_error_ure */
+on_error_3:
 	free_edge_list(removed_edges);
-fail2:
+on_error_2:
 	overlap_graph_free(g);
-fail1:
+on_error_1:
 	data_object_free(fd_obj);
 
-	return_error(err);
+	return err;
 
-fail6:
+on_error_6:
 	free_vertex_list(vertices);
-fail5:
+on_error_5:
 	overlap_graph_free(g);
-fail4:
+on_error_4:
 	segcol_free(segcol_tmp);
-	goto fail1;
+	goto on_error_1;
 
 }
 

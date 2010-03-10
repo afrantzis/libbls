@@ -104,37 +104,28 @@ int data_object_file_new(data_object_t **obj, int fd)
 
 	/* Create data object with file implementation */
 	int err = data_object_create_impl(obj, impl, &data_object_file_funcs);
-
-	if (err) {
-		free(impl);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_object);
 
 	impl->fd = fd;
 
 	/* Get file info */
 	struct stat st;
 	err = fstat(fd, &st);
-	if (err) {
-		err = errno;
-		goto fail;
-	}
+	if (err)
+		goto_error(errno, on_error_other);
 
 	impl->dev = st.st_dev;
 	impl->inode = st.st_ino;
 
 	/* Get size of file */
 	impl->size = lseek(fd, 0, SEEK_END);
-	if (impl->size == -1) {
-		err = errno;
-		goto fail;
-	}
+	if (impl->size == -1)
+		goto_error(errno, on_error_other);
 
 	impl->page_size = sysconf(_SC_PAGESIZE);
-	if (impl->page_size == -1) {
-		err = errno;
-		goto fail;
-	}
+	if (impl->page_size == -1)
+		goto_error(errno, on_error_other);
 
 	impl->page_data = NULL;
 
@@ -145,9 +136,11 @@ int data_object_file_new(data_object_t **obj, int fd)
 
 	return 0;
 
-fail:
+on_error_other:
+	free(obj);
+on_error_object:
 	free(impl);
-	return_error(err);
+	return err;
 }
 
 /**

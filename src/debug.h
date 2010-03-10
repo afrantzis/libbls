@@ -14,16 +14,18 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 
-#define return_error(RET) do { \
-	fprintf(stderr, "%s(%d): %s: %s\n", __FILE__, __LINE__, __func__, strerror(RET)); \
-	return (RET); } while(0)
-
+#define print_error(ERR) do {\
+	fprintf(stderr, "%s(%d): %s: %s\n", __FILE__, __LINE__, __func__, strerror(ERR)); \
+	} while(0)
 
 #else
 
-#define return_error(RET) return (RET)
+#define print_error(ERR) do { } while(0)
 
 #endif
+
+#define return_error(ERR) do { int _local_err = (ERR); print_error(_local_err); return _local_err; } while(0)
+#define goto_error(ERR, LABEL) do { print_error(ERR); goto LABEL; } while(0)
 
 
 #ifdef __cplusplus

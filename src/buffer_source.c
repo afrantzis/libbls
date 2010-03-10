@@ -61,10 +61,8 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 		return_error(err);
 
 	err = data_object_memory_set_free_func(obj, mem_free);
-	if (err) {
-		data_object_free(obj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	/* 
 	 * Increase the usage count of this data object. This is done 
@@ -73,14 +71,16 @@ int bless_buffer_source_memory(bless_buffer_source_t **src, void *data,
 	 * user is done they should call bless_buffer_source_unref().
 	 */
 	err = data_object_update_usage(obj, 1);
-	if (err) {
-		data_object_free(obj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	*src = obj;
 
 	return 0;
+
+on_error:
+	data_object_free(obj);
+	return err;
 }
 
 /**
@@ -108,10 +108,8 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 		return_error(err);
 
 	err = data_object_file_set_close_func(obj, file_close);
-	if (err) {
-		data_object_free(obj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	/* 
 	 * Increase the usage count of this data object. This is done 
@@ -120,14 +118,16 @@ int bless_buffer_source_file(bless_buffer_source_t **src, int fd,
 	 * user is done they should call bless_buffer_source_unref().
 	 */
 	err = data_object_update_usage(obj, 1);
-	if (err) {
-		data_object_free(obj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error);
 
 	*src = obj;
 
 	return 0;
+
+on_error:
+	data_object_free(obj);
+	return err;
 }
 
 /**

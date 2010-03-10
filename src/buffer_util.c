@@ -157,6 +157,7 @@ int write_data_object(data_object_t *dobj, off_t offset, off_t length,
 int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
 		int fd, off_t file_offset)
 {
+	int err = 0;
 	void *data = malloc(4096);
 	if (data == NULL)
 		return_error(ENOMEM);
@@ -176,22 +177,20 @@ int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
 
 		/* Read a chunk from the data object */
 		int err = read_data_object(dobj, start_offset, data, nbytes);
-		if (err) {
-			free(data);
-			return_error(err);
-		}
+		if (err)
+			goto_error(err, out);
 
 		/* Write the chunk to the final position in the file */
 		off_t s = lseek(fd, file_offset + start_offset - offset, SEEK_SET);
 		if (s != file_offset + start_offset - offset) {
-			free(data);
-			return_error(errno);
+			err = errno;
+			goto_error(err, out);
 		}
 		
 		ssize_t nwritten = write(fd, data, (ssize_t)nbytes);
 		if (nwritten < (ssize_t)nbytes) {
-			free(data);
-			return_error(errno);
+			err = errno;
+			goto_error(err, out);
 		}
 
 		/* Move backwards */
@@ -204,9 +203,10 @@ int write_data_object_safe(data_object_t *dobj, off_t offset, off_t length,
 			start_offset = offset;
 	}
 
+out:
 	free(data);
 
-	return 0;
+	return err;
 }
 
 /**
@@ -336,13 +336,13 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		err = get_data_from_iter(iter, &segment, &mapping, &read_start, 
 				&read_length, cur_offset, bytes_left);
 		if (err)
-			goto fail;
+			goto_error(err, out);
 
 		/* Call user provided function */
 		err = (*func)(segcol, segment, mapping, read_start, read_length,
 				user_data);
 		if (err)
-			goto fail;
+			goto_error(err, out);
 
 		bytes_left -= read_length;
 
@@ -356,16 +356,13 @@ int segcol_foreach(segcol_t *segcol, off_t offset, off_t length,
 		/* Move to next segment */
 		err = segcol_iter_next(iter);
 		if (err)
-			goto fail;
+			goto_error(err, out);
 	}
 
+out:
 	segcol_iter_free(iter);
-	return 0;
 
-fail:
-	segcol_iter_free(iter);
-	return_error(err);
-
+	return err;
 }
 
 
@@ -424,42 +421,32 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 
 	data_object_t *new_dobj;
 	int err = data_object_memory_new(&new_dobj, new_data, length);
-	if (err) {
-		free(new_data);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_object);
 
 	/* Set the data object's free function */
 	err = data_object_memory_set_free_func(new_dobj, free);
-	if (err) {
-		free(new_data);
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_set_free_func);
+
+	void *data_ptr = new_data;
+	new_data = NULL;
 
 	/* Put it in a segment */
 	segment_t *new_seg;
 	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
-	if (err) {
-		data_object_free(new_dobj);
-		return_error(err);
-	}
-
-	void *data_ptr = new_data;
+	if (err)
+		goto_error(err, on_error_segment);
 
 	/* Store data from range in memory pointed by new_data */
 	err = segcol_foreach(segcol, offset, length, read_segment_func, &data_ptr);
-	if (err) {
-		segment_free(new_seg);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_foreach);
 
 	/* Delete old range in segcol */
 	err = segcol_delete(segcol, NULL, offset, length);
-	if (err) {
-		segment_free(new_seg);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_delete);
 
 	off_t segcol_size;
 	segcol_get_size(segcol, &segcol_size);
@@ -478,6 +465,19 @@ int segcol_store_in_memory(segcol_t *segcol, off_t offset, off_t length)
 		return_error(err);
 
 	return 0;
+
+	/* Handler errors */
+on_error_segment:
+on_error_set_free_func:
+	data_object_free(new_dobj);
+on_error_object:
+	if (new_data != NULL) free(new_data);
+	return err;
+
+on_error_delete:
+on_error_foreach:
+	segment_free(new_seg);
+	return err;
 }
 
 /**
@@ -536,25 +536,21 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
 
 	int err = path_join(&tmpl, tmpdir, file_tmpl);
 	if (err)
-		return err;
+		return_error(err);
 
 	/* Store data from range to temporary file */
 	int fd = mkstemp(tmpl);
 	if (fd == -1) {
-		free(tmpl);
-		return_error(errno);
+		err = errno;
+		goto_error(err, on_error_tmp);
 	}
 
 	int *fd_ptr = &fd;
 
 	err = segcol_foreach(segcol, offset, length, store_segment_func,
 			fd_ptr);
-	if (err) {
-		close(fd);
-		unlink(tmpl);
-		free(tmpl);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_foreach);
 
 	/* 
 	 * Create file data object with temporary file.
@@ -564,38 +560,30 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
 	 */
 	data_object_t *new_dobj;
 	err = data_object_tempfile_new(&new_dobj, fd, tmpl);
-	if (err) {
-		close(fd);
-		unlink(tmpl);
-		free(tmpl);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_object);
 
 	/* We don't need tmpl any longer */
 	free(tmpl);
+	tmpl = NULL;
 
 	/* Set the data object's close function */
 	err = data_object_file_set_close_func(new_dobj, close);
-	if (err) {
-		close(fd);
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_close_func);
+	/* Invalidate fd */
+	fd = -1;
 
 	/* Put it in a segment */
 	segment_t *new_seg;
 	err = segment_new(&new_seg, new_dobj, 0, length, data_object_update_usage);
-	if (err) {
-		data_object_free(new_dobj);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_segment);
 
 	/* Delete old range in segcol */
 	err = segcol_delete(segcol, NULL, offset, length);
-	if (err) {
-		segment_free(new_seg);
-		return_error(err);
-	}
+	if (err)
+		goto_error(err, on_error_delete);
 
 	off_t segcol_size;
 	segcol_get_size(segcol, &segcol_size);
@@ -614,6 +602,22 @@ int segcol_store_in_file(segcol_t *segcol, off_t offset, off_t length,
 		return_error(err);
 
 	return 0;
+
+	/* Handle errors */
+on_error_segment:
+on_error_close_func:
+	data_object_free(new_dobj);
+on_error_object:
+on_error_foreach:
+	if (fd >= 0) close(fd);
+	if (tmpl != NULL) unlink(tmpl);
+on_error_tmp:
+	if (tmpl != NULL) free(tmpl);
+	return err;
+
+on_error_delete:
+	segment_free(new_seg);
+	return err;
 }
 
 /** 
@@ -667,25 +671,28 @@ int segcol_add_copy(segcol_t *dst, off_t offset, segcol_t *src)
 
 		if (err) {
 			segment_free(seg_copy);
-			goto fail;
+			if (err)
+				goto_error(err, on_error_insert);
 		}
 
 		offset_reached = offset + mapping - 1;
 
 		err = segcol_iter_next(iter);
 		if (err)
-			goto fail;
+			goto_error(err, on_error_next);
 	}
 
 	err = segcol_iter_free(iter);
 	if (err)
-		goto fail_iter_free;
+		goto_error(err, on_error_free);
 
 	return 0;
 
-fail:
+	/* Handle errors */
+on_error_insert:
+on_error_next:
 	segcol_iter_free(iter);
-fail_iter_free:
+on_error_free:
 	/* 
 	 * If we fail try to restore the previous state of the buffer by
 	 * deleting any segments we re-added.
@@ -693,7 +700,7 @@ fail_iter_free:
 	if (offset_reached >= offset)
 		segcol_delete(dst, NULL, offset, offset_reached - offset + 1);
 
-	return_error(err);
+	return err;
 }
 
 /**
