@@ -586,6 +586,9 @@ on_error_segcol:
 
 /**
  * Saves the contents of a bless_buffer_t to a file.
+ * 
+ * The supplied @fd is not used internally after the end of this
+ * function and may be manipulated freely (eg closed).
  *
  * @param buf the bless_buffer_t whose contents to save
  * @param fd the file descriptor of the file to save the contents to
@@ -602,6 +605,11 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (buf == NULL)
 		return_error(EINVAL);
 
+	/* Make a copy of fd and use this from now on */
+	int fd_copy = dup(fd);
+	if (fd_copy == -1)
+		return_error(errno);
+	
 	off_t segcol_size;
 	segcol_get_size(buf->segcol, &segcol_size);
 
@@ -611,7 +619,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 */
 	int fd_resizable = 0;
 
-	int err = is_fd_resizable(fd, &fd_resizable);
+	int err = is_fd_resizable(fd_copy, &fd_resizable);
 	if (err)
 		return_error(err);
 
@@ -623,18 +631,22 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	 * fits in the file.
 	 */
 	if (fd_resizable == 1) {
-		err = reserve_disk_space(fd, segcol_size); 
+		err = reserve_disk_space(fd_copy, segcol_size); 
 		if (err)
 			return_error(err);
 	} else { 
-		off_t fd_size = lseek(fd, 0, SEEK_END);
+		off_t fd_size = lseek(fd_copy, 0, SEEK_END);
 		if (fd_size < segcol_size)
 			return_error(ENOSPC);
 	}
 
 	/* Create a data_object_t holding fd */
 	data_object_t *fd_obj;
-	err = data_object_file_new(&fd_obj, fd);
+	err = data_object_file_new(&fd_obj, fd_copy);
+	if (err)
+		return_error(err);
+	
+	err = data_object_file_set_close_func(fd_obj, close);
 	if (err)
 		return_error(err);
 
@@ -741,7 +753,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 	list_for_each(first_node, node) {
 		struct vertex_entry *v = list_entry(node, struct vertex_entry, ln);
-		err = write_segment(fd, v->segment, v->mapping, v->self_loop_weight);
+		err = write_segment(fd_copy, v->segment, v->mapping, v->self_loop_weight);
 		if (err)
 			goto_error(err, on_error_6);
 	}
@@ -750,13 +762,13 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	overlap_graph_free(g);
 
 	/* Write the rest of the segments */
-	err = write_segcol_rest(fd, buf->segcol, fd_obj);
+	err = write_segcol_rest(fd_copy, buf->segcol, fd_obj);
 	if (err)
 		goto_error(err, on_error_4);
 
 	/* Truncate file to final size (only if it is a resizable file) */
 	if (fd_resizable == 1) {
-		err = ftruncate(fd, segcol_size);
+		err = ftruncate(fd_copy, segcol_size);
 		if (err == -1) {
 			err = errno;
 			goto_error(err, on_error_4);
@@ -783,7 +795,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
         event_info.action_type = BLESS_BUFFER_ACTION_NONE;
         event_info.range_start = -1;
         event_info.range_length = -1;
-        event_info.save_fd = fd;
+        event_info.save_fd = fd_copy;
 		(*buf->event_func)(buf, &event_info, buf->event_user_data);
 	}
 

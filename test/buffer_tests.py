@@ -697,6 +697,7 @@ class BufferTests(unittest.TestCase):
 			self.assertEqual(err, 0)
 
 			# Remove temporary file
+			os.close(fd1)
 			os.remove(fd1_path)
 
 	def testSaveSelfOverlapLower(self):
@@ -725,6 +726,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testSaveRemoveLeftOverlap(self):
@@ -753,6 +755,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testSaveRemoveRightOverlap(self):
@@ -781,6 +784,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testSaveRemoveBufferContainsFileOverlap(self):
@@ -811,6 +815,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testSaveRemoveFileContainsBufferOverlap(self):
@@ -841,6 +846,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testSaveDoubleCircularSelfOverlap(self):
@@ -869,6 +875,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testBufferOptions(self):
@@ -1322,6 +1329,7 @@ class BufferTests(unittest.TestCase):
 		self.check_undo_redo(redo_expected)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testUndoAfterSaveNeverOption(self):
@@ -1369,6 +1377,7 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(can_redo, 0)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testUndoAfterSaveNeverOptionFail(self):
@@ -1434,6 +1443,7 @@ class BufferTests(unittest.TestCase):
 		self.check_undo_redo(redo_expected)
 
 		# Remove temporary file
+		os.close(fd1)
 		os.remove(fd1_path)
 
 	def testMultiAction(self):
