@@ -1,6 +1,0 @@
-Import('env')
-
-user_doc = env.Command('user_guide.html', ['user_guide.txt', 'user_guide.css'],
-	'rst2html --initial-header-level 2 --stylesheet-path ${SOURCES[1]} ${SOURCES[0]} > $TARGET')
-
-Return('user_doc')
