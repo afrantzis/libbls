@@ -13,7 +13,7 @@ for s in sources:
 		features = ['cc', 'cprogram'],
 		source = s,
 		target = tgt,
-		uselib_local = 'bls-0.3',
+		uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 		name = tgt
 	)
 	

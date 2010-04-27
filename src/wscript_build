@@ -1,10 +1,10 @@
 lib = bld(
 		features     = ['cc', 'cshlib'],
 		source       = bld.path.ant_glob('*.c'),
-		target       = 'bls-0.3',
-		vnum         = '0.3.0',
+		target       = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
+		vnum         = bld.env.LIBBLS_VERSION,
 		export_incdirs = '.'
 		)
 
-bld.install_files('${PREFIX}/include/bls-0.3/bls',
+bld.install_files('${PREFIX}/include/bls-${LIBBLS_VERSION_NO_PATCH}/bls',
 		['buffer.h','buffer_source.h','buffer_options.h', 'buffer_event.h'])

@@ -81,6 +81,8 @@ def configure(conf):
 	conf.find_program('swig', var = 'SWIG', mandatory = 'python' in Options.options.bindings)
 	conf.env.bindings = Options.options.bindings
 	conf.env.LIBBLS_VERSION = VERSION
+	(conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR, conf.env.LIBBLS_VERSION_PATCH) = VERSION.split('.')
+	conf.env.LIBBLS_VERSION_NO_PATCH = '%s.%s' % (conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR)
 	
 def build(bld):
 	bld.recurse('src')
@@ -107,7 +109,7 @@ def build(bld):
 	bld(
 		features = 'subst',
 		source = 'bls.pc.in',
-		target = 'bls-0.3.pc',
+		target = 'bls-%s.pc' % bld.env.LIBBLS_VERSION_NO_PATCH,
 		dict = flat_env,
 		install_path = '${PREFIX}/lib/pkgconfig'
 	)

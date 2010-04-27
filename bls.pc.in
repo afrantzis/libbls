@@ -9,5 +9,5 @@ lfs_linkflags=@LFS_LINKFLAGS@
 Name: libbls
 Description: Efficient editable data buffer
 Version: @LIBBLS_VERSION@
-Libs: -L${libdir} -l@lib_name_no_lib ${lfs_linkflags}
+Libs: -L${libdir} -lbls-@LIBBLS_VERSION_NO_PATCH@ ${lfs_linkflags}
 Cflags: -I${includedir} ${lfs_cflags}
