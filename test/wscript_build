@@ -1,0 +1,17 @@
+import subprocess
+import os
+import Options
+import Task, TaskGen
+
+
+local_path = bld.path.abspath()
+test_env = {'LD_LIBRARY_PATH' : 'build/default/src',
+		'PYTHONPATH' : 'build/default/bindings:test' }
+
+def run_test(ctx):
+	cmd_line = 'python ' + os.path.join(local_path, 'run_tests.py')
+	if 'all' not in Options.options.tests:
+		cmd_line += ' ' + ' '.join(Options.options.tests)
+	subprocess.call(cmd_line, env = test_env, shell = True)
+	
+bld.add_post_fun(run_test)

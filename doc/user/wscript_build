@@ -1,0 +1,10 @@
+import Options
+
+user_doc = bld(
+	target = 'user_guide.html',
+	source = ['user_guide.txt', 'user_guide.css'],
+	rule = 'rst2html --initial-header-level 2 --stylesheet-path ${SRC[1].abspath()} ${SRC[0].abspath()} > ${TGT}',
+	install_path = '${PREFIX}/share/doc/libbls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH
+)
+bld.install_files('${PREFIX}/share/doc/libbls-${LIBBLS_VERSION_NO_PATCH}', ['user_guide.txt', 'user_guide.css'])
+

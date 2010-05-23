@@ -1,0 +1,29 @@
+import subprocess
+import os
+import Options
+
+if 'all' in Options.options.benchmarks:
+	sources = bld.path.ant_glob('*.c').split(' ')
+else:
+	sources = ['%s.c' % s for s in Options.options.benchmarks]
+
+for s in sources:
+	tgt = s.replace('.c', '')
+	bld(
+		features = ['cc', 'cprogram'],
+		source = s,
+		target = tgt,
+		uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
+		name = tgt
+	)
+	
+build_path = bld.path.abspath(bld.env)
+test_env = {'LD_LIBRARY_PATH' : 'build/default/src'}
+
+def run_benchmarks(ctx):
+	for s in sources:
+		tgt = s.replace('.c', '')
+		print('Running benchmark: %s' % tgt)
+		subprocess.call(os.path.join(build_path, tgt), env = test_env, shell = True)
+	
+bld.add_post_fun(run_benchmarks)

@@ -36,19 +36,24 @@ doc/user/html in the libbls tarball.
 Building and installing libbls
 ================================
 
-libbls uses the scons build system. To build libbls change into the libbls
-directory and type::
+libbls uses the waf build system.
 
-    $ scons
+First change into the libbls directory and configure it::
 
-To install libbls under ``/usr`` use (as root)::
+    $ ./waf configure [--prefix=/usr --bindings=lua]
 
-    # scons install prefix=/usr 
+Build with::
+
+    $ ./waf
+
+To install libbls use (as root)::
+
+    # ./waf install [--destdir=DESTDIR]
     # ldconfig
 
 To see all available options use::
 
-    $ scons -h
+    $ ./waf -h
 
 If there are packages for your distribution or operating system it is
 preferable to just use them (remember to install -dev packages!).
