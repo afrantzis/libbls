@@ -10,6 +10,8 @@ top = '.'
 VERSION = '0.3.0'
 APPNAME = 'libbls'
 
+Scripting.g_gz = 'gz'
+
 def option_list_cb(option, opt, value, parser):
 	value = value.split(',')
 	setattr(parser.values, option.dest, value)
@@ -17,7 +19,8 @@ def option_list_cb(option, opt, value, parser):
 def set_options(opt):
 	opt.tool_options('compiler_cc')
 
-	opt.add_option('--debug', action='store_true', help='build with debug information')
+	opt.add_option('--no-debug', action='store_false', dest = 'debug', default = True, help='disable compiler debug information')
+	opt.add_option('--no-opt', action='store_false', dest = 'opt', default = True, help='disable compiler optimizations')
 	opt.add_option('--no-lfs', action='store_false', dest = 'lfs', default = True,
 			help='disable Large File Support')
 	opt.add_option('--bindings', type = 'string', action = 'callback', callback = option_list_cb, help='the bindings to build')
@@ -54,16 +57,18 @@ def configure(conf):
 			conf.env.append_unique('CCDEFINES', ('HAVE_%s' % func).upper())
 			
 	# Check optional packages
-	opt_pkgs = ['lua5.1']
-	for pkg in opt_pkgs:
-		conf.check_cfg(package = pkg, uselib_store = 'lua', args = '--cflags --libs',
+	opt_pkgs = [('lua5.1', 'lua')]
+	for pkg, uselib in opt_pkgs:
+		conf.check_cfg(package = pkg, uselib_store = uselib, args = '--cflags --libs',
 				mandatory = 'lua' in Options.options.bindings)
 	
-	conf.env.append_unique('CCFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -Wall -Wextra -pedantic'.split(' '))
+	conf.env.append_unique('CCFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic'.split(' '))
+	
+	# Prepend -O# and -g flags so that they can be overriden by the CFLAGS environment variable
+	if Options.options.opt:
+		conf.env.prepend_value('CCFLAGS', '-O2')
 	if Options.options.debug:
-		conf.env.append_unique('CCFLAGS', ['-g', '-O0'])
-	else:
-		conf.env.append_unique('CCFLAGS', '-O2')
+		conf.env.prepend_value('CCFLAGS', '-g')
 		
 	# Add LFS flags
 	if Options.options.lfs:
