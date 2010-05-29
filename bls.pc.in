@@ -10,4 +10,4 @@ Name: libbls
 Description: Efficient editable data buffer
 Version: @LIBBLS_VERSION@
 Libs: -L${libdir} -lbls-@LIBBLS_VERSION_NO_PATCH@ ${lfs_linkflags}
-Cflags: -I${includedir} ${lfs_cflags}
+Cflags: -I${includedir}/bls-@LIBBLS_VERSION_NO_PATCH@ ${lfs_cflags}
