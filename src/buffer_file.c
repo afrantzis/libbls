@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+
 #include "buffer.h"
 #include "buffer_options.h"
 #include "buffer_internal.h"

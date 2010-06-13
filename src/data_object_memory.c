@@ -150,7 +150,7 @@ static int data_object_memory_get_data(data_object_t *obj, void **buf,
 		data_object_get_impl(obj);
 
 	/* Make sure that the range is valid */
-	if (offset + len - 1 * (len != 0) >= impl->size)
+	if (offset + len - 1 * (len != 0) >= (off_t)impl->size)
 		return_error(EINVAL);
 
 	*buf = (unsigned char *)impl->data + offset;
