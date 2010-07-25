@@ -650,12 +650,13 @@ class BufferTests(unittest.TestCase):
 		# Check file contents before save
 		data_len = len(expected_data)
 		self.assertEqual(data_len, bless_buffer_get_size(self.buf)[1])
-		read_data = create_string_buffer(data_len)
-		err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
-		self.assertEqual(err, 0)
-		
-		for i in range(len(read_data)):
-			self.assertEqual(read_data[i], expected_data[i])
+		if data_len > 0:
+			read_data = create_string_buffer(data_len)
+			err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
+			self.assertEqual(err, 0)
+
+			for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
 
 		# Save file
 		err = bless_buffer_save(self.buf, save_fd, None)
@@ -663,13 +664,21 @@ class BufferTests(unittest.TestCase):
 
 		# Check file contents after save
 		self.assertEqual(data_len, bless_buffer_get_size(self.buf)[1])
-		read_data = create_string_buffer(data_len)
-		err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
-		self.assertEqual(err, 0)
+		if data_len > 0:
+			read_data = create_string_buffer(data_len)
+			err = bless_buffer_read(self.buf, 0, read_data, 0, data_len)
+			self.assertEqual(err, 0)
+			
+			for i in range(len(read_data)):
+				self.assertEqual(read_data[i], expected_data[i])
 		
-		for i in range(len(read_data)):
-			self.assertEqual(read_data[i], expected_data[i])
-		
+	def testSaveEmpty(self):
+		"""Save a empty buffer"""
+		(fd1, fd1_path) = get_tmp_copy_file_fd("/dev/null", os.O_RDWR)
+		self.check_save(fd1, [], "")
+		os.close(fd1)
+		os.remove(fd1_path)
+
 	def testSaveSelfOverlapHigher(self):
 		"""Save a buffer that contains two self overlaps one unmoved and one 
 		moved to higher offsets"""

@@ -83,6 +83,10 @@ static int is_fd_resizable(int fd, int *fd_resizable)
  */
 static int reserve_disk_space(int fd, off_t size)
 {
+	/* Ignore requests of zero size */
+	if (size == 0)
+		return 0;
+
 #ifdef HAVE_POSIX_FALLOCATE
 	int err = posix_fallocate(fd, 0, size);
 	if (err)
@@ -652,6 +656,10 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	if (err)
 		return_error(err);
 
+	err = data_object_update_usage(fd_obj, 1);
+	if (err)
+		return_error(err);
+
 	/* Make private copies of data in undo/redo actions. */
 	if (!strcmp(buf->options->undo_after_save, "always")) {
 		/* 
@@ -780,6 +788,7 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	/* Use the new segcol in the buffer */
 	segcol_free(buf->segcol);
 	buf->segcol = segcol_tmp;
+	data_object_update_usage(fd_obj, -1);
 
 	if (!strcmp(buf->options->undo_after_save, "never")) {
 		/* If the policy is "never" clear the undo/redo lists */
@@ -792,12 +801,12 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 
 	/* Call event callback if supplied by the user */
 	if (buf->event_func != NULL) {
-        struct bless_buffer_event_info event_info;
+		struct bless_buffer_event_info event_info;
 		event_info.event_type = BLESS_BUFFER_EVENT_SAVE;
-        event_info.action_type = BLESS_BUFFER_ACTION_NONE;
-        event_info.range_start = -1;
-        event_info.range_length = -1;
-        event_info.save_fd = fd_copy;
+		event_info.action_type = BLESS_BUFFER_ACTION_NONE;
+		event_info.range_start = -1;
+		event_info.range_length = -1;
+		event_info.save_fd = fd_copy;
 		(*buf->event_func)(buf, &event_info, buf->event_user_data);
 	}
 
@@ -809,7 +818,7 @@ on_error_3:
 on_error_2:
 	overlap_graph_free(g);
 on_error_1:
-	data_object_free(fd_obj);
+	data_object_update_usage(fd_obj, -1);
 
 	return err;
 
