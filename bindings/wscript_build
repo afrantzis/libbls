@@ -18,7 +18,7 @@ if 'python' in bld.env.bindings:
 	py_bindings = bld(
 			features = ['cc', 'cshlib'],
 			source   = 'libbls.i',
-			includes = ['/usr/include/python2.5'],	
+			includes = ['/usr/include/python2.6'],	
 			uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 			target   = '_libbls'
 			)
