@@ -1006,6 +1006,7 @@ static int buffer_action_multi_free(buffer_action_t *action)
 		free(entry);
 	}
 
+	list_free(impl->action_list);
 	free(impl);
 
 	return 0;
