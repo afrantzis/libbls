@@ -2,8 +2,7 @@
 
 * Implement support for progress callback functions in bless_buffer_save().
 
-* [In-progress] Create programs to check performance scaling and memory leaks
-  in the library.
+* Create programs to check performance scaling and memory leaks in the library.
 
 == Medium Sized Tasks ==
 

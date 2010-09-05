@@ -1,3 +1,11 @@
+libbls v0.3.1 20100904
+----------------------
+
+* Added lua bindings.
+* Fixed problem when trying to save an empty buffer.
+* Ensured that a valid file descriptor supplied to bless_buffer_save()
+  remains valid after the call.
+
 libbls v0.3.0 20091115
 ----------------------
 

@@ -6,12 +6,12 @@ expect some feedback.
 
 To build documentation use:
 
-	$ scons doc
+	$ waf doc
 
 This generates documentation from Doxygen comments and places it in
-doc/user/html and doc/devel/html directories. The former contains only the
-public API, for libbls users, whereas the latter contains the full libbls API
-for libbls developers. 
+build/default/doc/user/html and build/default/doc/devel/html directories. The
+former contains only the public API, for libbls users, whereas the latter
+contains the full libbls API for libbls developers. 
 
 High level overview and various design documents are included in doc/devel.
 
