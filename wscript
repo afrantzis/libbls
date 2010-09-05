@@ -7,7 +7,7 @@ import Scripting
 blddir = 'build'
 
 top = '.'
-VERSION = '0.3.1a'
+VERSION = '0.3.1b'
 APPNAME = 'libbls'
 
 Scripting.g_gz = 'gz'

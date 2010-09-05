@@ -33,6 +33,8 @@
 
 #include "buffer.h"
 
+#pragma GCC visibility push(default)
+
 static int optboolean(lua_State *L, int narg, int def)
 {
 	if (lua_type(L, narg) <= 0)
@@ -714,3 +716,4 @@ LUALIB_API int LUAOPEN_BLESS_BUFFER(LIBBLS_VERSION_MAJOR, LIBBLS_VERSION_MINOR)(
 	return 1;
 }
 
+#pragma GCC visibility pop

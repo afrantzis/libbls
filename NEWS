@@ -1,3 +1,8 @@
+libbls v0.3.1b 20100905
+-----------------------
+
+* Export symbols from the lua bindings shared object.
+
 libbls v0.3.1a 20100905
 -----------------------
 
