@@ -1,3 +1,8 @@
+libbls v0.3.1a 20100905
+-----------------------
+
+* Export only public API symbols from the shared object.
+
 libbls v0.3.1 20100904
 ----------------------
 

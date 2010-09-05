@@ -1,3 +1,5 @@
+import Options
+
 lib = bld(
 		features     = ['cc', 'cshlib'],
 		source       = bld.path.ant_glob('*.c'),
@@ -8,3 +10,7 @@ lib = bld(
 
 bld.install_files('${PREFIX}/include/bls-${LIBBLS_VERSION_NO_PATCH}/bls',
 		['buffer.h','buffer_source.h','buffer_options.h', 'buffer_event.h'])
+
+# Only create a variant with public symbols if we need the python bindings
+if 'python' in bld.env.bindings:
+	lib_public = lib.clone('visibility-public')

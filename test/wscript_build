@@ -5,8 +5,8 @@ import Task, TaskGen
 
 
 local_path = bld.path.abspath()
-test_env = {'LD_LIBRARY_PATH' : 'build/default/src',
-		'PYTHONPATH' : 'build/default/bindings:test' }
+test_env = {'LD_LIBRARY_PATH' : 'build/visibility-public/src',
+		'PYTHONPATH' : 'build/visibility-public/bindings:test' }
 
 def run_test(ctx):
 	cmd_line = 'python ' + os.path.join(local_path, 'run_tests.py')

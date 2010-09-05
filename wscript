@@ -7,7 +7,7 @@ import Scripting
 blddir = 'build'
 
 top = '.'
-VERSION = '0.3.1'
+VERSION = '0.3.1a'
 APPNAME = 'libbls'
 
 Scripting.g_gz = 'gz'
@@ -62,7 +62,7 @@ def configure(conf):
 		conf.check_cfg(package = pkg, uselib_store = uselib, args = '--cflags --libs',
 				mandatory = 'lua' in Options.options.bindings)
 	
-	conf.env.append_unique('CCFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic'.split(' '))
+	conf.env.append_unique('CCFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic -fvisibility=hidden'.split(' '))
 	
 	# Prepend -O# and -g flags so that they can be overriden by the CFLAGS environment variable
 	if Options.options.opt:
@@ -88,8 +88,18 @@ def configure(conf):
 	conf.env.LIBBLS_VERSION = VERSION
 	(conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR, conf.env.LIBBLS_VERSION_PATCH) = VERSION.split('.')
 	conf.env.LIBBLS_VERSION_NO_PATCH = '%s.%s' % (conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR)
+
+	# Create a environment with default (public) symbol visibility
+	env = conf.env.copy()
+	env.append_unique('CCFLAGS', '-fvisibility=default'.split())
+	env.set_variant('visibility-public')
+	conf.set_env_name('visibility-public', env)
 	
 def build(bld):
+	if Options.options.tests:
+		if 'python' not in bld.env.bindings:
+			bld.env.bindings.append('python')
+
 	bld.recurse('src')
 	bld.recurse('doc/user')
 	
@@ -97,8 +107,6 @@ def build(bld):
 		bld.recurse('benchmarks')
 		
 	if Options.options.tests:
-		if 'python' not in bld.env.bindings:
-			bld.env.bindings.append('python')
 		bld.recurse('test')
 		
 	if bld.env.bindings:
