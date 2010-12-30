@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "lua.h"
 #include "lualib.h"
@@ -46,17 +47,35 @@ static int optboolean(lua_State *L, int narg, int def)
 	return lua_toboolean(L, narg);
 }
 
-static int should_throw_errors(lua_State *L)
+static int bless_lua_error(lua_State *L, int err, const char *fmt, ...)
 {
-	int throw_errors;
-	
-	lua_getglobal(L, "bless");
-	lua_getfield(L, -1, "throw_errors");
-	
-	throw_errors = optboolean(L, -1, 1);
-	lua_pop(L, 2);
-	
-	return throw_errors;
+	va_list argp;
+	va_start(argp, fmt);
+
+	lua_newtable(L);
+
+	lua_pushliteral(L, "message");
+
+	luaL_where(L, 1);
+
+	if (fmt != NULL)
+		lua_pushvfstring(L, fmt, argp);
+	else
+		lua_pushstring(L, strerror(err));
+
+	va_end(argp);
+
+	lua_concat(L, 2);
+
+	/* Set string */
+	lua_settable(L, -3);
+
+	/* Set code */
+	lua_pushliteral(L, "code");
+	lua_pushnumber(L, err);
+	lua_settable(L, -3);
+
+	return lua_error(L);
 }
 
 static int push_global_bless(lua_State *L)
@@ -214,7 +233,7 @@ static int buffer_source_lua_memory(lua_State *L)
 
 		data = malloc(length);
 		if (data == NULL)
-			luaL_error(L, "memory");
+			return bless_lua_error(L, ENOMEM, NULL);
 
 		memcpy(data, string, length);
 	}
@@ -225,13 +244,12 @@ static int buffer_source_lua_memory(lua_State *L)
 	}
 	
 	int err = bless_buffer_source_memory(&src, data, length, free);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error creating buffer from memory: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	push_buffer_source(L, src);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_source_lua_file(lua_State *L)
@@ -243,13 +261,12 @@ static int buffer_source_lua_file(lua_State *L)
 	fd = dup(fd);
 	
 	int err = bless_buffer_source_file(&src, fd, close);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	push_buffer_source(L, src);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_source_lua_gc(lua_State *L)
@@ -305,10 +322,9 @@ static int buffer_lua_new(lua_State *L)
 	bless_buffer_t *buf = NULL;
 	
 	int err = bless_buffer_new(&buf);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error creating new buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	push_buffer(L, buf);
 	
 	/* Associate an environment table containing a reference count */
@@ -319,7 +335,7 @@ static int buffer_lua_new(lua_State *L)
 	
 	lua_setfenv(L, -2);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_lua_save(lua_State *L)
@@ -329,12 +345,10 @@ static int buffer_lua_save(lua_State *L)
 	int fd = fileno(fp);
 	
 	int err = bless_buffer_save(buf, fd, NULL);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error saving buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_append(lua_State *L)
@@ -345,12 +359,10 @@ static int buffer_lua_append(lua_State *L)
 	off_t length = (off_t)luaL_checknumber(L, 4);
 	
 	int err = bless_buffer_append(buf, src, offset, length);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error appending data to buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_insert(lua_State *L)
@@ -362,12 +374,10 @@ static int buffer_lua_insert(lua_State *L)
 	off_t length = (off_t)luaL_checknumber(L, 5);
 	
 	int err = bless_buffer_insert(buf, offset, src, src_offset, length);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error inserting data in buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_delete(lua_State *L)
@@ -377,12 +387,10 @@ static int buffer_lua_delete(lua_State *L)
 	off_t length = (off_t)luaL_checknumber(L, 3);
 	
 	int err = bless_buffer_delete(buf, offset, length);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error deleting data from buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_read(lua_State *L)
@@ -399,12 +407,10 @@ static int buffer_lua_read(lua_State *L)
 			"length out of range");
 	
 	int err = bless_buffer_read(buf, offset, ba->data, dst_offset, length);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error reading data from buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_undo(lua_State *L)
@@ -412,12 +418,10 @@ static int buffer_lua_undo(lua_State *L)
 	bless_buffer_t *buf = to_buffer(L, 1);
 	
 	int err = bless_buffer_undo(buf);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error undoing operation in buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_redo(lua_State *L)
@@ -425,12 +429,10 @@ static int buffer_lua_redo(lua_State *L)
 	bless_buffer_t *buf = to_buffer(L, 1);
 	
 	int err = bless_buffer_redo(buf);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "Error redoing operation in buffer: %s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_begin_multi_action(lua_State *L)
@@ -438,12 +440,10 @@ static int buffer_lua_begin_multi_action(lua_State *L)
 	bless_buffer_t *buf = to_buffer(L, 1);
 	
 	int err = bless_buffer_begin_multi_action(buf);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_end_multi_action(lua_State *L)
@@ -451,12 +451,10 @@ static int buffer_lua_end_multi_action(lua_State *L)
 	bless_buffer_t *buf = to_buffer(L, 1);
 	
 	int err = bless_buffer_end_multi_action(buf);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_can_undo(lua_State *L)
@@ -465,13 +463,12 @@ static int buffer_lua_can_undo(lua_State *L)
 	int can_undo = 0;
 	
 	int err = bless_buffer_can_undo(buf, &can_undo);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	lua_pushnumber(L, can_undo);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_lua_can_redo(lua_State *L)
@@ -480,13 +477,12 @@ static int buffer_lua_can_redo(lua_State *L)
 	int can_redo = 0;
 	
 	int err = bless_buffer_can_redo(buf, &can_redo);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	lua_pushnumber(L, can_redo);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_lua_set_option(lua_State *L)
@@ -496,12 +492,10 @@ static int buffer_lua_set_option(lua_State *L)
 	char *value = (char *)luaL_checkstring(L, 3);
 	
 	int err = bless_buffer_set_option(buf, option, value);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
-
-	return 1;
+	return 0;
 }
 
 static int buffer_lua_get_option(lua_State *L)
@@ -511,13 +505,12 @@ static int buffer_lua_get_option(lua_State *L)
 	char *value;
 	
 	int err = bless_buffer_get_option(buf, &value, option);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	lua_pushstring(L, value);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_lua_get_size(lua_State *L)
@@ -526,13 +519,12 @@ static int buffer_lua_get_size(lua_State *L)
 	off_t size = 0;
 	
 	int err = bless_buffer_get_size(buf, &size);
-	if (err && should_throw_errors(L))
-		return luaL_error(L, "%s", strerror(err));
+	if (err)
+		return bless_lua_error(L, err, NULL);
 	
-	lua_pushnumber(L, err);
 	lua_pushnumber(L, size);
 
-	return 2;
+	return 1;
 }
 
 static int buffer_lua_gc(lua_State *L)
@@ -559,7 +551,7 @@ static int buffer_lua_len(lua_State *L)
 	
 	int err = bless_buffer_get_size(buf, &size);
 	if (err)
-		return luaL_error(L, "%s", strerror(err));
+		return bless_lua_error(L, err, NULL);
 	
 	lua_pushnumber(L, size);
 
