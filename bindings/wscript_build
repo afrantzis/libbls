@@ -14,9 +14,8 @@ if 'python' in bld.env.bindings:
 	if 'SWIG' not in bld.env:
 		raise Build.BuildError('Swig is needed to build python bindings')
 	py_bindings = bld(
-			features = ['c', 'cshlib'],
+			features = ['c', 'pyext', 'cshlib'],
 			source   = 'libbls.i',
-			includes = ['/usr/include/python2.6'],	
 			use      = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 			target   = '_libbls',
 			env = bld.env_of_name('visibility-public').copy()

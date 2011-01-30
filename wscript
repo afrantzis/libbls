@@ -30,6 +30,7 @@ def options(opt):
 
 def configure(conf):
 	conf.check_tool('compiler_cc')
+	conf.check_tool('python')
 
 	# Check required headers
 	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h',
@@ -79,6 +80,9 @@ def configure(conf):
 		conf.env.append_unique('LINKFLAGS', lfs_libs)
 		conf.env.LFS_LINKFLAGS = lfs_ldflags
 		conf.env.append_unique('LFS_LINKFLAGS', lfs_libs)
+
+	# Check for python headers
+	conf.check_python_headers()
 
 	# Check for swig
 	conf.find_program('swig', var = 'SWIG', mandatory = False)
