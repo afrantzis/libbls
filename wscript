@@ -81,6 +81,9 @@ def configure(conf):
 		conf.env.LFS_LINKFLAGS = lfs_ldflags
 		conf.env.append_unique('LFS_LINKFLAGS', lfs_libs)
 
+	# Check for rst2html
+	conf.find_program('rst2html', var = 'RST2HTML', mandatory = False)
+
 	# Check for python headers
 	conf.check_python_headers()
 
