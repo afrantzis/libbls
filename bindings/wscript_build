@@ -1,6 +1,6 @@
 import Options
 import Task, TaskGen
-import Build
+import os
 
 Task.simple_task_type('swig_python', '${SWIG} -o ${TGT} -python ${SRC}', before = 'cc')
 
@@ -11,8 +11,10 @@ def process_swig(self, node):
 	self.source.append(cc_node)
 	
 if 'python' in bld.env.bindings:
+	if not os.path.isfile(os.path.join(bld.env.INCLUDES_PYEXT[0], 'Python.h')):
+		raise ValueError('Python.h include file not found! Python development files are needed to build python bindings')
 	if 'SWIG' not in bld.env:
-		raise Build.BuildError('Swig is needed to build python bindings')
+		raise ValueError('Swig is needed to build python bindings')
 	py_bindings = bld(
 			features = ['c', 'pyext', 'cshlib'],
 			source   = 'libbls.i',
