@@ -3,22 +3,22 @@ import os
 import Options
 
 if 'all' in Options.options.benchmarks:
-	sources = bld.path.ant_glob('*.c').split(' ')
+	sources = [s.name for s in bld.path.ant_glob('*.c')]
 else:
 	sources = ['%s.c' % s for s in Options.options.benchmarks]
 
 for s in sources:
 	tgt = s.replace('.c', '')
 	bld(
-		features = ['cc', 'cprogram'],
+		features = ['c', 'cprogram'],
 		source = s,
 		target = tgt,
-		uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
+		use = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 		name = tgt
 	)
 	
-build_path = bld.path.abspath(bld.env)
-test_env = {'LD_LIBRARY_PATH' : 'build/default/src'}
+build_path = bld.path.get_bld().abspath()
+test_env = {'LD_LIBRARY_PATH' : 'build/src'}
 
 def run_benchmarks(ctx):
 	for s in sources:

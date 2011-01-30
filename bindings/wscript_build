@@ -2,39 +2,37 @@ import Options
 import Task, TaskGen
 import Build
 
-bld.use_the_magic()
-
 Task.simple_task_type('swig_python', '${SWIG} -o ${TGT} -python ${SRC}', before = 'cc')
 
 @TaskGen.extension('.i')
 def process_swig(self, node):
 	cc_node = node.change_ext('.c')
 	self.create_task('swig_python', node, cc_node)
-	self.allnodes.append(cc_node)
+	self.source.append(cc_node)
 	
 if 'python' in bld.env.bindings:
 	if 'SWIG' not in bld.env:
 		raise Build.BuildError('Swig is needed to build python bindings')
 	py_bindings = bld(
-			features = ['cc', 'cshlib'],
+			features = ['c', 'cshlib'],
 			source   = 'libbls.i',
 			includes = ['/usr/include/python2.6'],	
-			uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
+			use      = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 			target   = '_libbls',
 			env = bld.env_of_name('visibility-public').copy()
 			)
-	py_bindings.env.shlib_PATTERN = py_bindings.env.shlib_PATTERN.replace('lib%s', '%s')
+	py_bindings.env.cshlib_PATTERN = py_bindings.env.cshlib_PATTERN.replace('lib%s', '%s')
 
 if 'lua' in bld.env.bindings:
 	lua_bindings = bld(
-			features = ['cc', 'cshlib'],
+			features = ['c', 'cshlib'],
 			source   = 'bless_buffer_lua.c',
-			uselib_local = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
+			use      = 'bls-%s' % bld.env.LIBBLS_VERSION_NO_PATCH,
 			uselib   = 'lua',
 			defines  = ['LIBBLS_VERSION_MAJOR=%s' % bld.env.LIBBLS_VERSION_MAJOR,
 				'LIBBLS_VERSION_MINOR=%s' % bld.env.LIBBLS_VERSION_MINOR],
 			target   = 'bless_buffer_%s' % bld.env.LIBBLS_VERSION_NO_PATCH.replace('.', '_'),
 			install_path = '${PREFIX}/lib/lua/5.1'
 			)
-	lua_bindings.env.shlib_PATTERN = lua_bindings.env.shlib_PATTERN.replace('lib%s', '%s')
+	lua_bindings.env.cshlib_PATTERN = lua_bindings.env.cshlib_PATTERN.replace('lib%s', '%s')
 

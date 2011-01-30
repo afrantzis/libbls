@@ -1,8 +1,6 @@
 import subprocess
 import os
 import Options
-import Task, TaskGen
-
 
 local_path = bld.path.abspath()
 test_env = {'LD_LIBRARY_PATH' : 'build/visibility-public/src',
