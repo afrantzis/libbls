@@ -81,7 +81,10 @@ def configure(conf):
 		conf.env.append_unique('LFS_LINKFLAGS', lfs_libs)
 
 	# Check for swig
-	conf.find_program('swig', var = 'SWIG', mandatory = 'python' in Options.options.bindings)
+	conf.find_program('swig', var = 'SWIG', mandatory = False)
+
+	if 'python' in Options.options.bindings:
+		conf.fatal("Python bindings are not for public use. They are only used internally for testing.")
 	conf.env.bindings = Options.options.bindings
 	conf.env.LIBBLS_VERSION = VERSION
 	(conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR, conf.env.LIBBLS_VERSION_PATCH) = VERSION.split('.')
