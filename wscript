@@ -99,6 +99,7 @@ def build(bld):
 			Options.options.tests = ['all']
 		if 'python' not in bld.env.bindings:
 			bld.env.bindings.append('python')
+		bld.recurse('test')
 
 	bld.recurse('src')
 	bld.recurse('doc/user')
@@ -108,9 +109,6 @@ def build(bld):
 
 	if bld.env.bindings:
 		bld.recurse('bindings')
-
-	if Options.options.tests:
-		bld.recurse('test')
 
 	flat_env = {}
 	for (k, v) in bld.env.get_merged_dict().items():
