@@ -61,20 +61,19 @@ def configure(conf):
 		conf.check_cfg(package = pkg, uselib_store = uselib, args = '--cflags --libs',
 				mandatory = 'lua' in Options.options.bindings)
 
-	conf.env.append_unique('CCFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic -fvisibility=hidden'.split(' '))
-
+	conf.env.append_unique('CFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic -fvisibility=hidden'.split(' '))
 	# Prepend -O# and -g flags so that they can be overriden by the CFLAGS environment variable
 	if Options.options.opt:
-		conf.env.prepend_value('CCFLAGS', '-O2')
+		conf.env.prepend_value('CFLAGS', '-O2')
 	if Options.options.debug:
-		conf.env.prepend_value('CCFLAGS', '-g')
+		conf.env.prepend_value('CFLAGS', '-g')
 
 	# Add LFS flags
 	if Options.options.lfs:
 		lfs_cflags = commands.getoutput("getconf LFS_CFLAGS").split(' ');
 		lfs_ldflags = commands.getoutput("getconf LFS_LDFLAGS").split(' ');
 		lfs_libs = commands.getoutput("getconf LFS_LIBS").split(' ');
-		conf.env.append_unique('CCFLAGS', lfs_cflags)
+		conf.env.append_unique('CFLAGS', lfs_cflags)
 		conf.env.LFS_CFLAGS = lfs_cflags
 		conf.env.append_unique('LINKFLAGS', lfs_ldflags)
 		conf.env.append_unique('LINKFLAGS', lfs_libs)
@@ -98,10 +97,9 @@ def configure(conf):
 	conf.env.LIBBLS_VERSION_NO_PATCH = '%s.%s' % (conf.env.LIBBLS_VERSION_MAJOR, conf.env.LIBBLS_VERSION_MINOR)
 
 	# Create a environment with default (public) symbol visibility
-	env = conf.env.copy()
-	env.append_unique('CCFLAGS', '-fvisibility=default'.split())
-	env.set_variant('visibility-public')
-	conf.set_env_name('visibility-public', env)
+	conf.setenv('visibility-public', conf.env)
+	conf.env.CFLAGS = list(conf.env.CFLAGS)
+	conf.env.append_unique('CFLAGS', '-fvisibility=default'.split())
 
 def build(bld):
 	if bld.cmd == 'test':
