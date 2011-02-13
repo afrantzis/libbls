@@ -55,11 +55,23 @@ def configure(conf):
 		if conf.check_cc(function_name = func, header_name = header, mandatory = False):
 			conf.env.append_unique('CCDEFINES', ('HAVE_%s' % func).upper())
 
-	# Check optional packages
-	opt_pkgs = [('lua5.1', 'lua')]
-	for pkg, uselib in opt_pkgs:
-		conf.check_cfg(package = pkg, uselib_store = uselib, args = '--cflags --libs',
-				mandatory = 'lua' in Options.options.bindings)
+	# Check for lua using pkg-config. It's a mess:
+	# fedora/gentoo/macosx use lua.pc
+	# debian/ubuntu use lua5.1.pc
+	# freebsd uses lua-5.1.pc
+	have_lua_pc = conf.check_cfg(package = 'lua', uselib_store = 'lua',
+			args = ['lua >= 5.1 lua <= 5.1.99', '--cflags', '--libs'],
+			mandatory = False)
+	have_lua51_pc = conf.check_cfg(package = 'lua5.1', uselib_store = 'lua',
+			args = '--cflags --libs',
+			mandatory = False)
+	have_lua_51_pc = conf.check_cfg(package = 'lua-5.1', uselib_store = 'lua',
+			args = '--cflags --libs',
+			mandatory = False)
+
+	have_any_lua_pc = (have_lua_pc is not None) or (have_lua51_pc is not None) or (have_lua_51_pc is not None)
+	if 'lua' in Options.options.bindings and not have_any_lua_pc:
+		conf.fatal('A suitable lua pkg-config file is needed to build lua bindings, but none could be found.')
 
 	conf.env.append_unique('CFLAGS', '-std=c99 -D_XOPEN_SOURCE=600 -DENABLE_DEBUG=1 -Wall -Wextra -pedantic -fvisibility=hidden'.split(' '))
 	# Prepend -O# and -g flags so that they can be overriden by the CFLAGS environment variable
