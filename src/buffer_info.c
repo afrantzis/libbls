@@ -95,6 +95,35 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size)
 }
 
 /** 
+ * Gets the revision id of the current buffer state.
+ * 
+ * @param buf the bless_buffer_t
+ * @param[out] id the revision id
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_get_revision_id(bless_buffer_t *buf, uint64_t *id)
+{
+	if (buf == NULL || id == NULL)
+		return_error(EINVAL);
+
+	uint64_t cur_id = buf->first_rev_id;
+
+	if (buf->options->undo_limit > 0) {
+		if (buf->undo_list_size > 0) {
+			struct list_node *last = list_tail(buf->undo_list)->prev;
+			struct buffer_action_entry *entry =
+				list_entry(last, struct buffer_action_entry, ln);
+			cur_id = entry->rev_id;	
+		}
+	}
+
+	*id = cur_id;
+
+	return 0;
+}
+
+/** 
  * Sets a buffer option.
  * 
  * @param buf the buffer to set an option of

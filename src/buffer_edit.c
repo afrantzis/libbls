@@ -122,8 +122,10 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 			if (err)
 				goto_error(err, on_error_other);
 		}
-		else
+		else {
+			buf->first_rev_id = buf->next_rev_id++;
 			buffer_action_free(action);
+		}
 
 		return 0;
 	}
@@ -150,8 +152,10 @@ int bless_buffer_append(bless_buffer_t *buf, bless_buffer_source_t *src,
 		if (err)
 			goto_error(err, on_error_other);
 	}
-	else
+	else {
+		buf->first_rev_id = buf->next_rev_id++;
 		buffer_action_free(action);
+	}
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
@@ -213,8 +217,10 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 			if (err)
 				goto_error(err, on_error_other);
 		}
-		else
+		else {
+			buf->first_rev_id = buf->next_rev_id++;
 			buffer_action_free(action);
+		}
 
 		return 0;
 	}
@@ -241,8 +247,10 @@ int bless_buffer_insert(bless_buffer_t *buf, off_t offset,
 		if (err)
 			goto_error(err, on_error_other);
 	}
-	else
+	else {
+		buf->first_rev_id = buf->next_rev_id++;
 		buffer_action_free(action);
+	}
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;
@@ -300,8 +308,10 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 			if (err)
 				goto_error(err, on_error_other);
 		}
-		else
+		else {
+			buf->first_rev_id = buf->next_rev_id++;
 			buffer_action_free(action);
+		}
 
 		return 0;
 	}
@@ -328,8 +338,10 @@ int bless_buffer_delete(bless_buffer_t *buf, off_t offset, off_t length)
 		if (err)
 			goto_error(err, on_error_other);
 	}
-	else
+	else {
+		buf->first_rev_id = buf->next_rev_id++;
 		buffer_action_free(action);
+	}
 
 	action_list_clear(buf->redo_list);
 	buf->redo_list_size = 0;

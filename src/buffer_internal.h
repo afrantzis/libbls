@@ -39,6 +39,7 @@ extern "C" {
 struct buffer_action_entry {
 	struct list_node ln;
 	buffer_action_t *action;
+	uint64_t rev_id;
 };
 
 /** 
@@ -65,6 +66,8 @@ struct bless_buffer {
 	size_t redo_list_size;
 	buffer_action_t *multi_action;
 	int multi_action_mode;
+	uint64_t first_rev_id;
+	uint64_t next_rev_id;
 	
 	bless_buffer_event_func_t *event_func;
 	void *event_user_data;

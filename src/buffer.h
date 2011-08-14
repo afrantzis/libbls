@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include <unistd.h>
+#include <stdint.h>
 
 
 #include "buffer_source.h"
@@ -139,6 +140,8 @@ int bless_buffer_can_undo(bless_buffer_t *buf, int *can_undo);
 int bless_buffer_can_redo(bless_buffer_t *buf, int *can_redo);
 
 int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
+
+int bless_buffer_get_revision_id(bless_buffer_t *buf, uint64_t *id);
 
 int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 		char *val);

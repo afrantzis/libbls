@@ -750,6 +750,8 @@ int undo_list_enforce_limit(bless_buffer_t *buf, int ensure_vacancy)
 		struct buffer_action_entry *del_entry = 
 			list_entry(node, struct buffer_action_entry, ln);
 
+		buf->first_rev_id = del_entry->rev_id;
+
 		buffer_action_free(del_entry->action);
 		free(del_entry);
 	}
@@ -816,6 +818,7 @@ int undo_list_append(bless_buffer_t *buf, buffer_action_t *action)
 		return_error(ENOMEM);
 
 	entry->action = action;
+	entry->rev_id = buf->next_rev_id++;
 
 	/* Append it to the list */
 	int err = list_insert_before(list_tail(buf->undo_list), &entry->ln);

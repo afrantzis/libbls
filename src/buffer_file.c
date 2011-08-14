@@ -377,6 +377,7 @@ static int actions_make_private_copy(bless_buffer_t *buf, data_object_t *obj,
 			if (!del)
 				return_error(err);
 			undo_err = err;
+			buf->first_rev_id = entry->rev_id;
 			list_delete_chain(node, node);
 			buffer_action_free(entry->action);
 			free(entry);
@@ -572,6 +573,8 @@ int bless_buffer_new(bless_buffer_t **buf)
 	(*buf)->redo_list_size = 0;
 	(*buf)->multi_action = NULL;
 	(*buf)->multi_action_mode = 0;
+	(*buf)->first_rev_id = 0;
+	(*buf)->next_rev_id = 1;
 	(*buf)->event_func = NULL;
 	(*buf)->event_user_data = NULL;
 
@@ -791,6 +794,9 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 	data_object_update_usage(fd_obj, -1);
 
 	if (!strcmp(buf->options->undo_after_save, "never")) {
+		/* Update the first revision id with the current revision id */
+		bless_buffer_get_revision_id(buf, &buf->first_rev_id);
+
 		/* If the policy is "never" clear the undo/redo lists */
 		action_list_clear(buf->undo_list);
 		buf->undo_list_size = 0;

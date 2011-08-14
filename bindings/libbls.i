@@ -231,6 +231,7 @@ void *get_write_buf_pyobj(PyObject *obj, ssize_t *size)
 %apply int *OUTPUT { int * };
 %apply long long *OUTPUT { off_t * };
 %apply unsigned long long *OUTPUT { size_t * };
+%apply unsigned long long *OUTPUT { uint64_t * };
 
 /* in priority_queue_add size_t *pos is a normal pointer (not output) */
 %apply SWIGTYPE * { size_t *pos };
