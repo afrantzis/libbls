@@ -143,6 +143,10 @@ int bless_buffer_get_size(bless_buffer_t *buf, off_t *size);
 
 int bless_buffer_get_revision_id(bless_buffer_t *buf, uint64_t *id);
 
+int bless_buffer_get_save_revision_id(bless_buffer_t *buf, uint64_t *id);
+
+int bless_buffer_set_save_revision_id(bless_buffer_t *buf, uint64_t id);
+
 int bless_buffer_set_option(bless_buffer_t *buf, bless_buffer_option_t opt,
 		char *val);
 

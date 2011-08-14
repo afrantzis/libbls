@@ -74,6 +74,13 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.assertEqual(rev_id, expected_rev_id)
 
+	def check_save_rev_id(self, buf, expected_rev_id):
+		"Check if the buffer contains the expected_data"
+
+		err, rev_id = bless_buffer_get_save_revision_id(buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(rev_id, expected_rev_id)
+
 	def check_undo_redo(self, undo_list):
 		"""Checks if the buffer contains the buffer contains the expected
 		data after performing undo and redo operations"""
@@ -684,6 +691,7 @@ class BufferTests(unittest.TestCase):
 		"""Save a empty buffer"""
 		(fd1, fd1_path) = get_tmp_copy_file_fd("/dev/null", os.O_RDWR)
 		self.check_save(fd1, [], "")
+		self.check_save_rev_id(self.buf, 0)
 		os.close(fd1)
 		os.remove(fd1_path)
 
@@ -706,6 +714,7 @@ class BufferTests(unittest.TestCase):
 			segment_desc = [(fd1_src, 0, 3), (fd2_src, 0, i), (fd1_src, 3, 7)]
 			self.check_save(fd1, segment_desc, "123" + "abcdefgh"[0:i] + "4567890")
 			bless_buffer_delete(self.buf, 0, bless_buffer_get_size(self.buf)[1])
+			self.check_save_rev_id(self.buf, 4 * i + 3)
 
 			err = bless_buffer_source_unref(fd1_src)
 			self.assertEqual(err, 0)
@@ -1338,6 +1347,7 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_save(self.buf, fd1, None)
 		self.assertEqual(err, 0)
 		self.check_buffer(self.buf, "678345")
+		self.check_save_rev_id(self.buf, 3)
 
 		# Undo 
 		undo_expected = [
@@ -1362,6 +1372,7 @@ class BufferTests(unittest.TestCase):
 				]
 
 		self.check_undo_redo(redo_expected)
+		self.check_save_rev_id(self.buf, 3)
 
 		# Remove temporary file
 		os.close(fd1)
@@ -1404,6 +1415,7 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_save(self.buf, fd1, None)
 		self.assertEqual(err, 0)
 		self.check_buffer(self.buf, "678345")
+		self.check_save_rev_id(self.buf, 3)
 
 		(err, can_undo) = bless_buffer_can_undo(self.buf)
 		self.assertEqual(err, 0)
@@ -1455,6 +1467,8 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_save(self.buf, fd1, None)
 		self.assertNotEqual(err, 0)
 		self.check_buffer(self.buf, "678345")
+		self.check_rev_id(self.buf, 3)
+		self.check_save_rev_id(self.buf, 0)
 
 		# We should be able to Undo/Redo normally regardless of the
 		# BLESS_BUF_UNDO_AFTER_SAVE = "never" option because the save failed

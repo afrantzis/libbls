@@ -575,6 +575,7 @@ int bless_buffer_new(bless_buffer_t **buf)
 	(*buf)->multi_action_mode = 0;
 	(*buf)->first_rev_id = 0;
 	(*buf)->next_rev_id = 1;
+	(*buf)->save_rev_id = 0;
 	(*buf)->event_func = NULL;
 	(*buf)->event_user_data = NULL;
 
@@ -804,6 +805,9 @@ int bless_buffer_save(bless_buffer_t *buf, int fd,
 		action_list_clear(buf->redo_list);
 		buf->redo_list_size = 0;
 	}
+
+	/* Set the save revision id */
+	bless_buffer_get_revision_id(buf, &buf->save_rev_id);
 
 	/* Call event callback if supplied by the user */
 	if (buf->event_func != NULL) {

@@ -124,6 +124,45 @@ int bless_buffer_get_revision_id(bless_buffer_t *buf, uint64_t *id)
 }
 
 /** 
+ * Gets the revision id of the last saved buffer state.
+ *
+ * This is set automatically after a successful bless_buffer_save()
+ * operation and can be manually set with bless_buffer_set_save_revision_id().
+ * 
+ * @param buf the bless_buffer_t
+ * @param[out] id the revision id
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_get_save_revision_id(bless_buffer_t *buf, uint64_t *id)
+{
+	if (buf == NULL || id == NULL)
+		return_error(EINVAL);
+
+	*id = buf->save_rev_id;
+
+	return 0;
+}
+
+/** 
+ * Sets the revision id of the last saved buffer state.
+ * 
+ * @param buf the bless_buffer_t
+ * @param id the revision id
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_set_save_revision_id(bless_buffer_t *buf, uint64_t id)
+{
+	if (buf == NULL)
+		return_error(EINVAL);
+
+	buf->save_rev_id = id;
+
+	return 0;
+}
+
+/** 
  * Sets a buffer option.
  * 
  * @param buf the buffer to set an option of

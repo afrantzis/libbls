@@ -68,6 +68,7 @@ struct bless_buffer {
 	int multi_action_mode;
 	uint64_t first_rev_id;
 	uint64_t next_rev_id;
+	uint64_t save_rev_id;
 	
 	bless_buffer_event_func_t *event_func;
 	void *event_user_data;
