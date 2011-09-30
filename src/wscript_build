@@ -8,6 +8,6 @@ lib = bld(
 		export_includes = '.'
 		)
 
-bld.install_files('${PREFIX}/include/bls-${LIBBLS_VERSION_NO_PATCH}/bls',
+bld.install_files('${INCLUDEDIR}/bls-${LIBBLS_VERSION_NO_PATCH}/bls',
 		['buffer.h','buffer_source.h','buffer_options.h', 'buffer_event.h'])
 

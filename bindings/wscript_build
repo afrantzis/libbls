@@ -33,7 +33,7 @@ if 'lua' in bld.env.bindings:
 			defines  = ['LIBBLS_VERSION_MAJOR=%s' % bld.env.LIBBLS_VERSION_MAJOR,
 				'LIBBLS_VERSION_MINOR=%s' % bld.env.LIBBLS_VERSION_MINOR],
 			target   = 'bless_buffer_%s' % bld.env.LIBBLS_VERSION_NO_PATCH.replace('.', '_'),
-			install_path = '${PREFIX}/lib/lua/5.1'
+			install_path = '${LIBDIR}/lua/5.1'
 			)
 	lua_bindings.env.cshlib_PATTERN = lua_bindings.env.cshlib_PATTERN.replace('lib%s', '%s')
 

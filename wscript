@@ -17,6 +17,7 @@ def option_list_cb(option, opt, value, parser):
 
 def options(opt):
 	opt.tool_options('compiler_cc')
+	opt.tool_options('gnu_dirs')
 
 	opt.add_option('--no-debug', action='store_false', dest = 'debug', default = True, help='disable compiler debug information')
 	opt.add_option('--no-opt', action='store_false', dest = 'opt', default = True, help='disable compiler optimizations')
@@ -31,6 +32,7 @@ def options(opt):
 def configure(conf):
 	conf.check_tool('compiler_cc')
 	conf.check_tool('python')
+	conf.check_tool('gnu_dirs')
 
 	# Check required headers
 	req_headers = ['stdint.h', 'stdlib.h', 'string.h', 'unistd.h',
@@ -142,7 +144,7 @@ def build(bld):
 		source = 'bls.pc.in',
 		target = 'bls-%s.pc' % bld.env.LIBBLS_VERSION_NO_PATCH,
 		dct = flat_env,
-		install_path = '${PREFIX}/lib/pkgconfig'
+		install_path = '${LIBDIR}/pkgconfig'
 	)
 
 def dist(ctx):

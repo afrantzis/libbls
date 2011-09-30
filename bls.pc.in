@@ -1,7 +1,7 @@
 prefix=@PREFIX@
-exec_prefix=@PREFIX@
-libdir=@PREFIX@/lib
-includedir=@PREFIX@/include
+exec_prefix=@EXEC_PREFIX@
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
 
 lfs_cflags=@LFS_CFLAGS@
 lfs_linkflags=@LFS_LINKFLAGS@
