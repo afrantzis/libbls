@@ -160,7 +160,7 @@ def benchmark(ctx):
 	Options.commands.append('build')
 
 def doxygen(ctx):
-	doc_path = os.path.join(blddir, 'default', 'doc')
+	doc_path = os.path.join(out, 'doc')
 	if not os.path.isdir(doc_path):
 		os.makedirs(doc_path)
 

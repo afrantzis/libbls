@@ -6,7 +6,7 @@ expect some feedback.
 
 To build documentation use:
 
-	$ waf doc
+	$ waf doxygen
 
 This generates documentation from Doxygen comments and places it in
 build/default/doc/user/html and build/default/doc/devel/html directories. The
