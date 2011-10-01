@@ -1,3 +1,14 @@
+libbls v0.3.2 20111001
+-----------------------
+
+* Properly detect lua using all known pkg-config files (lp #702726).
+* Upgrade waf build system to version 1.6.7.
+* Provide GNU compatible configuration options for directories.
+* New API functions:
+ * bless_buffer_get_revision_id
+ * bless_buffer_get_save_revision_id
+ * bless_buffer_set_save_revision_id
+
 libbls v0.3.1b 20100905
 -----------------------
 

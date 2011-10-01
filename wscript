@@ -8,7 +8,7 @@ import Build
 top = '.'
 out = 'build'
 
-VERSION = '0.3.1b'
+VERSION = '0.3.2'
 APPNAME = 'libbls'
 
 def option_list_cb(option, opt, value, parser):
