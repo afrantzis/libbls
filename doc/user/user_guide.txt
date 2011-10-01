@@ -715,7 +715,7 @@ An example of how to use the callback function::
                 break;
 
             case BLESS_BUFFER_EVENT_SAVE:
-                printf("Buffer [%p] has been save to fd=%d\n", buf, info->save_fd);
+                printf("Buffer [%p] has been saved to fd=%d\n", buf, info->save_fd);
                 break;
 
             case BLESS_BUFFER_EVENT_DESTROY:
@@ -748,3 +748,33 @@ An example of how to use the callback function::
             ...
     }
 
+Tracking buffer revisions
+=========================
+
+Every buffer state is associated with a numerical revision id. The revision id
+is increased every time an edit action is performed on the buffer.
+
+You can get the current revision id by using the
+``bless_buffer_get_revision_id()`` function::
+
+ int bless_buffer_get_revision_id(bless_buffer_t *buf, uint64_t *id);
+
+Using the undo and redo functionality (`Undoing and redoing operations`_) you
+can traverse the existing revisions bringing the buffer to the state associated
+with that revision.
+
+Every time the buffer is saved, the current revision id is also stored as
+the last save revision id. You can query the last save revision id
+using the ``bless_buffer_get_save_revision_id()`` function::
+
+ int bless_buffer_get_save_revision_id(bless_buffer_t *buf, uint64_t *id);
+
+It is occasionally useful to manually set the last save revision id. You
+can achieve this with the ``bless_buffer_set_save_revision_id()`` function::
+
+ int bless_buffer_set_save_revision_id(bless_buffer_t *buf, uint64_t id);
+
+You can use the revision id functionality to efficiently check if a buffer has
+been edited since the last save. If revision_id != save_revision_id then the
+buffer has been edited. Note that this check doesn't guarantee that the buffer
+contents are actually different.
