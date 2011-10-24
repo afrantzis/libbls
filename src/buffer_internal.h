@@ -65,7 +65,7 @@ struct bless_buffer {
 	size_t undo_list_size;
 	size_t redo_list_size;
 	buffer_action_t *multi_action;
-	int multi_action_mode;
+	int multi_action_count;
 	uint64_t first_rev_id;
 	uint64_t next_rev_id;
 	uint64_t save_rev_id;

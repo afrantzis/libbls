@@ -1689,5 +1689,68 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_source_unref(src)
 		self.assertEqual(err, 0)
 
+	def testMultiActionCallMany(self):
+		"Call the multi action functions multiple times"
+
+		data = "0123456789abcdefghij"
+		(err, src) = bless_buffer_source_memory(data, 20, None)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 10, 3)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "abc")
+
+		# Try to end an inexistent multi action
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertNotEqual(err, 0)
+
+		# Call the multi action function 3 times
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "abc0123456789")
+
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_append(self.buf, src, 0, 10)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "abc01234567890123456789")
+
+		err = bless_buffer_begin_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, 0, 5)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "234567890123456789")
+
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_delete(self.buf, 3, 2)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "2347890123456789")
+
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertEqual(err, 0)
+
+		err = bless_buffer_end_multi_action(self.buf)
+		self.assertNotEqual(err, 0)
+
+		err = bless_buffer_undo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "abc")
+
+		err = bless_buffer_redo(self.buf)
+		self.assertEqual(err, 0)
+		self.check_buffer(self.buf, "2347890123456789")
+
+		err = bless_buffer_source_unref(src)
+		self.assertEqual(err, 0)
+
 if __name__ == '__main__':
 	unittest.main()

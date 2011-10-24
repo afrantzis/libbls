@@ -572,7 +572,7 @@ int bless_buffer_new(bless_buffer_t **buf)
 
 	(*buf)->redo_list_size = 0;
 	(*buf)->multi_action = NULL;
-	(*buf)->multi_action_mode = 0;
+	(*buf)->multi_action_count = 0;
 	(*buf)->first_rev_id = 0;
 	(*buf)->next_rev_id = 1;
 	(*buf)->save_rev_id = 0;

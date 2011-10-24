@@ -446,6 +446,15 @@ calls to ``bless_buffer_begin_multi_action()`` and
 multi-action. When undoing or redoing this multi-action all simple actions that
 comprise it are undone or redone.
 
+Multiple calls to ``bless_buffer_begin_multi_action()`` and
+``bless_buffer_end_multi_action()`` for the same buffer can be nested (in a
+balanced manner). Note, however, that there is only a single multi-action
+active at any time and therefore only the first call to
+``bless_buffer_begin_multi_action()`` and the last call
+``bless_buffer_end_multi_action()`` are actually effective at beginning and
+ending multi-action mode. Edit actions inside nested calls are just part of the
+multi-action created by the outer call.
+
 Actions that are part of a multi-action do not cause an event to be emitted
 when they are performed (see `Monitoring buffer events`_). A single
 BLESS_BUFFER_EVENT_EDIT event with action of BLESS_BUFFER_ACTION_MULTI is

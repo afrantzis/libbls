@@ -197,8 +197,14 @@ on_error_delete:
  */
 int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 {
-	if (buf == NULL || buf->multi_action_mode == 1)
+	if (buf == NULL)
 		return_error(EINVAL);
+
+	/* If we already are in multi-action mode, just update the count */
+	if (buf->multi_action_count > 0) {
+		buf->multi_action_count++;
+		return 0;
+	}
 
 	/* 
 	 * Make sure that the undo list has space for one action (provided the
@@ -213,7 +219,7 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 	 * into multi_action mode and return.
 	 */
 	if (buf->undo_list_size >= buf->options->undo_limit) {
-		buf->multi_action_mode = 1;
+		buf->multi_action_count = 1;
 		return 0;
 	}
 
@@ -232,7 +238,7 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
 	buf->redo_list_size = 0;
 
 	/* We are now in multi action mode */
-	buf->multi_action_mode = 1;
+	buf->multi_action_count = 1;
 
 	return 0;
 }
@@ -251,8 +257,14 @@ int bless_buffer_begin_multi_action(bless_buffer_t *buf)
  */
 int bless_buffer_end_multi_action(bless_buffer_t *buf)
 {
-	if (buf == NULL || buf->multi_action_mode == 0)
+	if (buf == NULL || buf->multi_action_count == 0)
 		return_error(EINVAL);
+
+	/* No need to do anything if we still have users */
+	if (buf->multi_action_count > 1) {
+		buf->multi_action_count--;
+		return 0;
+	}
 
 	int err = 0;
 	struct bless_buffer_event_info event_info;
@@ -279,7 +291,7 @@ int bless_buffer_end_multi_action(bless_buffer_t *buf)
 	}
 
 	/* We are now in normal action mode */
-	buf->multi_action_mode = 0;
+	buf->multi_action_count = 0;
 	buf->multi_action = NULL;
 
 	return 0;
