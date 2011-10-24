@@ -455,6 +455,11 @@ active at any time and therefore only the first call to
 ending multi-action mode. Edit actions inside nested calls are just part of the
 multi-action created by the outer call.
 
+You can query the current multi-action usage count using the
+``bless_buffer_query_multi_action()`` function::
+
+    int bless_buffer_query_multi_action(bless_buffer_t *buf, int *multi)
+
 Actions that are part of a multi-action do not cause an event to be emitted
 when they are performed (see `Monitoring buffer events`_). A single
 BLESS_BUFFER_EVENT_EDIT event with action of BLESS_BUFFER_ACTION_MULTI is

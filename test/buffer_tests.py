@@ -1700,13 +1700,25 @@ class BufferTests(unittest.TestCase):
 		self.assertEqual(err, 0)
 		self.check_buffer(self.buf, "abc")
 
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 0)
+
 		# Try to end an inexistent multi action
 		err = bless_buffer_end_multi_action(self.buf)
 		self.assertNotEqual(err, 0)
 
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 0)
+
 		# Call the multi action function 3 times
 		err = bless_buffer_begin_multi_action(self.buf)
 		self.assertEqual(err, 0)
+
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 1)
 
 		err = bless_buffer_append(self.buf, src, 0, 10)
 		self.assertEqual(err, 0)
@@ -1715,12 +1727,20 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_begin_multi_action(self.buf)
 		self.assertEqual(err, 0)
 
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 2)
+
 		err = bless_buffer_append(self.buf, src, 0, 10)
 		self.assertEqual(err, 0)
 		self.check_buffer(self.buf, "abc01234567890123456789")
 
 		err = bless_buffer_begin_multi_action(self.buf)
 		self.assertEqual(err, 0)
+
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 3)
 
 		err = bless_buffer_delete(self.buf, 0, 5)
 		self.assertEqual(err, 0)
@@ -1729,17 +1749,32 @@ class BufferTests(unittest.TestCase):
 		err = bless_buffer_end_multi_action(self.buf)
 		self.assertEqual(err, 0)
 
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 2)
+
 		err = bless_buffer_delete(self.buf, 3, 2)
 		self.assertEqual(err, 0)
 		self.check_buffer(self.buf, "2347890123456789")
 
 		err = bless_buffer_end_multi_action(self.buf)
 		self.assertEqual(err, 0)
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 1)
+
 		err = bless_buffer_end_multi_action(self.buf)
 		self.assertEqual(err, 0)
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 0)
 
 		err = bless_buffer_end_multi_action(self.buf)
 		self.assertNotEqual(err, 0)
+
+		(err, multi) = bless_buffer_query_multi_action(self.buf)
+		self.assertEqual(err, 0)
+		self.assertEqual(multi, 0)
 
 		err = bless_buffer_undo(self.buf)
 		self.assertEqual(err, 0)

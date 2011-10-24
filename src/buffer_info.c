@@ -321,5 +321,23 @@ int bless_buffer_set_event_callback(bless_buffer_t *buf,
 	return 0;
 }
 
+/** 
+ * Gets the current multi action usage count.
+ * 
+ * @param buf the bless_buffer_t
+ * @param[out] multi the multi action usage count
+ * 
+ * @return the operation error code
+ */
+int bless_buffer_query_multi_action(bless_buffer_t *buf, int *multi)
+{
+	if (buf == NULL || multi == NULL)
+		return_error(EINVAL);
+
+	*multi = buf->multi_action_count;
+
+	return 0;
+}
+
 #pragma GCC visibility pop
 

@@ -155,6 +155,9 @@ int bless_buffer_get_option(bless_buffer_t *buf, char **val,
 
 int bless_buffer_set_event_callback(bless_buffer_t *buf,
 		bless_buffer_event_func_t *func, void *user_data);
+
+int bless_buffer_query_multi_action(bless_buffer_t *buf, int *multi);
+
 /** @} */
 
 /** @} */
